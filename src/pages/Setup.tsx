@@ -9,8 +9,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { MAPS, gameHref, mapInfo, normalizeMapId, readSetup, writeSetup, type GameMode, type MapId } from "@/game/maps";
-
-const MAX_NAME = 16;
+import { ROOM_PARAM } from "@/game/room";
+import { NAME_MAX as MAX_NAME } from "../../server/src/shared/rules.js";
 
 export default function Setup() {
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ export default function Setup() {
     }
     localStorage.setItem("dd_name", cleanName);
     writeSetup({ mode: "friends", map, grapple, name: cleanName });
-    navigate(`/online?code=${room}&map=${map}&grapple=${grapple ? 1 : 0}`);
+    navigate(`/online?${ROOM_PARAM}=${room}&map=${map}&grapple=${grapple ? 1 : 0}`);
   };
 
   return (
