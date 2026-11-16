@@ -4,6 +4,7 @@
 
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
+import { wakeMatchServer } from "@/game/wake";
 
 const KEYBOARD: [string, string][] = [
   ["WASD", "move &nbsp; · &nbsp; <b>Mouse</b> look &nbsp; · &nbsp; <b>Shift</b> sprint"],
@@ -31,6 +32,9 @@ export default function Landing() {
     navigate("/setup?mode=solo");
   }, [navigate]);
   const online = useCallback(() => {
+    // Start waking a sleeping match server while the player sets up the room
+    // (src/game/wake.ts). Fire-and-forget; solo play and PeerJS builds send nothing.
+    wakeMatchServer();
     navigate("/setup?mode=friends");
   }, [navigate]);
 

@@ -34,6 +34,7 @@ import {
   RestartWatch,
   type InstanceProbe,
 } from "./serverRestart";
+import { wakeMatchServer } from "./wake";
 import { MOVE_RATE_HZ, NAME_MAX, RECONNECT_SECONDS, SERVER_CLOSING_MESSAGE } from "../../server/src/shared/rules.js";
 
 /** sessionStorage key for this tab's seat; separate from the PeerJS lease. */
@@ -269,23 +270,17 @@ function loadSdk() {
   return sdkLoad;
 }
 
-let warmed = false;
 /**
  * The online lobby is open: fetch the SDK and knock on the server while the
  * player is still typing a name or a code, so CREATE / CONNECT does not start
  * from a cold chunk, a cold TLS connection, or a server only now beginning to
- * wake. The knock is the public /health probe, fire-and-forget; its answer is
- * not read, so it needs nothing from the server's CORS rules.
+ * wake. The knock is wake.ts's: shared with the menus, so a knock they sent
+ * moments ago is not repeated. The SDK chunk loads once per page (loadSdk).
  */
 export function warmColyseus(url: string | null = readColyseusUrl(viteEnv())) {
-  if (warmed || !url) return;
-  warmed = true;
+  if (!url) return;
   void loadSdk().catch(() => {});
-  try {
-    void fetch(`${url.replace(/^ws/i, "http")}/health`, { mode: "no-cors", cache: "no-store" }).catch(() => {});
-  } catch {
-    // no fetch here (tests, old browsers): connecting works the same without it
-  }
+  wakeMatchServer({ url, transport: "colyseus" });
 }
 
 export type ColyseusSessionDeps = {
