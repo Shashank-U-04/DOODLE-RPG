@@ -61,7 +61,7 @@ Status: **S1** = server foundation (`server/`); **S2** = lobby over Colyseus beh
 | `rematch` host-only: scores cleared, engine reset | `rematch`, `beginRematch` | `rematch` message, host-only; server resets and bumps `round`; the button follows the current host, so a promoted guest can rematch | S3C ✓ |
 | `ping`/`pong` every 2 s → half-RTT feeds aim lead/rewind | `startPinging`, `noteRtt` | SDK `room.ping` every 2 s; sent as each attack's `lag` for server-side rewind (the engine no longer leads targets) | S3B ✓ |
 | TURN credentials, ICE plan, signaling diagnostics | `net.ts`, `signaling.ts`, `convex/turn.ts` | Not needed over WebSockets; retired with PeerJS | S5 |
-| Convex auth (`@convex-dev/auth`) | `src/convex/auth*`, `use-auth.ts` | Out of scope; keep until a persistence/auth decision (Supabase deferred) | later |
+| Convex auth (`@convex-dev/auth`) | `src/convex/auth*` | Client side removed 2026-10-24 (no provider, no `/auth` or `/dashboard`; nothing in the game used them). The backend stays until PeerJS's `/turn` is retired | client ✓ |
 
 ## What cannot move to the server yet
 
@@ -111,6 +111,9 @@ Status: **S1** = server foundation (`server/`); **S2** = lobby over Colyseus beh
   *S4b:* a clean clone installs with `bun install --frozen-lockfile` and
   builds; `npm ci` against `package-lock.json` fails (out of sync). Vercel's
   build log still has to confirm which one it runs (`preview-deployment.md`).
+  *Resolved (2026-10-24):* the stale root `package-lock.json` is deleted, so
+  `bun.lock` is the only root lockfile and Vercel's lockfile detection can only
+  pick Bun. CI installs with `bun install --frozen-lockfile` (Bun 1.3.14).
 - **`?code=` collides with Convex Auth (all transports).** `ConvexAuthProvider`
   treats a `code` query parameter as its OAuth/magic-link callback: on every page
   load it deletes it from the URL and calls `signIn` with it. A guest's

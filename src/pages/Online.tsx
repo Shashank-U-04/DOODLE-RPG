@@ -29,6 +29,7 @@ import {
 import { NetSession, type NetPlayer, type SignalState } from "@/game/net";
 import { ColyseusSession, resumableSeat, warmColyseus } from "@/game/colyseus";
 import { matchWinner, NET_TRANSPORT, type MatchSession } from "@/game/transport";
+import { KILLS_TO_WIN, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
 import {
   clearRoomLease,
   codeForCreate,
@@ -39,7 +40,6 @@ import {
   writeRoomLease,
 } from "@/game/room";
 
-const KILLS_TO_WIN = 15;
 const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
 
 export default function Online() {
@@ -95,7 +95,7 @@ export default function Online() {
     // One room per click: a second CREATE (a double click, a held Enter) while
     // a session is live would open a second room and orphan the first.
     if (ref.current) return;
-    const who = name.trim().slice(0, 16);
+    const who = name.trim().slice(0, NAME_MAX);
     if (!who) {
       setError("type a name first — your friends have to know who to blame");
       return;
@@ -132,7 +132,7 @@ export default function Online() {
         setError("Enter the 4-letter code your friend sent you.");
         return;
       }
-      const who = name.trim().slice(0, 16);
+      const who = name.trim().slice(0, NAME_MAX);
       if (!who) {
         setError("type a name before joining");
         return;
@@ -162,7 +162,7 @@ export default function Online() {
    */
   const resume = useCallback(
     (seat: { code: string; isHost: boolean }) => {
-      const who = name.trim().slice(0, 16) || (seat.isHost ? "HOST" : "GUEST");
+      const who = name.trim().slice(0, NAME_MAX) || (seat.isHost ? "HOST" : "GUEST");
       const s = new ColyseusSession(seat.code, who, seat.isHost, match, { resumeOnly: true });
       wire(s);
       s.connect();
@@ -237,7 +237,7 @@ export default function Online() {
   // once. The timer keeps React StrictMode's mount → cleanup → mount cycle from
   // opening a room that the cleanup has already torn down.
   // A guest's room code is read once and then taken off the URL, so a reload
-  // behaves as it always has (old ?code= links lose theirs to Convex Auth; see
+  // behaves as it always has (old ?code= links are still read; see
   // ROOM_PARAM). With the Colyseus transport a reload resumes the held seat
   // on its own instead (see colyseus.ts).
   useEffect(() => {
@@ -696,7 +696,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             h.netRespawn();
             session.reportRespawn(h.netState().epoch);
             setDown(false);
-          }, 3200);
+          }, RESPAWN_MS);
         },
       },
       // The match is built from the host's rules, not from whatever this

@@ -6,9 +6,9 @@
 // - a production build of the frontend (the same path a Vercel Preview takes:
 //   `vite build` with VITE_NET_TRANSPORT / VITE_COLYSEUS_URL baked in), served
 //   by `vite preview` on E2E_WEB_PORT from its own output folder;
-// - VITE_CONVEX_URL points at a closed local port, so the app boots without
-//   reaching any Convex deployment. The spec also aborts every request that
-//   leaves 127.0.0.1.
+// - no Convex or editor-bridge configuration at all (the Convex variables are
+//   forced empty), so the build proves the game starts without them
+//   (e2e/startup.spec.ts). Every spec also aborts requests that leave 127.0.0.1.
 //
 // Setup: `bun install`, `npm ci` in server/, then `bunx playwright install chromium`.
 // Run: `bun run test:e2e`.
@@ -53,6 +53,10 @@ export default defineConfig({
         NODE_ENV: "test",
         E2E_FIXTURES: "1",
         ALLOWED_ORIGINS: WEB,
+        // every test creates rooms from the same (unnamed) address; the limits
+        // themselves are tested in server/test/access.test.ts
+        ROOM_CREATES_PER_IP_PER_MINUTE: "1000",
+        ROOM_CREATES_PER_MINUTE: "1000",
         // seats, drops and leaves with close codes, rate-limit kicks: no payloads, tokens or names
         DEBUG: "colyseus:matchmaking,colyseus:errors",
         DEBUG_COLORS: "0",
@@ -67,7 +71,9 @@ export default defineConfig({
       env: {
         VITE_NET_TRANSPORT: "colyseus",
         VITE_COLYSEUS_URL: E2E_SERVER,
-        VITE_CONVEX_URL: "http://127.0.0.1:9",
+        // empty even if the shell running the tests has them set
+        VITE_CONVEX_URL: "",
+        VITE_CONVEX_SITE_URL: "",
       },
     },
   ],
