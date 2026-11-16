@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { MAPS, gameHref, mapInfo, normalizeMapId, readSetup, writeSetup, type GameMode, type MapId } from "@/game/maps";
 import { ROOM_PARAM } from "@/game/room";
+import { wakeMatchServer } from "@/game/wake";
 import { NAME_MAX as MAX_NAME } from "../../server/src/shared/rules.js";
 
 export default function Setup() {
@@ -39,6 +40,13 @@ export default function Setup() {
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, map, grapple]);
+
+  // Play with friends (from the title, or switched to here): wake a sleeping
+  // match server before the player reaches the lobby (src/game/wake.ts).
+  // Fire-and-forget and throttled; solo play and PeerJS builds send nothing.
+  useEffect(() => {
+    if (mode === "friends") wakeMatchServer();
+  }, [mode]);
 
   const pickMap = useCallback(
     (id: MapId) => {
