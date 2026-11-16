@@ -11,12 +11,17 @@ import {
   type MapId,
 } from "../rules.js";
 import { isOriginAllowed, originPolicy } from "../origins.js";
+import { SERVER_CLOSING_MESSAGE } from "../shared/rules.js";
 import { isCreateRequest, REFUSAL_TEXT, RoomCreationLimiter, roomLimitsFromEnv } from "../limits.js";
+import { metrics } from "../metrics.js";
+import { INSTANCE_ID, logLifecycle, NOTICE_GRACE_MS } from "../lifecycle.js";
 import { Combat, type EliminatedEvent, type HitEvent } from "./Combat.js";
 import {
+  ARRIVALS,
   clampPitch,
   COORD_LIMIT,
   ENVELOPES,
+  grantDash,
   newMotion,
   PATCH_INTERVAL_MS,
   stepMotion,
@@ -102,6 +107,16 @@ const TOO_MANY_REQUESTS = 429;
  */
 export const roomLimiter = new RoomCreationLimiter(roomLimitsFromEnv.limits);
 
+/** Rooms alive in this process, for the metrics line. */
+const liveRooms = new Set<MatchRoom>();
+
+/** How many rooms and players this process holds right now. */
+export function roomStats(): { rooms: number; players: number } {
+  let players = 0;
+  for (const room of liveRooms) players += room.state.players.size;
+  return { rooms: liveRooms.size, players };
+}
+
 /**
  * One Doodle Shooter match.
  *
@@ -121,8 +136,19 @@ export class MatchRoom extends Room<{ state: MatchState }> {
   maxMessagesPerSecond = 60;
   /** how long a dropped player's seat is held; tests shorten it */
   reconnectSeconds = RECONNECT_SECONDS;
+  /** set once the shutdown notice has gone out; a second shutdown call does nothing */
+  private shutdownStarted = false;
+  /** the wait between the shutdown notice and closing the sockets */
+  private closeTimer: ReturnType<typeof setTimeout> | null = null;
   /** per-player movement limiter; server-only, keyed by session id */
   private motion = new Map<string, Motion>();
+  /** teleports refused because they were not to a place the game puts bodies (tests, the e2e fixture) */
+  motionStats = { teleportsRefused: 0 };
+  /**
+   * Tests only: accept a teleport to any point. Combat tests place bodies at
+   * exact spots to set up a shot; movement trust has its own tests.
+   */
+  trustTeleports = false;
   /** health, deaths and scores; public so tests can read its counters */
   combat = new Combat(this.state, (type: "hit" | "eliminated", message: HitEvent | EliminatedEvent) =>
     this.broadcast(type, message),
@@ -141,6 +167,7 @@ export class MatchRoom extends Room<{ state: MatchState }> {
       const refusal = roomLimiter.tryCreate(context.ip, liveCodes.size);
       if (refusal) {
         // no address in the log: the reason and the room count are enough to see an abuse pattern
+        metrics.createRefused();
         console.warn(JSON.stringify({ event: "create-refused", reason: refusal, liveRooms: liveCodes.size }));
         throw new ServerError(TOO_MANY_REQUESTS, REFUSAL_TEXT[refusal]);
       }
@@ -181,7 +208,11 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     move: validate(moveMessage, (client, message) => this.applyMove(client.sessionId, message)),
     fire: validate(fireMessage, (client, m) => this.combat.fire(client.sessionId, m)),
     slash: validate(meleeMessage, (client, m) => this.combat.slash(client.sessionId, m)),
-    dash: validate(meleeMessage, (client, m) => this.combat.dash(client.sessionId, m)),
+    dash: validate(meleeMessage, (client, m) => {
+      // an accepted dash carries the body to its target: allow that one jump
+      const motion = this.motion.get(client.sessionId);
+      if (this.combat.dash(client.sessionId, m) && motion) grantDash(motion, Date.now());
+    }),
     throw: validate(throwMessage, (client, m) => this.combat.throwGrenade(client.sessionId, m)),
     reload: validate(reloadMessage, (client, m) => this.combat.reload(client.sessionId, m.weapon)),
     hazard: validate(hazardMessage, (client, m) => this.combat.hazard(client.sessionId, m.damage)),
@@ -205,20 +236,21 @@ export class MatchRoom extends Room<{ state: MatchState }> {
       this.motion.set(sessionId, motion);
     }
     const wantsTeleport = motion.clientEpoch === null || m.epoch !== motion.clientEpoch;
+    const claim = { x: m.x, y: m.y, z: m.z };
     const result = stepMotion(
       motion,
       p.spawned ? { x: p.x, y: p.y, z: p.z } : null,
-      { x: m.x, y: m.y, z: m.z },
+      claim,
       wantsTeleport,
       now,
       ENVELOPES[this.state.map as MapId],
+      this.trustTeleports ? [claim] : ARRIVALS[this.state.map as MapId],
     );
     // A refused teleport keeps the old epoch on file, so the next packet asks
     // again; meanwhile the body walks toward the claim at the speed limit.
-    if (result.teleported) {
-      motion.clientEpoch = m.epoch;
-      p.epoch += 1;
-    }
+    if (result.adoptEpoch) motion.clientEpoch = m.epoch;
+    if (result.teleported) p.epoch += 1;
+    if (result.refusedTeleport) this.motionStats.teleportsRefused++;
     p.x = result.pos.x;
     p.y = result.pos.y;
     p.z = result.pos.z;
@@ -251,12 +283,19 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     void this.setPrivate(true);
     this.maxClients = opts.maxPlayers;
     this.state.code = this.roomId;
+    this.state.serverInstance = INSTANCE_ID;
     this.state.map = opts.map;
     this.state.grapple = opts.grapple;
     this.state.maxPlayers = opts.maxPlayers;
     this.setPatchRate(PATCH_INTERVAL_MS);
-    // regen, grenade fuses and late respawns
-    this.setSimulationInterval(() => this.combat.tick(), PATCH_INTERVAL_MS);
+    // regen, grenade fuses and late respawns, timed for the metrics line
+    this.setSimulationInterval(() => {
+      const started = performance.now();
+      this.combat.tick();
+      metrics.tick(performance.now() - started);
+    }, PATCH_INTERVAL_MS);
+    liveRooms.add(this);
+    metrics.roomCreated();
   }
 
   onJoin(client: Client, options: unknown) {
@@ -283,7 +322,8 @@ export class MatchRoom extends Room<{ state: MatchState }> {
    * the new one in. A client kicked for a malformed message is held the same
    * way; only its own token can bring it back, and the hold expires.
    */
-  onDrop(client: Client) {
+  onDrop(client: Client, code?: number) {
+    logLifecycle("client-dropped", { room: this.roomId, session: client.sessionId, code: code ?? null, shuttingDown: this.shutdownStarted });
     const player = this.state.players.get(client.sessionId);
     if (player) player.connected = false;
     this.allowReconnection(client, this.reconnectSeconds).catch(() => {
@@ -320,7 +360,38 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     }
   }
 
+  /** What each socket looked like at this moment, for the shutdown log. */
+  private socketStates() {
+    return this.clients.map((c) => {
+      const ws = c.ref as unknown as { readyState?: number; bufferedAmount?: number } | undefined;
+      return { session: c.sessionId, readyState: ws?.readyState ?? null, bufferedBytes: ws?.bufferedAmount ?? null };
+    });
+  }
+
+  /**
+   * The process is shutting down (SIGTERM on a deploy or restart). Tell every
+   * player first, then wait a moment before closing their sockets: Colyseus
+   * waits for every room to be disposed, so the wait is safe, and the notice is
+   * not racing the close through the hosting path. Players who get the notice
+   * close from their side, which can dispose the room before the wait is over.
+   */
+  onBeforeShutdown() {
+    if (this.shutdownStarted) return;
+    this.shutdownStarted = true;
+    this.broadcast(SERVER_CLOSING_MESSAGE, {});
+    logLifecycle("room-notice-sent", { room: this.roomId, seats: this.state.players.size, sockets: this.socketStates() });
+    this.closeTimer = setTimeout(() => {
+      this.closeTimer = null;
+      logLifecycle("room-closing-sockets", { room: this.roomId, sockets: this.socketStates() });
+      super.onBeforeShutdown();
+    }, NOTICE_GRACE_MS);
+  }
+
   onDispose() {
+    if (this.closeTimer) clearTimeout(this.closeTimer);
+    this.closeTimer = null;
+    if (this.shutdownStarted) logLifecycle("room-disposed", { room: this.roomId });
     liveCodes.delete(this.roomId);
+    if (liveRooms.delete(this)) metrics.roomDisposed();
   }
 }
