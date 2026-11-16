@@ -15,7 +15,8 @@ frontend build, lint and Vercel deployment do not touch this folder.
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 24, the version Render runs (`.node-version`). Node 22 is still
+  supported and tested in CI; `engines` allows `>=22.0.0 <25`.
 - npm
 
 ## Setup
@@ -26,7 +27,7 @@ npm ci
 npm start          # tsx watch on http://localhost:2567
 ```
 
-- `GET /health` returns `{"status":"ok","uptime":<seconds>}`.
+- `GET /health` returns `{"status":"ok","uptime":<seconds>,"instance":"<this process's random id>"}`.
 - `/monitor` shows the Colyseus room monitor in development only. It is not
   mounted when `NODE_ENV=production`.
 
@@ -87,7 +88,7 @@ WebSockets open); the frontend stays on Vercel and points at it with
 
 **What the host must provide**
 
-- Node.js 22+ (or a container runtime for the `Dockerfile`).
+- Node.js 24, or 22 at minimum (or a container runtime for the `Dockerfile`).
 - Long-lived WebSocket connections (HTTP Upgrade passed through), with TLS
   terminated in front of the server so the browser connects with `https`/`wss`
   — an `https` page cannot use a plain `http` server.
@@ -116,7 +117,8 @@ needs only the runtime dependencies. Validated on Node 22.15 and 24.22 (the
 whole test suite, and the compiled server in production mode).
 
 `render.yaml` in the repository root describes this as a Render Blueprint
-(free plan, `rootDir: server`, health check `/health`).
+(free plan, `rootDir: server`, health check `/health`). Render's Node.js 24 comes
+from `.node-version`, not from the Blueprint.
 
 **Check a deployment** from any machine:
 
@@ -247,14 +249,34 @@ and the server decides what everyone else sees (`src/movement.ts`).
   (sprint is 10.6, a dash briefly 36) with 30 m banked for packets that arrive
   bunched; a longer step is cut short toward the claim.
 - **Teleports:** a change of the client's `epoch` (respawn, round restart,
-  focus dash, Egyptian doors, the fall rescue) skips the speed limit, up to 3
-  back to back and then 1 a second. Each accepted teleport bumps the synced
-  `epoch`, so viewers snap instead of sliding.
+  focus dash, Egyptian doors, the fall rescue) asks to skip the speed limit.
+  - It is granted only to a place the game itself puts bodies: within 2 m
+    (2.5 m vertically) of a spawn pad, a zone's start, a district safe spawn or
+    a doorway's arrival. These come from `src/maps/arrivals.json`, which
+    `scripts/export-colliders.ts` writes from the real map builders and the
+    parity test keeps current.
+  - It is also granted for one hop of up to 18 m within 1 s of a focus dash the
+    server accepted.
+  - Up to 3 teleports back to back, then 1 a second.
+  - Each accepted teleport bumps the synced `epoch`, so viewers snap instead of
+    sliding.
+  - A request for any other jump is not a teleport. Within the movement
+    allowance it is taken as a step: the epoch is settled with no snap, which
+    is what a reconnected client restarting its epochs needs. Further away, the
+    body walks toward it at the speed limit.
+  - Refusals are counted in `motionStats.teleportsRefused`. The browser test
+    asserts the real client never causes one.
+  - Before 2026-10-24, any epoch change put the body anywhere in the map.
 - **Tidying:** yaw is wrapped to (−π, π], pitch clamped to ±π/2, unknown weapon
   names ignored. Moves before the start, or from a dropped seat, are ignored.
 - **Spawn:** bodies start unplaced (`spawned: false`) when a match starts; a
-  client's first move places it. After a reconnect the next move re-places it,
+  client's first move places it, on an arrival point. A first move anywhere
+  else is put on the nearest one. After a reconnect the next move re-places it,
   because a reloaded page runs a fresh engine whose epochs restart.
+- **Known gap:** if no pad is standable, the client's respawn falls back to an
+  open spot 16–34 m away. The server does not recognise that as a jump, so
+  other players see the body walk there at the speed limit (about half a
+  second) instead of snapping.
 
 What this does not do: walls are not checked for movement, so inside those
 limits the client still chooses its path. `firing` is cosmetic (other players
@@ -330,6 +352,44 @@ is `""` for no credit).
 ## Leaving and reconnecting
 
 - **Leaving on purpose** (`room.leave()`) frees the seat at once.
+- **Server-initiated closes are lost on Render.** Traces on 2026-10-24 showed
+  that any close the *server* starts never reaches the client through the
+  Render deployment (its edge is fronted by Cloudflare). This covers the close
+  after a consented leave (4000), a validation kick (4002) and, by the same
+  path, a shutdown close. The client sees nothing, then an abnormal 1006 about
+  20 s later. A close the *client* starts completes in one round trip. The same
+  build, run locally under the same Node version, closes cleanly every time.
+  So the game client leaves with `leaveRoom()` (`src/game/colyseus.ts`): it
+  sends LEAVE (the server handles it first, as a consented leave), then closes
+  the socket itself with 4000, and never reconnects.
+  `test/hosted-leave.test.ts` and `e2e/hosted-leave.spec.ts` reproduce the
+  path and fail without this.
+- **Restarts** (SIGTERM on a deploy or restart) reach players two ways, because
+  on 2026-11-02 two real restarts of the Render service delivered neither the
+  notice nor the close: both players saw a late 1006, then 90–127 s of
+  reconnecting.
+  - **The notice.** `MatchRoom.onBeforeShutdown` broadcasts `server-closing`
+    (`SERVER_CLOSING_MESSAGE` in `src/shared/rules.ts`), waits `NOTICE_GRACE_MS`
+    (`src/lifecycle.ts`), then closes with SERVER_SHUTDOWN. A client that gets the
+    notice shows "The match server restarted…" and closes from its side.
+  - **The fallback, for when no notice can arrive.** `/health` and every room's
+    state name the server process (`instance`). While reconnecting, the client
+    asks `/health` (`src/game/serverRestart.ts`): only a clear answer naming a
+    different process ends the match with the restart message. No answer, a
+    malformed one, or the same process means the SDK carries on reconnecting, so
+    a network problem is never reported as a restart. The client also asks when
+    pings go unanswered for 6 s on a socket that still looks open (a close lost
+    on the way), and once more, for up to 5 s, before it reports a lost
+    connection: a reconnect can reach the new process, and be refused (4003),
+    before `/health` has said so.
+  - **Diagnostics.** Each step logs one `{"event":"lifecycle",…}` JSON line:
+    `boot`, `signal-received`, `shutdown-started`, `client-dropped`,
+    `room-notice-sent`, `room-closing-sockets`, `room-disposed`,
+    `shutdown-finished`, `process-exit`. A shutdown still running after
+    `SHUTDOWN_BACKSTOP_MS` logs `shutdown-backstop` and exits.
+
+  A validation kick still reaches a hosted client as a late 1006; only a broken
+  or hostile client gets one.
 - **Dropping** (reload, closed tab, lost network) holds the seat for
   `RECONNECT_SECONDS` (30, in `src/rules.ts`); the roster shows it with
   `connected: false`. Only `client.reconnect(room.reconnectionToken)` can take it
