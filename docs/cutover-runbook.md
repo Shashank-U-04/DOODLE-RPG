@@ -6,7 +6,7 @@ what was run while writing this. Dashboard steps (Vercel, Render) need someone
 with access. Every step that changes Production or costs money needs explicit
 approval first.
 
-State on 2026-11-11:
+State on 2026-11-11 (rechecked 2026-11-16, see below):
 
 | | Commit | Transport |
 |---|---|---|
@@ -61,13 +61,27 @@ The deployed Render commit and the latest PR commits are different things:
   - Both then created/joined a fresh match successfully.
   - Which detection path fired on each device (the console lines in section 5,
     step 5) is not recorded here.
-- **GitHub's deployment records do not show this deploy.** The last Render
-  record (`gh api …/deployments`, step 1) is `dc14d7a` under the environment
-  `feat/colyseus-hosted-preview - doodle-shooter-match`, dated 2026-11-05. The
-  commits from `61b4b87` to `17e5385` carry `[skip render]`, so `17e5385` was
-  deployed by hand. To confirm what Render runs, read the server's startup line
-  in the Render logs. It has the form `{"event":"lifecycle",…,"node":…,"commit":…}`,
-  and `commit` comes from `RENDER_GIT_COMMIT`.
+- **GitHub's deployment records do not show this deploy.** The commits from
+  `61b4b87` to `17e5385` carry `[skip render]`, so `17e5385` was deployed by
+  hand. Render's records (`gh api …/deployments`, step 1) all say `dc14d7a`
+  under the environment `feat/colyseus-hosted-preview - doodle-shooter-match`.
+  The newest is dated 2026-11-16 05:34 UTC (success 05:36), so the service was
+  redeployed or restarted then. The live `/health` still includes `instance`,
+  which `dc14d7a` does not have (it arrived in `61b4b87`), so Render is not
+  running `dc14d7a` despite the record. To confirm the exact commit, read the
+  server's startup line in the Render logs. It has the form
+  `{"event":"lifecycle",…,"node":…,"commit":…}`, and `commit` comes from
+  `RENDER_GIT_COMMIT`.
+- **Production origin, checked on 2026-11-16:** `GET /health` with
+  `Origin: https://doodle-shooter.vercel.app` now gets
+  `Access-Control-Allow-Origin`, and #11's branch alias still does. So
+  `ALLOWED_ORIGINS` already has both (step 6.2). On 2026-11-12 the Production
+  origin was not allowed yet.
+- **Vercel variables, checked on 2026-11-16 (names and scopes only):**
+  `VITE_NET_TRANSPORT` and `VITE_COLYSEUS_URL` exist for Preview only.
+  Production has neither, and the Production deployment is still
+  `dpl_7XjPdAGbFv7zkmJ5czjGFvr393uE` (`7f0e6fd`, PeerJS).
+  `https://doodle-shooter.vercel.app` is the only Production domain in use.
 - **CI:** all 12 PRs are open and unmerged, and every check is green on each
   PR's current head. #1 has only the Vercel checks, because the Actions
   workflow arrives in #2.
@@ -284,8 +298,20 @@ Each item below is an approval gate.
    32.5 s to answer from sleep on 2026-10-23, and it can be restarted at any
    time, which ends matches. An always-on instance (Render Starter, $7/month as
    of 2026-10-23) is the minimum for real players.
-2. **Production origin.** Add the Production domain to `ALLOWED_ORIGINS` and
-   restart.
+2. **Production origin.** Render → `doodle-shooter-match` → **Environment** →
+   `ALLOWED_ORIGINS` must contain `https://doodle-shooter.vercel.app` (exact,
+   no trailing slash) **and** keep #11's branch alias, comma-separated. The
+   server reads it at startup, so it only takes effect after a restart or
+   deploy, which ends running matches. On 2026-11-16 the live server already
+   allowed both origins (see the state at the top), so this needs no change
+   unless that check fails again:
+   ```sh
+   curl -s -D - -o /dev/null -H "Origin: https://doodle-shooter.vercel.app" \
+     https://doodle-shooter-match.onrender.com/health | grep -i access-control-allow-origin
+   ```
+   After any change, confirm the startup line's `commit` in the Render logs.
+   It must still be the `17e5385` server code: `17e5385`, `c427816` or a later
+   `fix/hosted-restart-notice` commit. It must not be `dc14d7a`.
 3. **Merge, top-down, with "Create a merge commit".** Never squash or rebase:
    #10 and #4 share commits, and squashing breaks the stack's ancestry. Merge
    each PR into its own base, starting at the top. Then the whole migration
@@ -325,13 +351,34 @@ Each item below is an approval gate.
      `server/`, #12 changes only CI and docs, and `7f0e6fd` changes only
      `.gitignore` and `.env.keys`. Moving Render's branch to `main` after the merge therefore
      changes no server code. It is still a deploy, which ends running matches.
-4. **Switch.** Set `VITE_NET_TRANSPORT=colyseus` and `VITE_COLYSEUS_URL` for
-   **Production** and redeploy.
+   - **Smoke-test Production on PeerJS** once the #1 → `main` deploy is Ready.
+     Check that the deployment's commit is the merge commit. Then, on
+     `https://doodle-shooter.vercel.app`: the game loads; solo play and the
+     maps work; the `/online` lobby says play is peer-to-peer; a two-player
+     PeerJS match connects. If not, roll back (section 7, "A merged change
+     breaks Production") before going on.
+4. **Switch.** Vercel → Project → **Settings → Environment Variables**, scope
+   **Production only**:
+
+   | Name | Value |
+   |---|---|
+   | `VITE_NET_TRANSPORT` | `colyseus` |
+   | `VITE_COLYSEUS_URL` | `https://doodle-shooter-match.onrender.com` |
+
+   These are build-time variables. Vercel → **Deployments** → the latest
+   Production deployment → **Redeploy**. Wake Render first (open `/health`),
+   because a sleeping free instance takes about 30 s to answer.
 5. **Verify.**
-   - `npm run check:hosted -- --server … --origin https://<production-domain>`:
-     all PASS.
+   - ```sh
+     cd server
+     npm run check:hosted -- --server https://doodle-shooter-match.onrender.com --origin https://doodle-shooter.vercel.app
+     ```
+     All checks must PASS. Server-initiated closes are reported as INFO
+     (section 4).
    - The `/online` lobby says it runs on the match server.
-   - A three-player match on the Production domain.
+   - Phase 6 tests on the Production domain, Windows ↔ macOS, three players if
+     possible: create and join by code; damage, death, respawn, score and
+     winner; LEAVE; rematch; solo and maps still work.
 
 ## 7. Rollback
 
@@ -339,8 +386,8 @@ Each item below is an approval gate.
 
 | Situation | Action |
 |---|---|
-| Colyseus in Production misbehaves (after step 6.4) | Remove `VITE_NET_TRANSPORT` from Production and **redeploy**. Production returns to PeerJS; no code change. Vercel's Instant Rollback does **not** pick up variable changes. |
-| A merged change breaks Production | Vercel → Deployments → the previous Production deployment (today `7f0e6fd`, 2026-10-25) → **Instant Rollback**. On the Hobby plan only the immediately previous deployment can be restored this way. Production's auto-assignment of the domain stops until you undo the rollback. |
+| Colyseus in Production misbehaves (after step 6.4) | Remove `VITE_NET_TRANSPORT` from Production and **redeploy**. Production returns to PeerJS; no code change. `VITE_COLYSEUS_URL` can stay: it is ignored unless `VITE_NET_TRANSPORT=colyseus`. The fastest alternative is **Instant Rollback** to the deployment before the switch, which is the PeerJS build of the merged `main` (it reuses that build's output and its old variables). |
+| A merged change breaks Production (before step 6.4) | Vercel → Deployments → the previous Production deployment (`dpl_7XjPdAGbFv7zkmJ5czjGFvr393uE`, `7f0e6fd`, 2026-10-25) → **Instant Rollback**. On the Hobby plan only the immediately previous deployment can be restored this way, so after the step 6.4 redeploy `7f0e6fd` is reachable only by the git revert below. Production's auto-assignment of the domain stops until you undo the rollback. |
 | Revert in git | `git revert -m 1 <merge-commit>` (the #1 → `main` merge), push, and Production redeploys `7f0e6fd`'s code. |
 | Known-good code | `7f0e6fd` = the current Production build (`main`, PeerJS). Tag `rollback/production-f8bb68b` = the Production build of 2026-10-20 (deployment 7196675474). Its tree still contains `.env.keys`, which `7f0e6fd` removed. Redeploy that build in Vercel; never reset `main` to the tag. |
 
