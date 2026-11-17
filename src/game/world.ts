@@ -10,7 +10,7 @@ export const INK = {
   ORANGE: 3,
   GREEN: 4,
   PINK: 5,
-  // Egypt palette. The rendering pipeline hands an ink *index* to the post
+  // Desert palette. The rendering pipeline hands an ink *index* to the post
   // pass, so extending the palette is how a new map gets its own colours
   // without a second material system: sand, ochre, tomb stone, turquoise and
   // gold all shade and hatch exactly like the six original inks.
@@ -23,7 +23,7 @@ export const INK = {
 } as const;
 export type InkId = (typeof INK)[keyof typeof INK];
 
-// The reference game's ink palette, verbatim, plus the five warm Egyptian inks
+// The reference game's ink palette, verbatim, plus the five warm desert inks
 // and the bleached bandage ink the mummies are wrapped in.
 export const INK_RGB: Record<InkId, [number, number, number]> = {
   [INK.BLUE]: [0.1, 0.19, 0.76],

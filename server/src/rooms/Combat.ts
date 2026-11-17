@@ -1,8 +1,8 @@
 // Server-authoritative combat for one match.
 //
-// Clients send intent only (fire, slash, dash, throw, reload, a spike trap
-// they stood on); this class decides whether they may, what it hits, and what
-// happens to everyone's health, lives and score. The rules and numbers are in
+// Clients send intent only (fire, slash, dash, throw, reload); this class
+// decides whether they may, what it hits, and what happens to everyone's
+// health, lives and score. The rules and numbers are in
 // ../combat.ts; this file is the bookkeeping.
 //
 // Messages are handled one at a time on the room's thread, in arrival order, so
@@ -35,7 +35,6 @@ import {
   RELOAD_GRACE_MS,
   RESPAWN_MS,
   scatter,
-  SPIKE,
   grenadeLanding,
   zoneAt,
   AIR_SPREAD,
@@ -57,8 +56,7 @@ export type Refusal =
   | "reloading"
   | "empty"
   | "no-focus"
-  | "no-target"
-  | "bad-hazard";
+  | "no-target";
 
 /** Sent to every client when a hit lands (one per victim per shot). */
 export type HitEvent = {
@@ -323,20 +321,6 @@ export class Combat {
     this.stats.reloads++;
   }
 
-  /** A spike trap the client stood on (traps run on each client's clock; see README). */
-  hazard(id: string, damage: number) {
-    const p = this.state.players.get(id);
-    const a = this.arms.get(id);
-    if (!p || !a || !p.alive || !p.spawned || this.state.phase !== "playing" || this.state.winnerId) return;
-    const now = this.now();
-    const zone = zoneAt(this.map, { x: p.x, y: p.y, z: p.z }).id;
-    if (damage !== SPIKE.damage || zone === "surface" || zone === "district" || now - a.hazardAt < SPIKE.everyMs - 50) {
-      return this.refuse("bad-hazard");
-    }
-    a.hazardAt = now;
-    this.hurt(p, damage, id, "SPIKES");
-  }
-
   /* ------------------------------- resolution ------------------------------- */
 
   /** Apply one attack's landed hits in order, one event per victim. */
@@ -399,7 +383,7 @@ export class Combat {
     v.alive = false;
     v.deaths += 1;
     this.respawnAt.set(v.id, now + RESPAWN_MS);
-    // Erasing yourself (your own grenade, a spike) is a death, not a kill.
+    // Erasing yourself (your own grenade) is a death, not a kill.
     const killer = attacker !== v.id ? this.state.players.get(attacker) : undefined;
     if (killer) {
       killer.kills += 1;

@@ -15,7 +15,7 @@ import { expect, test } from "./fixtures";
 import { consoleLines } from "./helpers";
 
 const ALLOWED_OFF_HOST = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
-const MAPS = ["district", "valley", "sanctuary", "tomb"] as const;
+const MAPS = ["district", "pyramid"] as const;
 
 type Watch = { page: Page; offHost: string[]; errors: string[] };
 

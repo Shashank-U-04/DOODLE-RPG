@@ -106,8 +106,6 @@ export const AIR_SPREAD = 1.8;
 
 /** PVP.health, and the regen of updatePlayer() / damagePlayer(). */
 export const HEALTH = { max: PVP.health, regenDelay: 4.5, regenPerS: 11 } as const;
-/** egypt.hazard(): a raised spike costs 12, at most once per 850 ms, never on the surface. */
-export const SPIKE = { damage: 12, everyMs: 850 } as const;
 
 /* --------------------------- server-side tolerances --------------------------- */
 
@@ -131,7 +129,7 @@ export const FOCUS_GRACE_MS = 300;
 
 type Collider = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 type ZoneData = { floorY: number; colliders: number[][] };
-export type ZoneId = "district" | "surface" | "interior" | "tomb";
+export type ZoneId = "district" | "pyramid";
 
 const ZONES: Record<ZoneId, { floorY: number; colliders: Collider[] }> = Object.fromEntries(
   Object.entries(collidersJson as Record<string, ZoneData>).map(([id, z]) => [
@@ -146,9 +144,7 @@ const ZONES: Record<ZoneId, { floorY: number; colliders: Collider[] }> = Object.
 /** The zones of each map, in the same order as its movement envelope boxes. */
 const MAP_ZONES: Record<MapId, ZoneId[]> = {
   district: ["district"],
-  valley: ["surface", "interior", "tomb"],
-  sanctuary: ["surface", "interior", "tomb"],
-  tomb: ["surface", "interior", "tomb"],
+  pyramid: ["pyramid"],
 };
 
 function inBox(b: Box, p: Vec3) {
@@ -317,7 +313,6 @@ export type Arms = {
   slowmoUntil: number;
   chain: number;
   grenadeAt: number;
-  hazardAt: number;
 };
 
 export function newArms(now: number, lastShot = 0): Arms {
@@ -332,7 +327,6 @@ export function newArms(now: number, lastShot = 0): Arms {
     slowmoUntil: 0,
     chain: 0,
     grenadeAt: -Infinity,
-    hazardAt: -Infinity,
   };
 }
 

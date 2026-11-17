@@ -193,14 +193,14 @@ Create a room and join one by code with `@colyseus/sdk`:
 ```ts
 import { Client } from "@colyseus/sdk";
 const client = new Client("http://localhost:2567");
-const host = await client.create("match", { name: "Ada", map: "valley", grapple: true, maxPlayers: 4 });
+const host = await client.create("match", { name: "Ada", map: "pyramid", grapple: true, maxPlayers: 4 });
 host.roomId; // the 4-letter room code, e.g. "K7QM"
 const guest = await client.joinById(host.roomId, { name: "Grace" });
 ```
 
 **Create options** (all optional; anything malformed falls back to the default):
-`name` (≤ 16 chars, default `HOST`), `map` (`district` | `valley` | `sanctuary`
-| `tomb`, default `district`), `grapple` (default `true`), `maxPlayers` (2–4,
+`name` (≤ 16 chars, default `HOST`), `map` (`district` | `pyramid`,
+default `district`), `grapple` (default `true`), `maxPlayers` (2–4,
 default 4).
 
 **State** (`MatchState`): `code`, `phase` (`lobby` → `playing`), `map`,
@@ -243,13 +243,12 @@ and the server decides what everyone else sees (`src/movement.ts`).
   else (NaN, Infinity, strings, missing fields) disconnects the sender.
 - **Volume:** positions are clamped into the map's playable boxes, measured
   from the real map builders (`test/geometry.test.ts` rebuilds the maps and
-  checks every zone, start pad and spawn point fits). The three Egyptian maps
-  share one connected world, so each allows all three zones.
+  checks every map, start pad and spawn point fits).
 - **Speed:** ordinary movement draws on an allowance that refills at 60 m/s
   (sprint is 10.6, a dash briefly 36) with 30 m banked for packets that arrive
   bunched; a longer step is cut short toward the claim.
 - **Teleports:** a change of the client's `epoch` (respawn, round restart,
-  focus dash, Egyptian doors, the fall rescue) asks to skip the speed limit.
+  focus dash, the fall rescue) asks to skip the speed limit.
   - It is granted only to a place the game itself puts bodies: within 2 m
     (2.5 m vertically) of a spawn pad, a zone's start, a district safe spawn or
     a doorway's arrival. These come from `src/maps/arrivals.json`, which
@@ -308,8 +307,7 @@ way" — never what it hit; there is no message that claims damage or a kill.
   pellet, applied once; one `hit` event per victim per shot.
 - **Walls** come from `src/maps/colliders.json`, exported from the real map
   builders by `npx tsx scripts/export-colliders.ts` (re-run it after changing a
-  map; the parity test fails if it is stale). Egyptian doors are left out:
-  each player opens them in their own world, so the server treats them as open.
+  map; the parity test fails if it is stale).
 - **Firing rules:** the shooter must be placed, connected and alive, the match
   running and undecided; the shot's origin within 3 m of the shooter's eye; the
   aim a unit vector; the shot id higher than any before (duplicates and

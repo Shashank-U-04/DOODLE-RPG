@@ -99,13 +99,13 @@ describe("match room", () => {
   }
 
   it("creates a room with a lobby-style code, owned by the host", async () => {
-    const h = await host({ map: "valley", grapple: false });
+    const h = await host({ map: "pyramid", grapple: false });
     const s = snapshot(h);
     assert.strictEqual(s.code.length, CODE_LENGTH);
     assert.ok([...s.code].every((c) => CODE_ALPHABET.includes(c)), `code ${s.code} uses the lobby alphabet`);
     assert.strictEqual(h.roomId, s.code);
     assert.strictEqual(s.phase, "lobby");
-    assert.strictEqual(s.map, "valley");
+    assert.strictEqual(s.map, "pyramid");
     assert.strictEqual(s.grapple, false);
     assert.strictEqual(s.maxPlayers, 4);
     assert.strictEqual(s.hostId, h.sessionId);
@@ -162,9 +162,9 @@ describe("match room", () => {
     const g = await colyseus.sdk.joinById(h.roomId, { name: "Grace" });
     await eventually(() => Object.keys(snapshot(g).players).length === 2, "guest joined");
 
-    g.send("config", { map: "tomb" });
-    h.send("config", { map: "sanctuary", grapple: false });
-    await eventually(() => snapshot(g).map === "sanctuary", "host config reaches guest");
+    g.send("config", { map: "district", grapple: true });
+    h.send("config", { map: "pyramid", grapple: false });
+    await eventually(() => snapshot(g).map === "pyramid", "host config reaches guest");
     assert.strictEqual(snapshot(g).grapple, false);
   });
 
@@ -257,7 +257,7 @@ describe("match room", () => {
       await eventually(() => snapshot(h).players[g.sessionId].ready, "guest ready");
       assert.deepStrictEqual(await requestStart(h), { ok: true });
 
-      h.send("config", { map: "tomb" });
+      h.send("config", { map: "pyramid" });
       g.send("ready", { ready: false });
       const late = await guest(h, "Linus");
       assert.strictEqual(snapshot(late).phase, "playing");

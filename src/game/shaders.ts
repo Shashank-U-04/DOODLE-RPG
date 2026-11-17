@@ -56,14 +56,9 @@ uniform float uHurt;
 uniform float uFlash;
 uniform float uSlow;
 uniform float uLineSpacing;
-uniform float uLineMode;
 uniform float uLowHp;
 uniform vec3 uPaper;
 uniform vec3 uInks[12];
-// 0 = the original blue biro on paper. 1 = "chalk on a tomb wall": the same
-// hand-drawn strokes, lifted towards a pale warm ink so hatching and outlines
-// stay readable on the dark paper of the underground.
-uniform float uChalk;
 uniform mat4 uInvProj;
 uniform mat4 uInvView;
 uniform float uOutline;
@@ -89,11 +84,6 @@ vec3 inkColor(float id) {
   if (i == 9) return uInks[9];
   if (i == 10) return uInks[10];
   return uInks[11];
-}
-vec3 chalkInk(vec3 c) {
-  // A chalk stroke is not a lighter version of the same hue (that would just
-  // wash out); it is the ink dragged towards warm bone, with its hue kept.
-  return mix(c, vec3(0.93, 0.88, 0.75), uChalk * 0.66);
 }
 float stripes(vec2 p, vec2 dir, float spacing, float width) {
   float t = dot(p, vec2(-dir.y, dir.x));
@@ -189,25 +179,15 @@ void main() {
   float grain = vnoise(pp * 0.8) * 0.6 + vnoise(pp * 0.17) * 0.4;
   vec3 paper = uPaper * (0.95 + 0.06 * grain);
   float ls = uLineSpacing;
-  if (uLineMode < 0.5) {
-    float ly = mod(pp.y + ls * 0.5, ls);
-    float rule = 1.0 - smoothstep(0.5 * sc, 1.7 * sc, abs(ly - ls * 0.5));
-    paper = mix(paper, vec3(0.58, 0.70, 0.92), rule * 0.5);
-    float margin = 1.0 - smoothstep(0.9 * sc, 2.3 * sc, abs(pp.x - uRes.x * 0.07));
-    paper = mix(paper, vec3(0.92, 0.48, 0.55), margin * 0.55);
-  } else if (uLineMode < 1.5) {
-    // graph paper: a faint green grid, the field-notebook look; kept light so the ink stays the subject
-    float gs = ls * 0.62;
-    float gx = mod(pp.x + gs * 0.5, gs), gy = mod(pp.y + gs * 0.5, gs);
-    float g1 = 1.0 - smoothstep(0.35 * sc, 1.15 * sc, abs(gx - gs * 0.5));
-    float g2 = 1.0 - smoothstep(0.35 * sc, 1.15 * sc, abs(gy - gs * 0.5));
-    paper = mix(paper, vec3(0.58, 0.76, 0.63), max(g1, g2) * 0.19);
-  }
-  // 2 = no ruling at all: a tomb wall is not a notebook page.
+  float ly = mod(pp.y + ls * 0.5, ls);
+  float rule = 1.0 - smoothstep(0.5 * sc, 1.7 * sc, abs(ly - ls * 0.5));
+  paper = mix(paper, vec3(0.58, 0.70, 0.92), rule * 0.5);
+  float margin = 1.0 - smoothstep(0.9 * sc, 2.3 * sc, abs(pp.x - uRes.x * 0.07));
+  paper = mix(paper, vec3(0.92, 0.48, 0.55), margin * 0.55);
 
   vec3 col = paper;
-  vec3 bodyInk = chalkInk(inkColor(s.g));
-  vec3 edgeInk = chalkInk(inkColor(inkId) * 0.92);
+  vec3 bodyInk = inkColor(s.g);
+  vec3 edgeInk = inkColor(inkId) * 0.92;
   col = mix(col, bodyInk, hatch * 0.72 * fade);
   float ew = 0.75 + 0.35 * vnoise(pp * 0.35);
   col = mix(col, edgeInk, clamp(edge * ew, 0.0, 1.0) * fadeE);
@@ -217,7 +197,7 @@ void main() {
   float vig = smoothstep(0.32, 0.9, length(vc));
   float scr = 0.55 + 0.45 * stripes(pp + wob * 8.0, normalize(vec2(1.0, 0.8)), 7.0 * sc, 2.2 * sc);
   float hurt = clamp(uHurt + uLowHp * (0.35 + 0.25 * sin(uTime * 6.0)), 0.0, 1.0);
-  col = mix(col, chalkInk(uInks[1]) * 0.9, hurt * vig * scr);
+  col = mix(col, uInks[1] * 0.9, hurt * vig * scr);
   col = mix(col, uPaper, uFlash);
   float lum = dot(col, vec3(0.3, 0.5, 0.2));
   col = mix(col, vec3(lum) * vec3(0.8, 0.86, 1.0), uSlow * 0.55);

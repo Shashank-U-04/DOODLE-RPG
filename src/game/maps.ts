@@ -2,13 +2,8 @@
 //
 // One identifier is the single source of truth for "which battlefield". The
 // URL, the match configuration, the engine's `MapId` and the host's lobby
-// settings all speak these four strings.
-//
-// Ancient Egypt is authored as three zones in one builder (see egypt.ts), but
-// each zone is independently playable: `zone` below is the area the engine
-// starts in, not a doorway the player has to walk through.
+// settings all speak these strings.
 
-import type { ZoneId } from "./egypt";
 import { DEFAULT_MAP, isMapId, MAP_IDS, type MapId } from "../../server/src/shared/rules.js";
 
 // The ids themselves are the match server's (server/src/shared/rules.ts).
@@ -24,8 +19,6 @@ export type MapInfo = {
   description: string;
   /** a real in-game snapshot of this map, captured from the renderer */
   snapshot: string;
-  /** which Egypt zone the engine should load (absent for the district) */
-  zone?: ZoneId;
 };
 
 export const MAPS: MapInfo[] = [
@@ -36,34 +29,14 @@ export const MAPS: MapInfo[] = [
     description:
       "The original arena: tight alleys, climbable stairs and a skyline drawn in one continuous line. Waves pour in from every corner.",
     snapshot: "/previews/district.png",
-    zone: undefined,
   },
   {
-    id: "valley",
-    name: "THE PHARAOH'S VALLEY",
-    tagline: "open desert · three pyramids · temple · sphinx",
+    id: "pyramid",
+    name: "THE GREAT PYRAMID",
+    tagline: "open desert · climb it or cut through it",
     description:
-      "The great pyramid and two smaller enterable tombs, a colonnaded temple with a hidden alcove, a sphinx, obelisks, ruins, dunes and a dry canyon. No coastline, no sea.",
-    snapshot: "/previews/valley.png",
-    zone: "surface",
-  },
-  {
-    id: "sanctuary",
-    name: "THE FORGOTTEN SANCTUARY",
-    tagline: "pyramid interior · columns · hidden stair",
-    description:
-      "A low processional corridor into a carved sandstone chamber with hieroglyph walls, torchlight, an armed floor trap and the concealed dais hatch that leads down.",
-    snapshot: "/previews/sanctuary.png",
-    zone: "interior",
-  },
-  {
-    id: "tomb",
-    name: "THE CURSED TOMB",
-    tagline: "burial halls · sealed doors · mummies",
-    description:
-      "Burial chambers, a treasure vault and a pharaoh's room; sealed stone doors, sarcophagi, a pressure plate, spike pits, levers and a hidden wall.",
-    snapshot: "/previews/tomb.png",
-    zone: "tomb",
+      "A wide desert arena around a hollow great pyramid: run straight through its columned hall, or take the stairs up its flanks to the ledge 6 m up. Two walk-in tombs, a temple, the sphinx and the ruins give cover — and mummies join the waves.",
+    snapshot: "/previews/pyramid.png",
   },
 ];
 

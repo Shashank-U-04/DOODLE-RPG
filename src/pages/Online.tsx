@@ -807,7 +807,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   const canRematch = session.serverCombat ? Boolean(me?.isHost) : session.isHost;
 
   return (
-    <div className={`dd-root ${live ? "dd-live" : ""} ${hud.dark ? "dd-dark" : ""}`}>
+    <div className={`dd-root ${live ? "dd-live" : ""}`}>
       <div ref={stageRef} className="dd-stage absolute inset-0" />
 
       <div className="dd-hud">

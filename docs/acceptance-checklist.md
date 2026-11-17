@@ -34,7 +34,7 @@ Do the whole table with W hosting, then again with M hosting.
 | 6 | Map/rules | Host changes map and grapple before starting | Guest's lobby follows; the arena uses the host's map | | |
 | 7 | Start | Host: ENTER ARENA | Both arenas load the same map; feed shows "COLYSEUS PREVIEW — THE MATCH SERVER REFEREES EVERY SHOT" | | |
 | 8 | Movement | Each walks, sprints, jumps, crouches, turns | The other sees smooth movement and facing; no rubber-banding back to old positions | | |
-| 9 | Teleports | Focus dash; grapple (if on); on Egyptian maps go through a door | The other sees a snap, not a slide across the map | | |
+| 9 | Teleports | Focus dash; grapple (if on) | The other sees a snap, not a slide across the map | | |
 | 10 | Aiming | Hip-fire and ADS at the other at mid range | Hitmarker only when the shot visibly connects; ADS more accurate | | |
 | 11 | Combat | Each weapon once: rifle, shotgun, sniper (head and body), revolver, katana slash, grenade | Victim's health drops by plausible amounts; headshots hit harder; walls stop bullets | | |
 | 12 | Health | Take damage, then hide 5 s | Health regenerates after ~4.5 s without damage; both sides agree | | |

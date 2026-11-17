@@ -10,14 +10,13 @@
 import assert from "assert";
 import { readFileSync } from "fs";
 
-import { FOCUS, GRENADE, GUNS, HEALTH, HITBOX, KILLS_TO_WIN, MELEE, MIN_WALL_TOP, RANGE, RESPAWN_MS, SPIKE, AIR_SPREAD } from "../src/combat.js";
+import { FOCUS, GRENADE, GUNS, HEALTH, HITBOX, KILLS_TO_WIN, MELEE, MIN_WALL_TOP, RANGE, RESPAWN_MS, AIR_SPREAD } from "../src/combat.js";
 import { KATANA_MELEE, PVP, WEAPONS } from "../../src/game/arsenal.js";
 import { exportArrivals, exportColliders, serializeArrivals } from "../../scripts/export-colliders.js";
 
 const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const engine = source("src/game/engine.ts");
 const online = source("src/pages/Online.tsx");
-const egypt = source("src/game/egypt.ts");
 
 function contains(text: string, snippet: string, what: string) {
   assert.ok(text.includes(snippet), `${what}: expected the game to still contain \`${snippet}\``);
@@ -93,7 +92,7 @@ describe("combat parity with the game", () => {
     contains(engine, `focusChain >= ${FOCUS.maxChain}`, "chain");
   });
 
-  it("uses the engine's health, the lobby's respawn and win, and the traps' spikes", () => {
+  it("uses the engine's health and the lobby's respawn and win", () => {
     contains(engine, `player.regenDelay = ${HEALTH.regenDelay};`, "regen delay");
     contains(engine, `p.hp = Math.min(p.maxHp, p.hp + ${HEALTH.regenPerS} * dt);`, "regen rate");
     // the lobby reads both from src/shared/rules.ts (shared-parity.test.ts bans local copies)
@@ -101,8 +100,6 @@ describe("combat parity with the game", () => {
     assert.strictEqual(RESPAWN_MS, 3200);
     contains(online, "matchWinner(players, session.winnerId, KILLS_TO_WIN)", "win");
     contains(online, "}, RESPAWN_MS);", "respawn wait");
-    contains(egypt, `return ${SPIKE.damage};`, "spike damage");
-    contains(egypt, `hurtUntil = now + ${SPIKE.everyMs};`, "spike rate");
   });
 
   it("has the current map colliders", () => {

@@ -71,7 +71,6 @@ const fireMessage = z.object({ shot: shotId, weapon: weaponName, origin: vec, di
 const meleeMessage = z.object({ shot: shotId, origin: vec, dir: vec, lag });
 const throwMessage = z.object({ shot: shotId, origin: vec, dir: vec });
 const reloadMessage = z.object({ weapon: weaponName });
-const hazardMessage = z.object({ damage: z.number().min(0).max(1000) });
 
 /**
  * Codes held by live rooms in this process. A room's code is its roomId, so
@@ -215,7 +214,6 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     }),
     throw: validate(throwMessage, (client, m) => this.combat.throwGrenade(client.sessionId, m)),
     reload: validate(reloadMessage, (client, m) => this.combat.reload(client.sessionId, m.weapon)),
-    hazard: validate(hazardMessage, (client, m) => this.combat.hazard(client.sessionId, m.damage)),
     /** host → server: run the match again (scores, health and the winner reset) */
     rematch: (client: Client) => {
       if (client.sessionId !== this.state.hostId || this.state.phase !== "playing") return;

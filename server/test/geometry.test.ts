@@ -1,7 +1,6 @@
 // The server's movement volumes against the real maps.
 //
-// Builds the frontend's map geometry headlessly (as scripts/check-valley.ts
-// does) and checks that every place a player can legitimately stand fits
+// Builds the frontend's map geometry headlessly and checks that every place a player can legitimately stand fits
 // inside the server's envelope, so the validator can never clamp an honest
 // body. Also keeps the server's weapon list in step with the game's.
 //
@@ -12,7 +11,7 @@ import * as THREE from "three";
 
 import { ENVELOPES, WEAPONS, type Box } from "../src/movement.js";
 import { buildDistrict } from "../../src/game/district.js";
-import { buildEgypt } from "../../src/game/egypt.js";
+import { buildPyramid } from "../../src/game/pyramid.js";
 import { WEAPONS as GAME_WEAPONS } from "../../src/game/arsenal.js";
 import { CI, XN, XN_AIR } from "../../src/game/enemies-data.js";
 import { isStandable, spreadSpawns } from "../../src/game/world.js";
@@ -67,19 +66,23 @@ describe("movement volumes against the real maps", () => {
     });
   });
 
-  it("cover all three Egyptian zones on every Egyptian map", () => {
-    const egypt = buildEgypt(new THREE.Scene());
-    for (const map of ["valley", "sanctuary", "tomb"] as const) {
-      for (const z of Object.values(egypt.zones)) {
-        checkZone(ENVELOPES[map], {
-          id: `${map}/${z.id}`,
-          bounds: z.bounds,
-          floorY: z.floorY,
-          colliders: z.colliders,
-          spawns: z.spawnPoints,
-          start: z.start,
-        });
-      }
+  it("cover the great pyramid", () => {
+    const p = buildPyramid(new THREE.Scene());
+    checkZone(ENVELOPES.pyramid, {
+      id: "pyramid",
+      bounds: p.bounds,
+      floorY: p.floorY,
+      colliders: p.colliders,
+      spawns: p.spawnPoints,
+      start: p.start,
+    });
+  });
+
+  it("put every pyramid spawn pad on open ground", () => {
+    // waves walk in from these pads and online players respawn on them
+    const p = buildPyramid(new THREE.Scene());
+    for (const s of [p.start, ...p.spawnPoints]) {
+      assert.ok(isStandable(s.x, s.y, s.z, 0.42, CI, p.colliders), `${s.toArray()} is open ground`);
     }
   });
 

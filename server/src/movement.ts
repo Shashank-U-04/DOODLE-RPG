@@ -10,7 +10,7 @@
 //    at MAX_SPEED (a short burst is banked so packets that arrive bunched
 //    after a network stall still go through);
 //  - a teleport (the client changed its epoch: respawn, round restart, focus
-//    dash, a door between Egypt's zones, the fall rescue) skips the speed
+//    dash, the fall rescue) skips the speed
 //    limit, but only to a place the game itself puts bodies (a spawn pad, a
 //    zone's start, a doorway's arrival: maps/arrivals.json, exported from the
 //    real map builders) or as one short hop right after a focus dash the
@@ -57,21 +57,13 @@ export type Box = { minX: number; maxX: number; minY: number; maxY: number; minZ
  * where the engine rescues a falling player (floor − 6) to well above the
  * tallest collider (jumps, double jumps and grapple swings).
  *
- * The three Egyptian maps are one connected world: a player who starts in the
- * valley can walk through a door into the sanctuary, so each of them allows
- * all three zones.
  */
 const DISTRICT: Box = { minX: -55, maxX: 55, minY: -8, maxY: 41, minZ: -55, maxZ: 55 };
-const SURFACE: Box = { minX: -59, maxX: 59, minY: -8, maxY: 42.5, minZ: -59, maxZ: 59 };
-const INTERIOR: Box = { minX: -17, maxX: 17, minY: -148, maxY: -115.5, minZ: -17, maxZ: 17 };
-const TOMB: Box = { minX: -49, maxX: 49, minY: -308, maxY: -276, minZ: -59, maxZ: 45 };
-const EGYPT = [SURFACE, INTERIOR, TOMB];
+const PYRAMID: Box = { minX: -59, maxX: 59, minY: -8, maxY: 42.5, minZ: -59, maxZ: 59 };
 
 export const ENVELOPES: Record<MapId, readonly Box[]> = {
   district: [DISTRICT],
-  valley: EGYPT,
-  sanctuary: EGYPT,
-  tomb: EGYPT,
+  pyramid: [PYRAMID],
 };
 
 /* ------------------------------ arrivals ------------------------------ */
@@ -91,14 +83,10 @@ export const DASH_GRANT_MS = 1000;
 
 const ZONE_ARRIVALS: Record<string, number[][]> = arrivalsJson;
 const points = (zone: string): Vec3[] => (ZONE_ARRIVALS[zone] ?? []).map(([x, y, z]) => ({ x, y, z }));
-const EGYPT_ARRIVALS = [...points("surface"), ...points("interior"), ...points("tomb")];
-
-/** Every point a map's game can put a body without walking there (an Egyptian map spans all three zones). */
+/** Every point a map's game can put a body without walking there. */
 export const ARRIVALS: Record<MapId, readonly Vec3[]> = {
   district: points("district"),
-  valley: EGYPT_ARRIVALS,
-  sanctuary: EGYPT_ARRIVALS,
-  tomb: EGYPT_ARRIVALS,
+  pyramid: points("pyramid"),
 };
 
 export function isArrival(p: Vec3, arrivals: readonly Vec3[]): boolean {

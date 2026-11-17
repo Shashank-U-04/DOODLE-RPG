@@ -14,10 +14,10 @@ import {
 // frontend side of that is checked in shared-parity.test.ts.
 describe("rules", () => {
   it("knows the maps, and nothing else is one", () => {
-    assert.deepStrictEqual([...MAP_IDS], ["district", "valley", "sanctuary", "tomb"]);
+    assert.deepStrictEqual([...MAP_IDS], ["district", "pyramid"]);
     assert.ok(MAP_IDS.every(isMapId));
     assert.ok(isMapId(DEFAULT_MAP));
-    for (const bad of ["", "District", "moon", null, undefined, 3, {}]) assert.strictEqual(isMapId(bad), false, String(bad));
+    for (const bad of ["", "District", "moon", "valley", "sanctuary", "tomb", null, undefined, 3, {}]) assert.strictEqual(isMapId(bad), false, String(bad));
   });
 
   it("draws codes from the unambiguous alphabet", () => {
@@ -37,8 +37,8 @@ describe("rules", () => {
 
   it("normalizes room options", () => {
     assert.deepStrictEqual(normalizeMatchOptions(undefined), { map: "district", grapple: true, maxPlayers: 4 });
-    assert.deepStrictEqual(normalizeMatchOptions({ map: "tomb", grapple: false, maxPlayers: 3 }), {
-      map: "tomb",
+    assert.deepStrictEqual(normalizeMatchOptions({ map: "pyramid", grapple: false, maxPlayers: 3 }), {
+      map: "pyramid",
       grapple: false,
       maxPlayers: 3,
     });
