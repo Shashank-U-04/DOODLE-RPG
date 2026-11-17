@@ -162,8 +162,8 @@ export default function Game() {
         </div>
 
         {/* aiming down sights: every weapon shows a reticle while scoped */}
-        {ads && overlay.kind === "menu" && hud.wave > 0 && (
-          <div className={`dd-aim ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
+        {overlay.kind === "menu" && hud.wave > 0 && (
+          <div className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
             <i className="a-ring" />
             <i className="a-t" />
             <i className="a-b" />

@@ -822,8 +822,8 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
           <i className="ch-dot" />
         </div>
 
-        {ads && live && (
-          <div className={`dd-aim ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
+        {live && (
+          <div className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
             <i className="a-ring" />
             <i className="a-t" />
             <i className="a-b" />
