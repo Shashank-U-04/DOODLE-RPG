@@ -34,6 +34,7 @@ import { makeBlobRig, makeMummyRig, makeRig, makeWaspRig, type Rig } from "./rig
 import type { NetCombatIntent, NetShotLanded } from "./types";
 import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
+import { damp, smooth01, Spring } from "./feel";
 import { ED, PR, QR, VR, XN, XN_AIR, CI, JN, BASE_FOV, type EnemyKind, type EnemyDef } from "./enemies-data";
 import type { EngineCallbacks, GameHandle, HudState, NetPlayerState, NetRemotePlayer, NetShotOrigin } from "./types";
 
@@ -68,6 +69,10 @@ type Enemy = {
   onGround: boolean;
   cooldown: number;
   t: number;
+  /** walk-cycle phase, accumulated so a change of pace never jumps the legs */
+  gaitPh: number;
+  /** ground speed as the legs see it, eased */
+  gaitSpd: number;
   strafe: number;
   dying: number;
   // ---- reference AI state ----
@@ -409,7 +414,50 @@ export function createGame(
   let switchT = 0;
   let fireCd = 0;
   let reloadT = 0;
-  let recoil = 0;
+
+  /* ---------- first-person feel ----------
+   * Everything here is cosmetic: where shots go is still player.yaw/pitch and
+   * eyePos(). It is all eased with damp()/Spring (src/game/feel.ts), so it
+   * looks the same at any frame rate. */
+  let adsAmt = 0; // 0 at the hip → 1 down the sights, eased
+  let zoomFov = BASE_FOV; // the held weapon's zoom, eased so a swap while scoped does not snap
+  let lookScale = 1; // mouse sensitivity scale while zoomed (keeps the on-screen speed constant)
+  let sprintAmt = 0;
+  let reloadAmt = 0;
+  let bobPhase = 0;
+  let bobAmt = 0;
+  let eyeH = 1.6;
+  let camRoll = 0;
+  let lookDX = 0; // mouse counts since the last frame, for weapon sway
+  let lookDY = 0;
+  const sway = { x: 0, y: 0, rx: 0, ry: 0, rz: 0 };
+  let pitchClimb = 0; // recoil still to be fed into player.pitch, spread over a few frames
+  const vmKick = new Spring(260, 18); // the gun thrown back toward the shoulder
+  const vmKickRot = new Spring(220, 16); // muzzle climb
+  const vmKickSide = new Spring(220, 16); // a little sideways jitter so no two shots look the same
+  const camPunch = new Spring(190, 17); // the view's own jolt, cosmetic only
+  const fovKick = new Spring(220, 14); // a breath of FOV on big shots
+  const landDip = new Spring(170, 15); // knees bending on a landing
+  /** Per-weapon kick: spring velocities, plus the real aim climb (rad) the old code applied instantly. */
+  const KICK: Record<string, { back: number; rot: number; side: number; cam: number; fov: number; climb: number }> = {
+    rifle: { back: 0.55, rot: 1.1, side: 0.45, cam: 0.04, fov: 4, climb: 0.006 },
+    shotgun: { back: 1.9, rot: 4.4, side: 1.3, cam: 0.5, fov: 42, climb: 0.006 },
+    sniper: { back: 2.1, rot: 5.0, side: 0.8, cam: 0.6, fov: 30, climb: 0.02 },
+    revolver: { back: 1.3, rot: 4.0, side: 0.9, cam: 0.38, fov: 18, climb: 0.006 },
+  };
+  /** Snap the whole first-person pose back to neutral (respawn, restart). */
+  const resetFeel = () => {
+    adsAmt = 0;
+    sprintAmt = 0;
+    reloadAmt = 0;
+    bobAmt = 0;
+    camRoll = 0;
+    pitchClimb = 0;
+    lookDX = 0;
+    lookDY = 0;
+    sway.x = sway.y = sway.rx = sway.ry = sway.rz = 0;
+    for (const s of [vmKick, vmKickRot, vmKickSide, camPunch, fovKick, landDip]) s.reset();
+  };
   // The blade gets its own clock, because a katana is not a gun: nothing about
   // a slash kicks straight back toward the shoulder. Counts down from
   // `KATANA_SWING_DUR`; see `KATANA_SWING` for the arc it drives.
@@ -657,6 +705,70 @@ export function createGame(
   };
   for (const w of WEAPONS) buildViewModel(w.kind);
 
+  // Muzzle flash: an ink star at the tip of each barrel plus a crossed flame
+  // pointing down-range, shown for a couple of frames per shot. The post
+  // pass's screen flash alone read as the whole picture blinking, not a gun.
+  const MUZZLE: Record<string, [number, number, number, number]> = {
+    rifle: [0, 0.005, -1.01, 1],
+    shotgun: [0, 0.035, -0.93, 1.45],
+    sniper: [0, 0.005, -1.34, 1.2],
+    revolver: [0, 0.022, -0.33, 0.85],
+  };
+  const flashMat = makeInkMaterial(INK.ORANGE, true, THREE.DoubleSide, true);
+  const flashStarGeo = (() => {
+    const s = new THREE.Shape();
+    const n = 7;
+    for (let i = 0; i < n * 2; i++) {
+      const a = (i / (n * 2)) * Math.PI * 2;
+      const r = i % 2 === 1 ? 0.03 : i % 4 === 0 ? 0.105 : 0.075;
+      if (i === 0) s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else s.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    return new THREE.ShapeGeometry(s);
+  })();
+  const flashFlameGeo = (() => {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0);
+    s.lineTo(0.06, 0.04);
+    s.lineTo(0.24, 0);
+    s.lineTo(0.06, -0.04);
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
+  })();
+  const flashes: (THREE.Group | null)[] = WEAPONS.map((w, i) => {
+    const m = MUZZLE[w.kind];
+    if (!m) return null;
+    const g = new THREE.Group();
+    g.position.set(m[0], m[1], m[2]);
+    g.scale.setScalar(m[3]);
+    g.add(new THREE.Mesh(flashStarGeo, flashMat));
+    // the flame's shape runs along +X; turned a quarter about Y it points down -Z
+    for (const rz of [0, Math.PI / 2]) {
+      const holder = new THREE.Group();
+      holder.rotation.z = rz;
+      const flame = new THREE.Mesh(flashFlameGeo, flashMat);
+      flame.rotation.y = Math.PI / 2;
+      holder.add(flame);
+      g.add(holder);
+    }
+    g.visible = false;
+    viewModels[i].add(g);
+    return g;
+  });
+  let flashT = 0;
+  const muzzleFlash = () => {
+    const g = flashes[curSlot];
+    if (!g) return;
+    const m = MUZZLE[slots[curSlot].def.kind];
+    flashT = 0.055;
+    g.rotation.z = rand(0, Math.PI * 2);
+    g.scale.setScalar((m ? m[3] : 1) * rand(0.8, 1.2));
+    g.visible = true;
+  };
+  const hideFlashes = () => {
+    for (const g of flashes) if (g) g.visible = false;
+  };
+
   const setViewModel = (i: number) => {
     viewModels.forEach((g, j) => (g.visible = j === i));
   };
@@ -789,8 +901,18 @@ export function createGame(
     s.mag--;
     netFireT = 0.14;
     fireCd = def.interval;
-    recoil = Math.min(recoil + (def.kind === "shotgun" ? 3.2 : 1.2), 5);
-    player.pitch += def.kind === "sniper" ? 0.02 : 0.006;
+    // The kick: springs for the gun and the view, and the same aim climb as
+    // before, only fed in over a few frames instead of one jump. Down the
+    // sights the gun stays steadier so the reticle does not leave the target.
+    const k = KICK[def.kind] ?? KICK.rifle;
+    const hold = 0.45 + 0.55 * (1 - adsAmt);
+    vmKick.kick(k.back * hold * rand(0.9, 1.1));
+    vmKickRot.kick(k.rot * hold * rand(0.85, 1.15));
+    vmKickSide.kick(k.side * hold * rand(-1, 1));
+    camPunch.kick(k.cam);
+    fovKick.kick(k.fov);
+    pitchClimb += k.climb;
+    muzzleFlash();
     player.flashFx = 0.14;
     if (def.kind === "shotgun") fx.shotgun();
     else if (def.kind === "sniper") fx.sniper();
@@ -884,7 +1006,7 @@ export function createGame(
   function katanaSlash() {
     fx.katana();
     netFireT = 0.2;
-    // Restart the arc. The blade must never be animated by `recoil`: that is the
+    // Restart the arc. The blade must never be animated by the gun kick: that is the
     // gun's straight-back kick, and it is exactly what made a slash read as a
     // pistol shot.
     swingT = KATANA_SWING_DUR;
@@ -1225,6 +1347,8 @@ export function createGame(
       onGround: false,
       cooldown: rand(0.6, 1.4),
       t: 0,
+      gaitPh: rand(0, Math.PI * 2),
+      gaitSpd: 0,
       strafe: Math.random() < 0.5 ? 1 : -1,
       dying: 0,
       state: idle ? "idle" : "spawn",
@@ -1331,6 +1455,8 @@ export function createGame(
      *  body standing still while ink appears in front of it */
     swingT: number;
     walk: number;
+    /** stride size, eased between standing and running so the legs never snap */
+    walkAmt: number;
     /** speed estimated from packet deltas, for leading a shot */
     vel: THREE.Vector3;
     /** when their last transform landed, for that estimate */
@@ -1415,6 +1541,7 @@ export function createGame(
           fireT: 0,
           swingT: 0,
           walk: 0,
+          walkAmt: 0,
           vel: new THREE.Vector3(),
           lastT: now,
         };
@@ -1438,6 +1565,7 @@ export function createGame(
         a.vel.set(0, 0, 0);
         a.fireT = 0;
         a.walk = 0;
+        a.walkAmt = 0;
         depenetrate(a.pos, 0.42, 1.7, world.colliders);
       }
 
@@ -1496,15 +1624,16 @@ export function createGame(
       if (!s.alive) continue;
 
       const P = a.rig.parts;
-      a.walk += dt * (s.moving ? 9 : 2.2);
-      const swing = Math.sin(a.walk) * 0.5 * (s.moving ? 1 : 0.12);
+      a.walkAmt = damp(a.walkAmt, s.moving ? 1 : 0, 8, dt);
+      a.walk += dt * (2.2 + 6.8 * a.walkAmt);
+      const swing = Math.sin(a.walk) * 0.5 * (0.12 + 0.88 * a.walkAmt);
       P.legL.rotation.x = swing;
       P.legR.rotation.x = -swing;
       P.armL.rotation.x = -swing * 0.7;
       P.armR.rotation.x = swing * 0.7;
       P.armR.rotation.z = 0;
       P.foreR.rotation.z = 0;
-      P.torso.rotation.y = Math.sin(a.walk * 0.5) * 0.06 * (s.moving ? 1 : 0);
+      P.torso.rotation.y = Math.sin(a.walk * 0.5) * 0.06 * a.walkAmt;
 
       // The blade, seen from outside: the sword arm climbs over the far
       // shoulder and falls across the body, the torso turning with it. The
@@ -2785,13 +2914,18 @@ export function createGame(
   // backwards and elbows forward, and the weapon arm rises to aim. Weight shift
   // comes from a small hip roll and a torso counter-rotation.
   function animateRig(e: Enemy, dt: number, dist: number, dy: number) {
-    const spd = Math.hypot(e.vel.x, e.vel.z);
+    // The phase used to be lifetime × pace, so twenty seconds into a life a
+    // 0.1 m/s wobble in speed threw the legs a whole radian: limbs twitched
+    // every frame. Accumulate it instead, from an eased speed.
+    e.gaitSpd = damp(e.gaitSpd, Math.hypot(e.vel.x, e.vel.z), 10, dt);
+    const spd = e.gaitSpd;
     // mummies shamble: stiff-legged, arms out in front, torso permanently
     // hunched, and they flinch away from a hit before recovering.
     if (e.def.model === "mummy") {
       e.hitT = Math.max(0, e.hitT - dt);
       const awake = e.state !== "idle";
-      const ph = e.t * (2.4 + spd * 0.9);
+      e.gaitPh += dt * (2.4 + spd * 0.9);
+      const ph = e.gaitPh;
       const amp = awake ? 0.34 : 0.05;
       const sw = Math.sin(ph);
       e.legL.rotation.x = -sw * amp;
@@ -2828,7 +2962,8 @@ export function createGame(
       return;
     }
     const gait = clamp(spd / 6.5, 0, 1);
-    const ph = e.t * (5.5 + spd * 0.75);
+    e.gaitPh += dt * (5.5 + spd * 0.75);
+    const ph = e.gaitPh;
     const amp = 0.12 + gait * 0.62;
     const sw = Math.sin(ph);
     const swB = Math.sin(ph + Math.PI);
@@ -3140,11 +3275,13 @@ export function createGame(
     updateGrapple(dt);
 
     const wasGround = p.onGround;
+    const fallSpeed = -p.vel.y;
     const r = resolveMove(p.pos, p.vel, p.radius, p.height, world.colliders, dt);
     p.onGround = r.onGround;
     if (p.onGround) {
       p.jumps = 0;
-      if (!wasGround) recoil = Math.max(recoil, 1.2);
+      // the knees take the landing: harder falls dip further
+      if (!wasGround && fallSpeed > 2) landDip.kick(Math.min(fallSpeed, 24) * 0.085);
     }
     p.pos.x = clamp(p.pos.x, world.bounds.minX, world.bounds.maxX);
     p.pos.z = clamp(p.pos.z, world.bounds.minZ, world.bounds.maxZ);
@@ -3167,21 +3304,66 @@ export function createGame(
       fireWeapon();
       if (!slots[curSlot].def.auto) mouseFire = false;
     }
-    recoil = Math.max(0, recoil - dt * 14);
     if (swingT > 0) swingT = Math.max(0, swingT - dt);
     blocking = mouseAim && slots[curSlot].def.katana === true;
 
-    // camera
-    const bobT = performance.now() * 0.011;
+    updateView(dt, move, ix, iz);
+  }
+
+  /**
+   * The first-person picture: camera bob, landing, roll, FOV and the gun in
+   * your hands. Purely cosmetic: aim still comes from player.yaw/pitch.
+   */
+  function updateView(dt: number, move: THREE.Vector3, ix: number, iz: number) {
+    const p = player;
+    const def = slots[curSlot].def;
+
+    // recoil climb, applied to the real aim over ~3 frames rather than as a jump
+    if (pitchClimb > 0) {
+      const take = pitchClimb * (1 - Math.exp(-38 * dt));
+      p.pitch = clamp(p.pitch + take, -1.5, 1.5);
+      pitchClimb -= take;
+      if (pitchClimb < 1e-5) pitchClimb = 0;
+    }
+    vmKick.update(dt);
+    vmKickRot.update(dt);
+    vmKickSide.update(dt);
+    camPunch.update(dt);
+    fovKick.update(dt);
+    landDip.update(dt);
+
+    // ---- aim down sights: one eased 0→1 value drives the gun, FOV and look speed
+    const adsTarget = mouseAim && reloadT <= 0 ? 1 : 0;
+    adsAmt = damp(adsAmt, adsTarget, adsTarget > adsAmt ? 15 : 11, dt);
+    if (Math.abs(adsAmt - adsTarget) < 1e-3) adsAmt = adsTarget;
+    const ads = smooth01(adsAmt);
+    const hip = 1 - ads;
+    reloadAmt = damp(reloadAmt, reloadT > 0 ? 1 : 0, 12, dt);
+
+    // ---- movement feel
+    const hSpeed = Math.hypot(p.vel.x, p.vel.z);
     const moving = move.lengthSq() > 0 && p.onGround;
     netMoving = moving;
-    const bobY = moving ? Math.sin(bobT) * 0.035 : 0;
-    const bobX = moving ? Math.cos(bobT * 0.5) * 0.02 : 0;
-    camera.position.set(p.pos.x + bobX, p.pos.y + (p.crouch ? JN * 0.94 : 1.6) + bobY, p.pos.z);
+    const sprinting = p.sprint && iz < 0 && p.onGround && !p.crouch && adsTarget === 0 && !mouseFire && hSpeed > PR * 0.9;
+    sprintAmt = damp(sprintAmt, sprinting ? 1 : 0, 8, dt);
+    // Bob follows the distance walked, so it slows with you and eases out when
+    // you stop instead of freezing mid-stride.
+    bobPhase += (p.onGround ? Math.min(hSpeed, QR * 1.2) : 0) * 1.65 * dt;
+    bobAmt = damp(bobAmt, p.onGround ? clamp(hSpeed / PR, 0, 1.35) : 0, 9, dt);
+    const camBob = bobAmt * (0.3 + 0.7 * hip);
+    const bobY = Math.sin(bobPhase) * 0.035 * camBob;
+    const bobX = Math.cos(bobPhase * 0.5) * 0.02 * camBob;
+    eyeH = damp(eyeH, p.crouch ? JN * 0.94 : 1.6, 14, dt);
+    camRoll = damp(camRoll, -ix * (p.onGround ? 0.014 : 0.008) * (0.4 + 0.6 * hip), 8, dt);
+
+    // the bob sways across the view, not along world X
+    const rightX = Math.cos(p.yaw);
+    const rightZ = -Math.sin(p.yaw);
+    camera.position.set(p.pos.x + rightX * bobX, p.pos.y + eyeH + bobY - landDip.value, p.pos.z + rightZ * bobX);
     camera.rotation.order = "YXZ";
     camera.rotation.y = p.yaw;
-    camera.rotation.x = p.pitch;
-    let roll = 0;
+    camera.rotation.x = p.pitch + camPunch.value;
+    let roll = camRoll;
     if (shakeT > 0) {
       shakeT = Math.max(0, shakeT - dt);
       roll += rand(-1, 1) * 0.02 * shakeT * 4;
@@ -3189,29 +3371,69 @@ export function createGame(
     }
     camera.rotation.z = roll;
 
-    // fov / ads
-    const def = slots[curSlot].def;
-    const targetFov = mouseAim ? def.zoom : BASE_FOV;
-    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 12);
-    camera.updateProjectionMatrix();
+    // ---- field of view
+    zoomFov = damp(zoomFov, def.zoom, 14, dt);
+    const aimFov = BASE_FOV + (zoomFov - BASE_FOV) * ads;
+    const fov = aimFov + sprintAmt * 4 + fovKick.value;
+    if (Math.abs(camera.fov - fov) > 1e-3) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+    // Zoomed in, a mouse count should move the picture as far as it does at
+    // the hip, or a 4× scope turns every flick into a whip.
+    lookScale = Math.tan((aimFov * Math.PI) / 360) / Math.tan((BASE_FOV * Math.PI) / 360);
+    // The gun lives on the camera, so a 20° scope used to blow it up to fill the
+    // screen. Squash X/Y by the zoom so it is drawn as if at a steady FOV (a
+    // touch closer when aimed, which is what aiming should feel like).
+    const vmFov = BASE_FOV - 6 * ads;
+    const vmScale = Math.tan((camera.fov * Math.PI) / 360) / Math.tan((vmFov * Math.PI) / 360);
+    rig.scale.set(vmScale, vmScale, 1);
 
-    // viewmodel pose
+    // ---- weapon sway: the gun trails the look a little, much less when aimed
+    const toRate = dt > 0 ? 0.016 / dt : 1; // per-frame deltas → 60 fps equivalents
+    const sens = (0.0022 * sensitivity) / 100;
+    const lx = clamp(lookDX * sens * toRate, -0.12, 0.12);
+    const ly = clamp(lookDY * sens * toRate, -0.12, 0.12) * (invertY ? -1 : 1);
+    lookDX = 0;
+    lookDY = 0;
+    const swayK = 0.3 + 0.7 * hip;
+    sway.x = damp(sway.x, -lx * 0.45 * swayK, 10, dt);
+    sway.y = damp(sway.y, ly * 0.3 * swayK, 10, dt);
+    sway.ry = damp(sway.ry, lx * 1.2 * hip, 10, dt);
+    sway.rx = damp(sway.rx, ly * 0.8 * hip, 10, dt);
+    sway.rz = damp(sway.rz, (-lx * 1.6 - ix * 0.06) * hip, 8, dt);
+
+    // ---- viewmodel pose
+    if (flashT > 0) {
+      flashT -= dt;
+      if (flashT <= 0) hideFlashes();
+    }
     const vm = viewModels[curSlot];
-    if (vm) {
-      const ads = mouseAim ? 1 : 0;
-      const aimX = def.katana ? 0.27 : 0.22 * (1 - ads * 0.9);
-      const aimY = -0.2 + ads * 0.03 - (reloadT > 0 ? 0.14 : 0) - switchT * 0.6;
-      const aimZ = -0.42 + ads * 0.12;
-      if (def.katana) {
-        // Mid-slash the blade travels its diagonal arc; idle, the offsets are
-        // all zero and the sword simply rests where it always did.
-        const sw = swingPose(swingT > 0 ? 1 - swingT / KATANA_SWING_DUR : 1);
-        vm.position.set(aimX + sw.x + bobX * 0.5, aimY + sw.y + bobY * 0.5, aimZ + sw.z);
-        vm.rotation.set(sw.rx, sw.ry, sw.rz + (reloadT > 0 ? 0.7 : 0));
-      } else {
-        vm.position.set(aimX + bobX * 0.5, aimY + bobY * 0.5, aimZ + recoil * 0.02);
-        vm.rotation.set(recoil * 0.04 + (reloadT > 0 ? 0.7 : 0), 0, 0);
-      }
+    if (!vm) return;
+    // a sniper scope takes over the screen once it reaches the eye
+    vm.visible = !(def.kind === "sniper" && adsAmt > 0.86);
+    const gunBob = bobAmt * (0.15 + 0.85 * hip) * (1 + sprintAmt * 0.6);
+    const vbx = Math.cos(bobPhase * 0.5) * 0.011 * gunBob;
+    const vby = Math.abs(Math.sin(bobPhase * 0.5)) * 0.012 * gunBob;
+    const sw01 = clamp(switchT / 0.28, 0, 1);
+    const raise = sw01 * sw01 * 0.17; // a fresh gun comes up fast, then settles
+    const x = (def.katana ? 0.27 : 0.22 + (0.022 - 0.22) * ads) + sway.x + vbx + sprintAmt * 0.03;
+    const y = -0.2 + ads * 0.03 - reloadAmt * 0.14 - raise + sway.y - vby - landDip.value * 0.35 * hip - sprintAmt * 0.05;
+    const z = -0.42 + ads * 0.12;
+    if (def.katana) {
+      // Mid-slash the blade travels its diagonal arc; idle, the offsets are
+      // all zero and the sword simply rests where it always did.
+      const sw = swingPose(swingT > 0 ? 1 - swingT / KATANA_SWING_DUR : 1);
+      vm.position.set(x + sw.x, y + sw.y, z + sw.z);
+      vm.rotation.set(sw.rx + sway.rx, sw.ry + sway.ry, sw.rz + sway.rz + reloadAmt * 0.7);
+    } else {
+      const kickHold = 0.3 + 0.7 * hip;
+      vm.position.set(x + vmKickSide.value * 0.01, y + vmKickRot.value * 0.04 * kickHold, z + vmKick.value);
+      vm.rotation.set(
+        vmKickRot.value + reloadAmt * 0.7 + sway.rx - sprintAmt * 0.2,
+        sway.ry + vmKickSide.value * 0.06 + sprintAmt * 0.38,
+        sway.rz + vmKickSide.value * 0.1 + sprintAmt * 0.16,
+      );
     }
   }
 
@@ -3627,6 +3849,8 @@ export function createGame(
     enemiesLeft = 0;
     reloadT = 0;
     fireCd = 0;
+    resetFeel();
+    hideFlashes();
     intermissionT = 3;
     // Re-sync the React HUD (it is only pushed from the game loop while
     // playing, so without this the menu overlay — which renders when
@@ -3770,7 +3994,8 @@ export function createGame(
     postMat.uniforms.uLowHp.value = player.hp < player.maxHp * 0.3 && player.alive ? 1 : 0;
     const slowU = postMat.uniforms.uSlow.value as number;
     postMat.uniforms.uSlow.value = slowU + ((slowmoT > 0 ? 1 : 0) - slowU) * Math.min(1, dtRaw * 8);
-    cb.onAim(mouseAim);
+    // a reload drops the sights, so the reticle goes with them
+    cb.onAim(mouseAim && reloadT <= 0);
 
     hudT -= dtRaw;
     if (hudT <= 0) {
@@ -4003,8 +4228,10 @@ export function createGame(
       dx = Math.abs(cdx) > 1500 ? 0 : cdx;
       dy = Math.abs(cdy) > 1500 ? 0 : cdy;
     }
-    player.yaw -= dx * s;
-    player.pitch -= dy * s * (invertY ? -1 : 1);
+    lookDX += dx;
+    lookDY += dy;
+    player.yaw -= dx * s * lookScale;
+    player.pitch -= dy * s * lookScale * (invertY ? -1 : 1);
     player.pitch = clamp(player.pitch, -1.5, 1.5);
   };
   const onWheel = (e: WheelEvent) => {
@@ -4357,6 +4584,8 @@ export function createGame(
       switchT = 0;
       fireCd = 0;
       netFireT = 0;
+      resetFeel();
+      hideFlashes();
       blocking = false;
       mouseFire = false;
       mouseAim = false;

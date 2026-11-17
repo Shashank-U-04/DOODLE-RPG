@@ -292,10 +292,14 @@
 .dd-crosshair.katana i { background: #1a30c0; }
 .dd-crosshair.katana .ch-t, .dd-crosshair.katana .ch-b { height: 16px; }
 .dd-crosshair.katana .ch-l, .dd-crosshair.katana .ch-r { display: none; }
-.dd-crosshair.ads { opacity: 0; }
+.dd-crosshair { transition: opacity 0.1s ease-out; }
+.dd-crosshair.ads { opacity: 0; transition-duration: 0.07s; }
 
-/* aiming down sights: the reticle every weapon hands over to */
-.dd-aim { position: absolute; left: 50%; top: 50%; width: 0; height: 0; filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)); }
+/* aiming down sights: the reticle every weapon hands over to. It stays
+   mounted and eases in as the gun comes up (the engine's ADS takes ~0.15 s),
+   and drops out quickly when you let go. */
+.dd-aim { position: absolute; left: 50%; top: 50%; width: 0; height: 0; filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)); opacity: 0; transform: scale(1.35); transition: opacity 0.08s ease-in, transform 0.1s ease-in; pointer-events: none; }
+.dd-aim.on { opacity: 1; transform: scale(1); transition: opacity 0.12s ease-out 0.04s, transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.02s; }
 .dd-aim i { position: absolute; background: #d02030; }
 .dd-aim .a-ring { width: 30px; height: 30px; left: -15px; top: -15px; background: none; border: 1.5px solid rgba(208, 32, 48, 0.5); border-radius: 50%; }
 .dd-aim .a-t { width: 2px; height: 8px; left: -1px; top: -20px; }
@@ -308,6 +312,11 @@
 .dd-aim.katana .a-ring { border-color: rgba(26, 48, 192, 0.5); }
 /* scoped: a long crosshair down the glass, with the paper dimming at the edges */
 .dd-aim.scope::before { content: ""; position: absolute; left: 50%; top: 50%; width: 220vmax; height: 220vmax; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(246, 244, 231, 0) 0 26vmin, rgba(246, 244, 231, 0.5) 30vmin 100%); }
+/* the scope arrives with the rifle at the eye (the engine hides the gun then), not before */
+.dd-aim.scope.on { transition: opacity 0.1s ease-out 0.09s, transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1) 0.06s; }
+.dd-aim.scope { transform: scale(1.15); }
+.dd-aim.scope.on { transform: scale(1); }
+@media (prefers-reduced-motion: reduce) { .dd-aim, .dd-aim.on, .dd-aim.scope.on, .dd-crosshair { transition: none; } }
 .dd-aim.scope .a-ring { width: 240px; height: 240px; left: -120px; top: -120px; border-color: rgba(208, 32, 48, 0.35); }
 .dd-aim.scope .a-t, .dd-aim.scope .a-b { width: 1.5px; height: 16vh; left: -0.75px; }
 .dd-aim.scope .a-t { top: calc(-16vh - 14px); }
