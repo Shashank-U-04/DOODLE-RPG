@@ -26,7 +26,7 @@ const NONE: Vec3[] = [];
 
 describe("movement rules", () => {
   const district = ENVELOPES.district;
-  const egypt = ENVELOPES.valley;
+  const pyramid = ENVELOPES.pyramid;
   const pads = ARRIVALS.district;
 
   it("clamps a position into the map's volume", () => {
@@ -34,13 +34,11 @@ describe("movement rules", () => {
     assert.deepStrictEqual(clampToEnvelope({ x: 999, y: -50, z: -999 }, district), { x: 55, y: -8, z: -55 });
   });
 
-  it("puts a point between Egypt's zones into the nearest one", () => {
-    // just under the surface's floor margin: belongs to the surface, not 100 m down
-    assert.strictEqual(clampToEnvelope({ x: 0, y: -20, z: 0 }, egypt).y, -8);
-    // inside the sanctuary
-    assert.deepStrictEqual(clampToEnvelope({ x: 1, y: -139, z: 2 }, egypt), { x: 1, y: -139, z: 2 });
-    // inside the tomb
-    assert.deepStrictEqual(clampToEnvelope({ x: 1, y: -299, z: 2 }, egypt), { x: 1, y: -299, z: 2 });
+  it("clamps a position into the pyramid's volume", () => {
+    // on the 6 m ledge: inside
+    assert.deepStrictEqual(clampToEnvelope({ x: 15, y: 6, z: 2 }, pyramid), { x: 15, y: 6, z: 2 });
+    // far below the floor or out past the cliffs: pulled back in
+    assert.deepStrictEqual(clampToEnvelope({ x: 80, y: -20, z: -80 }, pyramid), { x: 59, y: -8, z: -59 });
   });
 
   it("normalizes angles", () => {
@@ -172,25 +170,5 @@ describe("movement rules", () => {
     grantDash(tooFar, 0);
     const beyond = { x: -40 + DASH_REACH + 5, y: 0, z: -40 };
     assert.strictEqual(stepMotion(tooFar, from, beyond, true, 100, district, pads).teleported, false, "beyond a dash's reach");
-  });
-
-  it("never walks a body from one Egyptian zone into another", () => {
-    const m = newMotion(0);
-    let pos = { x: 0, y: 0, z: 0 };
-    for (let t = 0; t <= 10_000; t += 50) pos = stepMotion(m, pos, { x: 0, y: -139, z: 0 }, false, t, egypt, NONE).pos;
-    assert.strictEqual(pos.y, -8, "stuck at the bottom of the surface volume");
-  });
-
-  it("teleports between Egypt's zones only to a doorway or pad there", () => {
-    const sanctuary = ARRIVALS.valley.filter((a) => a.y < -100 && a.y > -200);
-    assert.ok(sanctuary.length > 0);
-    const m = newMotion(0);
-    const r = stepMotion(m, { x: 0, y: 0, z: 0 }, sanctuary[0], true, 0, egypt, ARRIVALS.valley);
-    assert.deepStrictEqual(r.pos, sanctuary[0]);
-    assert.strictEqual(r.teleported, true);
-    // anywhere else in the sanctuary is not a jump the game makes
-    const elsewhere = stepMotion(newMotion(0), { x: 0, y: 0, z: 0 }, { x: 12, y: -139, z: -12 }, true, 0, egypt, ARRIVALS.valley);
-    assert.strictEqual(elsewhere.teleported, false);
-    assert.strictEqual(elsewhere.pos.y, -8, "walked to the bottom of the surface instead");
   });
 });

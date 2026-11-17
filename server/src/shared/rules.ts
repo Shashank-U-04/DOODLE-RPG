@@ -25,7 +25,7 @@ export const RESPAWN_MS = 3200;
 /** How often a client sends its body, and the room patches state (Hz). */
 export const MOVE_RATE_HZ = 20;
 
-export const MAP_IDS = ["district", "valley", "sanctuary", "tomb"] as const;
+export const MAP_IDS = ["district", "pyramid"] as const;
 export type MapId = (typeof MAP_IDS)[number];
 export const DEFAULT_MAP: MapId = "district";
 

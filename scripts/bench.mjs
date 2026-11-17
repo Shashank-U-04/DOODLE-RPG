@@ -2,7 +2,7 @@
 // (src/game/perf.ts).
 //
 //   npx vite build && npx vite preview --port 4173 &
-//   node scripts/bench.mjs [--url http://127.0.0.1:4173] [--maps district,valley]
+//   node scripts/bench.mjs [--url http://127.0.0.1:4173] [--maps district,pyramid]
 //                          [--seconds 20] [--warmup 4] [--size 1600x900]
 //                          [--gpu hardware|software] [--headed] [--json out.json]
 //
@@ -26,7 +26,7 @@ const opt = (name, fallback) => {
 const flag = (name) => args.includes(`--${name}`);
 
 const url = opt("url", "http://127.0.0.1:4173").replace(/\/+$/, "");
-const maps = opt("maps", "district,valley,sanctuary,tomb").split(",");
+const maps = opt("maps", "district,pyramid").split(",");
 const seconds = Number(opt("seconds", "20"));
 const warmup = Number(opt("warmup", "4"));
 const [width, height] = opt("size", "1600x900").split("x").map(Number);

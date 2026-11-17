@@ -144,10 +144,15 @@ describe("frontend Colyseus lobby adapter", () => {
     g.session.setReady(true);
     await eventually(() => h.session.getPlayers().some((p) => !p.isHost && p.ready), "host sees guest ready");
 
-    g.session.setConfig({ map: "tomb" });
-    h.session.setConfig({ map: "valley" });
-    await eventually(() => g.session.getConfig().map === "valley", "guest adopts host map");
-    assert.ok(!g.configs.includes("tomb"));
+    h.session.setConfig({ map: "pyramid" });
+    await eventually(() => g.session.getConfig().map === "pyramid", "guest adopts host map");
+    // a guest's own change is ignored: only the host's next one arrives
+    const seen = g.configs.length;
+    g.session.setConfig({ map: "district" });
+    h.session.setConfig({ map: "pyramid", grapple: false });
+    await eventually(() => g.session.getConfig().grapple === false, "guest adopts host rule");
+    assert.strictEqual(g.session.getConfig().map, "pyramid");
+    assert.ok(!g.configs.slice(seen).includes("district"));
   });
 
   it("shows the server's refusal and starts only when everyone is ready", async () => {

@@ -18,12 +18,8 @@ export type HudState = {
   focusOn: boolean;
   /** enemies in the player's own frame: x = right, z = forward, both -1..1 */
   blips: { x: number; z: number; boss: boolean }[];
-  /** name of the area the player is in, when the map has distinct areas */
+  /** the map's name, shown in the HUD corner */
   area?: string;
-  /** proximity action, e.g. "OPEN THE GREAT STONE DOOR" (Egypt only) */
-  prompt?: string;
-  /** true underground, where the HUD has to switch off multiply blending */
-  dark?: boolean;
 };
 
 /** The HUD before the first frame is pushed — shared by every game screen. */
@@ -47,8 +43,6 @@ export const EMPTY_HUD: HudState = {
   focusOn: false,
   blips: [],
   area: "",
-  prompt: "",
-  dark: false,
 };
 
 export type GameOverStats = {
@@ -155,8 +149,7 @@ export type NetCombatIntent =
   | { kind: "slash"; origin: NetShotOrigin; dir: NetShotOrigin }
   | { kind: "dash"; origin: NetShotOrigin; dir: NetShotOrigin }
   | { kind: "throw"; origin: NetShotOrigin; dir: NetShotOrigin }
-  | { kind: "reload"; weapon: string }
-  | { kind: "hazard"; damage: number };
+  | { kind: "reload"; weapon: string };
 
 /** The server confirmed one of our attacks landed: draw the splash and the hitmarker. */
 export type NetShotLanded = { x: number; y: number; z: number; head: boolean; kill: boolean; /** a katana hit charges the focus meter */ focus: boolean };

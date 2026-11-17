@@ -151,8 +151,8 @@ describe("combat rules", () => {
 
   it("knows which zone a point is in", () => {
     assert.strictEqual(zoneAt("district", { x: 0, y: 0, z: 0 }).id, "district");
-    assert.strictEqual(zoneAt("valley", { x: 0, y: 0.2, z: 0 }).id, "surface");
-    assert.strictEqual(zoneAt("valley", { x: 0, y: -139, z: 0 }).id, "interior");
-    assert.strictEqual(zoneAt("tomb", { x: 0, y: -299, z: 0 }).id, "tomb");
+    assert.strictEqual(zoneAt("pyramid", { x: 0, y: 0.2, z: 0 }).id, "pyramid");
+    // well outside the volume still resolves to the map's one zone
+    assert.strictEqual(zoneAt("pyramid", { x: 0, y: -40, z: 0 }).id, "pyramid");
   });
 });

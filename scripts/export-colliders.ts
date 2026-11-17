@@ -1,16 +1,14 @@
 // Export the maps' static colliders and arrival points for the match server.
 //
 // Run with `npx tsx scripts/export-colliders.ts` after changing map geometry.
-// It builds the real maps headlessly (as check-valley.ts does) and writes:
+// It builds the real maps headlessly and writes:
 //
-// - server/src/maps/colliders.json: per zone, its floor height and every
-//   axis-aligned collider except the doors players open in their own worlds
-//   (EgyptMap.doorColliders). The server uses them for line of sight.
-// - server/src/maps/arrivals.json: per zone, every point the game can put a
-//   body without walking there: the zone's start, its spawn pads, the
-//   district's safe spawns and the doorway arrivals. The server accepts a
-//   client's teleport only to one of these (or a short hop right after a
-//   focus dash it accepted).
+// - server/src/maps/colliders.json: per map, its floor height and every
+//   axis-aligned collider. The server uses them for line of sight.
+// - server/src/maps/arrivals.json: per map, every point the game can put a
+//   body without walking there: the start, the spawn pads and the district's
+//   safe spawns. The server accepts a client's teleport only to one of these
+//   (or a short hop right after a focus dash it accepted).
 //
 // The server's test suite rebuilds the maps and fails if either file is stale.
 // `--check` compares instead of writing, and exits 1 on any difference.
@@ -18,7 +16,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import * as THREE from "three";
 import { buildDistrict, DISTRICT_START, SAFE_SPAWNS } from "../src/game/district";
-import { buildEgypt, DOORWAY_ARRIVALS } from "../src/game/egypt";
+import { buildPyramid } from "../src/game/pyramid";
 import type { Collider } from "../src/game/world";
 
 export type ZoneColliders = { floorY: number; colliders: [number, number, number, number, number, number][] };
@@ -27,15 +25,11 @@ const box = (c: Collider): ZoneColliders["colliders"][number] => [c.minX, c.minY
 
 export function exportColliders(): Record<string, ZoneColliders> {
   const district = buildDistrict(new THREE.Group());
-  const egypt = buildEgypt(new THREE.Scene());
-  const doors = new Set(egypt.doorColliders());
-  const out: Record<string, ZoneColliders> = {
+  const pyramid = buildPyramid(new THREE.Scene());
+  return {
     district: { floorY: 0, colliders: district.colliders.map(box) },
+    pyramid: { floorY: pyramid.floorY, colliders: pyramid.colliders.map(box) },
   };
-  for (const z of Object.values(egypt.zones)) {
-    out[z.id] = { floorY: z.floorY, colliders: z.colliders.filter((c) => !doors.has(c)).map(box) };
-  }
-  return out;
 }
 
 export type ZoneArrivals = [number, number, number][];
@@ -46,10 +40,10 @@ const point = (v: { x: number; y: number; z: number }): ZoneArrivals[number] => 
   Math.round(v.z * 100) / 100,
 ];
 
-/** Per zone, every arrival point once, in a stable order. */
+/** Per map, every arrival point once, in a stable order. */
 export function exportArrivals(): Record<string, ZoneArrivals> {
   const district = buildDistrict(new THREE.Group());
-  const egypt = buildEgypt(new THREE.Scene());
+  const pyramid = buildPyramid(new THREE.Scene());
   const unique = (points: ZoneArrivals) => {
     const seen = new Set<string>();
     return points.filter((p) => {
@@ -59,14 +53,10 @@ export function exportArrivals(): Record<string, ZoneArrivals> {
       return true;
     });
   };
-  const out: Record<string, ZoneArrivals> = {
+  return {
     district: unique([point(DISTRICT_START), ...district.spawnPoints.map(point), ...SAFE_SPAWNS.map(point)]),
+    pyramid: unique([point(pyramid.start), ...pyramid.spawnPoints.map(point)]),
   };
-  for (const z of Object.values(egypt.zones)) {
-    const doors = Object.values(DOORWAY_ARRIVALS).filter((d) => d.zone === z.id);
-    out[z.id] = unique([point(z.start), ...z.spawnPoints.map(point), ...doors.map(point)]);
-  }
-  return out;
 }
 
 const TARGET = new URL("../server/src/maps/colliders.json", import.meta.url);

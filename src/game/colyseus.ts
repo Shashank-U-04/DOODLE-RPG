@@ -941,9 +941,6 @@ export class ColyseusSession implements MatchSession {
       case "reload":
         room.send("reload", { weapon: i.weapon });
         break;
-      case "hazard":
-        if (Number.isFinite(i.damage)) room.send("hazard", { damage: i.damage });
-        break;
     }
   }
 

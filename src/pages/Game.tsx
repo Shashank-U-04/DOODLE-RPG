@@ -25,8 +25,6 @@ const EMPTY_HUD: HudState = {
   focusOn: false,
   blips: [],
   area: "",
-  prompt: "",
-  dark: false,
 };
 
 type Overlay =
@@ -53,7 +51,7 @@ export default function Game() {
   const sound = useRef(localStorage.getItem("dd_music") !== "0");
   const [best, setBest] = useState(() => Number(localStorage.getItem("dd_best") || 0));
   // The map and the match's grapple rule arrive in the URL from the setup
-  // screen, so a reload of /game?map=tomb lands in the same match.
+  // screen, so a reload of /game?map=pyramid lands in the same match.
   const [match] = useState(() => ({
     map: mapFromQuery(window.location.search),
     grapple: grappleFromQuery(window.location.search),
@@ -148,7 +146,7 @@ export default function Game() {
   const hpFrac = Math.max(0, hud.hp / hud.maxHp);
 
   return (
-    <div className={`dd-root ${playing ? "dd-live" : ""} ${hud.dark ? "dd-dark" : ""}`}>
+    <div className={`dd-root ${playing ? "dd-live" : ""}`}>
       <div ref={stageRef} className="dd-stage absolute inset-0" />
 
       {/* HUD */}
@@ -235,13 +233,6 @@ export default function Game() {
           <div className="dd-tip" dangerouslySetInnerHTML={{ __html: tip }} />
         )}
 
-        {hud.prompt && live && (
-          <div className="dd-prompt">
-            <kbd>H</kbd>
-            <span>{hud.prompt}</span>
-          </div>
-        )}
-
         <div className="dd-hud-bl">
           <div className="health">
             <span>HP</span>
@@ -250,14 +241,7 @@ export default function Game() {
                 className="fill"
                 style={{
                   width: `${hpFrac * 100}%`,
-                  background:
-                    hpFrac < 0.3
-                      ? hud.dark
-                        ? "#e0643e"
-                        : "#b32b3a"
-                      : hud.dark
-                        ? "#e8d6a8"
-                        : "#3947b8",
+                  background: hpFrac < 0.3 ? "#b32b3a" : "#3947b8",
                 }}
               />
             </div>
