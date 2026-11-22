@@ -1,10 +1,11 @@
 // Real-world props for the pickups and thrown grenades, in the game's inks:
-// a curved rifle magazine with rounds at the lips, a green first-aid case, and
-// a round frag grenade with its red fuse plug. Geometry is built once and
+// a pack of rifle rounds with a Mk2 pineapple grenade beside it, a green
+// first-aid case, and the round frag grenade (red fuse plug) that gets thrown. Geometry is built once and
 // shared; each call returns a fresh group of meshes.
 
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { INK, type InkId, makeInkMaterial } from "./world";
 
 type Piece = { geo: THREE.BufferGeometry; ink: InkId; fill: boolean; at?: [number, number, number]; rot?: [number, number, number] };
@@ -55,60 +56,95 @@ export function makeGrenade(): THREE.Group {
 }
 
 /**
- * The ammo pickup: a curved 30-round rifle magazine standing on its floorplate,
- * with brass rounds showing at the feed lips. Its side profile is the AK
- * magazine's from guns.ts, scaled up to read at play distance.
+ * The ammo pickup: a black slotted holder packed with upright rifle rounds
+ * (brass cases, copper-tipped bullets) and a Mk2 "pineapple" frag grenade
+ * standing beside it, since this pickup hands out ammunition and a grenade.
+ * About three times life size so it reads at play distance; origin near its
+ * middle.
  */
-export function makeAmmoMag(): THREE.Group {
+export function makeAmmoPack(): THREE.Group {
   return cached("ammo", () => {
-    const k = 0.0024; // mm → m, about twice life size so it reads at play distance
-    const profile = (pts: ([number, number] | [number, number, number, number])[]) => {
-      const sh = new THREE.Shape();
-      const [u0, v0] = pts[0] as [number, number];
-      sh.moveTo(u0, v0);
-      for (const p of pts.slice(1)) {
-        if (p.length === 4) sh.quadraticCurveTo(p[0], p[1], p[2], p[3]);
-        else sh.lineTo(p[0], p[1]);
-      }
-      return sh;
-    };
-    const slab = (shape: THREE.Shape, width: number, bevel: number) => {
-      const g = new THREE.ExtrudeGeometry(shape, {
-        depth: width - 2 * bevel,
-        bevelEnabled: true,
-        bevelThickness: bevel,
-        bevelSize: bevel,
-        bevelOffset: -bevel,
-        bevelSegments: 2,
-        curveSegments: 10,
-      });
-      g.translate(-490, 150, -(width - 2 * bevel) / 2); // centre the magazine on its own middle
-      g.scale(k, k, k);
-      return g;
-    };
-    const body = profile([[456, -30], [522, -30], [526, -170, 596, -262], [588, -272], [516, -286], [462, -214, 458, -36]]);
-    const plate = profile([[512, -280], [592, -266], [597, -277], [514, -292]]);
-    const pieces: Piece[] = [
-      { geo: slab(body, 26, 3), ink: INK.BLACK, fill: false },
-      { geo: slab(plate, 29, 1.5), ink: INK.BLACK, fill: true },
+    const pieces: Piece[] = [];
+    const PACK_X = -0.11;
+    const BASE_Y = -0.1;
+
+    // the rounds: one lathed case and bullet, copied over a 5 × 5 grid and merged
+    const caseProfile: [number, number][] = [
+      [0, 0], [0.018, 0], [0.018, 0.006], [0.015, 0.008], [0.015, 0.011], [0.0175, 0.013],
+      [0.0167, 0.1], [0.012, 0.113], [0.0118, 0.136], [0, 0.136],
     ];
-    for (const v of [-58, -98]) {
-      pieces.push({ geo: slab(profile([[464, v], [526, v], [528, v - 6], [466, v - 6]]), 27.5, 0.5), ink: INK.BLACK, fill: true });
+    const bulletProfile: [number, number][] = [
+      [0, 0.133], [0.0119, 0.133], [0.0118, 0.15], [0.0105, 0.17], [0.0065, 0.188], [0.002, 0.2], [0, 0.201],
+    ];
+    const lathe = (pts: [number, number][]) => new THREE.LatheGeometry(pts.map(([r, h]) => new THREE.Vector2(r, h)), 12);
+    const caseGeo = lathe(caseProfile);
+    const bulletGeo = lathe(bulletProfile);
+    const cases: THREE.BufferGeometry[] = [];
+    const bullets: THREE.BufferGeometry[] = [];
+    const N = 5;
+    const STEP = 0.041;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const x = PACK_X + (i - (N - 1) / 2) * STEP;
+        const z = (j - (N - 1) / 2) * STEP;
+        const y = BASE_Y + 0.012;
+        cases.push(caseGeo.clone().translate(x, y, z));
+        bullets.push(bulletGeo.clone().translate(x, y, z));
+      }
     }
-    // two rounds in the feed lips, staggered, bullets pointing forward (+x)
-    for (const [du, dv, dz] of [[0, 0, 4.5], [-6, -9, -4.5]] as const) {
-      const cx = (468 + 30 + du - 490) * k;
-      const cy = (-30 + 6 + dv + 150) * k;
-      const z = dz * k;
-      const caseG = new THREE.CylinderGeometry(5.6 * k, 5.6 * k, 38 * k, 10);
-      caseG.rotateZ(-Math.PI / 2);
-      caseG.translate(cx, cy, z);
-      const tipG = new THREE.ConeGeometry(4 * k, 18 * k, 10);
-      tipG.rotateZ(-Math.PI / 2);
-      tipG.translate(cx + 28 * k, cy, z);
-      pieces.push({ geo: caseG, ink: INK.GOLD, fill: true });
-      pieces.push({ geo: tipG, ink: INK.ORANGE, fill: true });
+    pieces.push({ geo: mergeGeometries(cases, false)!, ink: INK.GOLD, fill: true });
+    pieces.push({ geo: mergeGeometries(bullets, false)!, ink: INK.ORANGE, fill: true });
+
+    // the holder: a base plate and slotted walls, a bar between every round
+    const SIDE = N * STEP + 0.014;
+    const WALL_H = 0.095;
+    pieces.push({ geo: new THREE.BoxGeometry(SIDE + 0.01, 0.014, SIDE + 0.01), ink: INK.BLACK, fill: true, at: [PACK_X, BASE_Y + 0.007, 0] });
+    const bars: THREE.BufferGeometry[] = [];
+    for (let k = 0; k <= N; k++) {
+      const t = (k - N / 2) * STEP;
+      for (const side of [-1, 1]) {
+        bars.push(new THREE.BoxGeometry(0.012, WALL_H, 0.008).translate(PACK_X + t, BASE_Y + WALL_H / 2, (side * SIDE) / 2));
+        bars.push(new THREE.BoxGeometry(0.008, WALL_H, 0.012).translate(PACK_X + (side * SIDE) / 2, BASE_Y + WALL_H / 2, t));
+      }
     }
+    // a rail round the top ties the bars together
+    for (const side of [-1, 1]) {
+      bars.push(new THREE.BoxGeometry(SIDE + 0.008, 0.01, 0.008).translate(PACK_X, BASE_Y + WALL_H - 0.005, (side * SIDE) / 2));
+      bars.push(new THREE.BoxGeometry(0.008, 0.01, SIDE + 0.008).translate(PACK_X + (side * SIDE) / 2, BASE_Y + WALL_H - 0.005, 0));
+    }
+    pieces.push({ geo: mergeGeometries(bars, false)!, ink: INK.BLACK, fill: true });
+
+    // Mk2 "pineapple": an olive egg cut into segments, fuse, spoon and pin
+    const GX = 0.17;
+    const RX = 0.07;
+    const RY = 0.09;
+    const GY = BASE_Y + RY + 0.004;
+    const body = new THREE.SphereGeometry(RX, 20, 16);
+    body.scale(1, RY / RX, 1);
+    pieces.push({ geo: body, ink: INK.GREEN, fill: false, at: [GX, GY, 0] });
+    const grooves: THREE.BufferGeometry[] = [];
+    for (const f of [-0.62, -0.31, 0, 0.31, 0.62]) {
+      const y = f * RY;
+      const r = RX * Math.sqrt(1 - f * f) + 0.0008;
+      grooves.push(new THREE.TorusGeometry(r, 0.0035, 4, 28).rotateX(Math.PI / 2).translate(GX, GY + y, 0));
+    }
+    for (let i = 0; i < 4; i++) {
+      const ring = new THREE.TorusGeometry(RX + 0.0008, 0.0035, 4, 32);
+      ring.scale(1, RY / RX, 1);
+      ring.rotateY((i / 4) * Math.PI);
+      grooves.push(ring.translate(GX, GY, 0));
+    }
+    pieces.push({ geo: mergeGeometries(grooves, false)!, ink: INK.GREEN, fill: true });
+    const topY = GY + RY;
+    pieces.push({ geo: new THREE.CylinderGeometry(0.024, 0.03, 0.022, 14), ink: INK.GREEN, fill: true, at: [GX, topY + 0.006, 0] });
+    pieces.push({ geo: new THREE.CylinderGeometry(0.02, 0.022, 0.04, 14), ink: INK.BLACK, fill: false, at: [GX, topY + 0.035, 0] });
+    pieces.push({ geo: new THREE.CylinderGeometry(0.014, 0.02, 0.014, 14), ink: INK.BLACK, fill: true, at: [GX, topY + 0.062, 0] });
+    // the spoon: over the top and down the side
+    pieces.push({ geo: new THREE.BoxGeometry(0.026, 0.008, 0.05), ink: INK.GREEN, fill: true, at: [GX, topY + 0.058, -0.012] });
+    pieces.push({ geo: new THREE.BoxGeometry(0.026, 0.11, 0.008), ink: INK.GREEN, fill: true, at: [GX, topY - 0.005, -0.046], rot: [0.32, 0, 0] });
+    // pin and ring
+    pieces.push({ geo: new THREE.CylinderGeometry(0.003, 0.003, 0.05, 6), ink: INK.BONE, fill: true, at: [GX + 0.025, topY + 0.035, 0], rot: [0, 0, Math.PI / 2] });
+    pieces.push({ geo: new THREE.TorusGeometry(0.024, 0.0045, 5, 16), ink: INK.BONE, fill: true, at: [GX + 0.058, topY + 0.035, 0], rot: [0, Math.PI / 2, 0] });
     return pieces;
   });
 }
