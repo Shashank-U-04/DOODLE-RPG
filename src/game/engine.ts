@@ -38,7 +38,7 @@ import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
 import { damp, smooth01, Spring } from "./feel";
 import { buildGunSpec, type GunSpec } from "./guns";
-import { makeAmmoMag, makeGrenade, makeMedkit } from "./props";
+import { makeAmmoPack, makeGrenade, makeMedkit } from "./props";
 import { ED, PR, QR, VR, XN, XN_AIR, CI, JN, BASE_FOV, DR, NR, FR, OR_, type EnemyKind, type EnemyDef } from "./enemies-data";
 import type { EngineCallbacks, GameHandle, HudState, NetPlayerState, NetRemotePlayer, NetShotOrigin } from "./types";
 
@@ -3237,10 +3237,10 @@ export function createGame(
   }
 
   function spawnPickupAt(kind: "ammo" | "health", pos: THREE.Vector3) {
-    // real objects, not coloured blocks: a rifle magazine or a first-aid case
-    // (src/game/props.ts)
+    // real objects, not coloured blocks: a pack of rounds with a grenade beside
+    // it, or a first-aid case (src/game/props.ts)
     const g = new THREE.Group();
-    g.add(kind === "ammo" ? makeAmmoMag() : makeMedkit());
+    g.add(kind === "ammo" ? makeAmmoPack() : makeMedkit());
     g.position.copy(pos);
     scene.add(g);
     pickups.push({ kind, pos, mesh: g });
