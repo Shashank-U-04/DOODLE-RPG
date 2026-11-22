@@ -5,15 +5,16 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { wakeMatchServer } from "@/game/wake";
+import DotField from "@/components/DotField";
 
 const KEYBOARD: [string, string][] = [
   ["WASD", "move &nbsp; · &nbsp; <b>Mouse</b> look &nbsp; · &nbsp; <b>Shift</b> sprint"],
   ["LMB", "fire / slash &nbsp; · &nbsp; <b>RMB</b> aim down sights / block"],
   ["Space", "jump &nbsp; · &nbsp; again in the air for a double jump"],
   ["C / Ctrl", "crouch &nbsp; · &nbsp; <b>X</b> dash"],
-  ["Q / E", "grapple: hold to reel in, release to let go"],
+  ["Q / E", "grapple: tap to swing · hold to reel in · tap again or <b>Space</b> to let go"],
   ["F", "katana slash &nbsp; · &nbsp; <b>R</b> reload &nbsp; · &nbsp; <b>G</b> grenade"],
-  ["1-5 / wheel", "rifle · shotgun · sniper · katana · revolver"],
+  ["1-5 / wheel", "AK-47 · M1887 · AWM · katana · Desert Eagle"],
   ["M", "music &nbsp; · &nbsp; <b>P / Esc</b> pause"],
 ];
 
@@ -39,6 +40,7 @@ export default function Landing() {
 
   return (
     <div className="dd-landing">
+      <DotField />
       <div className="dd-screen">
         <div className="panel">
           <h1>DOODLE SHOOTER</h1>

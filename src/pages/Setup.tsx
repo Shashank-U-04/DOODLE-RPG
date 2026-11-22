@@ -12,6 +12,7 @@ import { MAPS, gameHref, mapInfo, normalizeMapId, readSetup, writeSetup, type Ga
 import { ROOM_PARAM } from "@/game/room";
 import { wakeMatchServer } from "@/game/wake";
 import { NAME_MAX as MAX_NAME } from "../../server/src/shared/rules.js";
+import DotField from "@/components/DotField";
 
 export default function Setup() {
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ export default function Setup() {
 
   return (
     <div className="dd-landing">
+      <DotField />
       <div className="dd-screen">
         <div className="panel">
           <h1>{mode === "solo" ? "CHOOSE A BATTLEFIELD" : "SET UP THE ROOM"}</h1>
@@ -146,7 +148,7 @@ export default function Setup() {
             </label>
             <div className="controls-note">
               {grapple
-                ? "a 34 m ink hook, held to reel in, released to let go"
+                ? "a 34 m ink hook: tap to swing, hold to reel in, jump to launch off"
                 : "off for this match: nothing can equip or fire the hook"}
             </div>
           </div>

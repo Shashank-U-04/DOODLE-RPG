@@ -18,6 +18,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { INK, type InkId, makeInkMaterial } from "./world";
+import { rigGunPieces } from "./guns";
 
 export type RigParts = {
   hips: THREE.Group;
@@ -220,55 +221,32 @@ function buildTorsoKit(b: Buckets, style: RigStyle, bw: number, bulky: number) {
  * weapons
  * ------------------------------------------------------------------ */
 
-function buildGun(gun: THREE.Group, weapon: string | undefined, accent: InkId) {
+/**
+ * The real guns from guns.ts at true size, muzzle down +z, trigger at the
+ * hand: an AK-47, an M1887, an AWM, a Desert Eagle, or the katana (which the
+ * rigs carry blade-out along +x, handle in the fist).
+ */
+const RIG_GUN: Record<string, { kind: string; t: Tf }> = {
+  rifle: { kind: "rifle", t: {} },
+  shotgun: { kind: "shotgun", t: {} },
+  sniper: { kind: "sniper", t: {} },
+  pistol: { kind: "revolver", t: {} },
+  blade: { kind: "katana", t: { ry: Math.PI / 2, x: 0.21 } },
+};
+
+function buildGun(gun: THREE.Group, weapon: string | undefined) {
   const b: Buckets = new Map();
   const metal = INK.BLACK;
-  if (weapon === "blade") {
-    // katana: wrapped grip, tsuba, long blade
-    cy(b, 0.021, 0.021, 0.2, { y: 0.02, rz: Math.PI / 2, x: 0.1 }, metal, true, 8);
-    for (let i = 0; i < 5; i++) bx(b, 0.012, 0.045, 0.045, { x: 0.03 + i * 0.035, z: 0 }, accent, true);
-    cy(b, 0.05, 0.05, 0.02, { rz: Math.PI / 2, x: 0.21 }, INK.ORANGE, true, 12);
-    bx(b, 0.62, 0.035, 0.012, { x: 0.55, rz: -0.04 }, metal, true);
-    bx(b, 0.62, 0.014, 0.008, { x: 0.55, y: 0.022, rz: -0.04 }, accent, false);
-  } else if (weapon === "shotgun") {
-    cy(b, 0.026, 0.026, 0.52, { z: 0.34 }, metal, true, 10);
-    cy(b, 0.022, 0.022, 0.42, { z: 0.3, y: -0.045 }, metal, true, 8);
-    bx(b, 0.075, 0.11, 0.2, { z: 0.02, y: -0.02 }, metal, true);
-    bx(b, 0.07, 0.07, 0.16, { z: -0.22, y: -0.05 }, accent, true);
-    bx(b, 0.085, 0.14, 0.1, { z: 0.12, y: -0.11, rx: 0.25 }, INK.ORANGE, true);
-    bx(b, 0.02, 0.05, 0.02, { z: 0.5, y: 0.035 }, INK.ORANGE, true);
-  } else if (weapon === "sniper") {
-    bx(b, 0.07, 0.1, 0.42, { z: 0.06 }, metal, true);
-    cy(b, 0.018, 0.018, 0.9, { z: 0.72 }, metal, true, 8);
-    cy(b, 0.03, 0.03, 0.1, { z: 1.2 }, metal, true, 8);
-    bx(b, 0.045, 0.045, 0.3, { y: 0.085, z: 0.1 }, metal, true); // scope body
-    cy(b, 0.038, 0.038, 0.03, { y: 0.085, z: 0.26, rx: Math.PI / 2 }, INK.GREEN, true, 10);
-    cy(b, 0.038, 0.038, 0.03, { y: 0.085, z: -0.06, rx: Math.PI / 2 }, metal, true, 10);
-    bx(b, 0.06, 0.16, 0.09, { z: -0.16, y: -0.08, rx: -0.2 }, accent, true);
-    bx(b, 0.03, 0.1, 0.016, { z: 0.55, y: -0.08, rz: 0.5 }, metal, true);
-    bx(b, 0.03, 0.1, 0.016, { z: 0.55, y: -0.08, rz: -0.5 }, metal, true);
-  } else if (weapon === "pistol") {
-    bx(b, 0.05, 0.075, 0.24, { z: 0.08 }, metal, true);
-    cy(b, 0.013, 0.013, 0.1, { z: 0.23, rx: Math.PI / 2 }, metal, true, 8);
-    bx(b, 0.048, 0.13, 0.075, { z: -0.02, y: -0.1, rx: -0.18 }, accent, true);
-    bx(b, 0.056, 0.03, 0.11, { z: 0.03, y: 0.05 }, INK.ORANGE, true);
-  } else if (weapon === "boss") {
+  const real = RIG_GUN[weapon ?? "rifle"];
+  if (weapon === "boss") {
     cy(b, 0.055, 0.07, 1.9, { y: 0.7 }, INK.ORANGE, false, 8);
     cn(b, 0.09, 0.34, { y: 1.72 }, metal, true, 6);
     sp(b, 0.075, { y: 1.94 }, INK.PINK, true, 8);
     tp(b, 0.075, 0.02, { y: 1.35, rx: Math.PI / 2 }, INK.BLACK, true);
     cy(b, 0.07, 0.07, 0.2, { y: -0.32 }, INK.PINK, true, 8);
   } else {
-    // rifle: receiver, magazine, stock, barrel, handguard, optic, grip
-    bx(b, 0.062, 0.1, 0.36, { z: 0.04 }, metal, true);
-    bx(b, 0.05, 0.2, 0.075, { z: 0.02, y: -0.12, rx: 0.18 }, accent, true);
-    cy(b, 0.014, 0.014, 0.4, { z: 0.5, rx: Math.PI / 2 }, metal, true, 8);
-    bx(b, 0.055, 0.06, 0.24, { z: 0.36 }, accent, true);
-    bx(b, 0.055, 0.05, 0.13, { z: -0.2, y: 0.01 }, metal, true);
-    bx(b, 0.03, 0.045, 0.14, { y: 0.085, z: 0.06 }, metal, true);
-    cy(b, 0.022, 0.022, 0.02, { y: 0.085, z: 0.14, rx: Math.PI / 2 }, INK.GREEN, true, 10);
-    bx(b, 0.04, 0.11, 0.05, { z: -0.1, y: -0.07, rx: -0.25 }, metal, true);
-    bx(b, 0.02, 0.03, 0.02, { z: 0.68, y: 0.03 }, INK.ORANGE, true);
+    const { kind, t } = real ?? RIG_GUN.rifle;
+    for (const p of rigGunPieces(kind)) put(b, p.geo, p.ink, p.fill, t);
   }
   flush(gun, b);
 }
@@ -393,7 +371,7 @@ function buildHumanoid(style: RigStyle): Rig {
   const gun = new THREE.Group();
   gun.position.set(0, -FOREARM - 0.06, 0.04);
   R.fore.add(gun);
-  buildGun(gun, style.weapon, accent);
+  buildGun(gun, style.weapon);
 
   /* ---- legs ---- */
   const mkLeg = (side: number) => {
