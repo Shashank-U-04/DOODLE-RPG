@@ -497,20 +497,13 @@
 .dd-screen .cols b { color: #d02030; }
 .dd-screen .colhead { font-size: 26px; border-bottom: 2px solid #1a30c0; margin-bottom: 6px; }
 
-/* ---- title screen: the same paper sheet the game draws, ruled lines and all ---- */
+/* ---- menus (title, setup, online lobby): plain off-cream paper ----
+   No ruled lines and no margin: just the warm cream the game's ink sits on. */
 .dd-landing {
   position: fixed;
   inset: 0;
   overflow-y: auto;
   background-color: #f6f3e6;
-  background-image:
-    repeating-linear-gradient(to bottom, rgba(126, 158, 224, 0.32) 0 1px, transparent 1px 60px),
-    linear-gradient(
-      to right,
-      transparent 0 6.8%,
-      rgba(216, 106, 122, 0.42) 6.8% calc(6.8% + 1.5px),
-      transparent calc(6.8% + 1.5px) 100%
-    );
   font-family: "Patrick Hand", "Caveat", "Comic Sans MS", "Marker Felt", "Segoe Print", cursive;
   color: #1a30c0;
 }
@@ -518,6 +511,42 @@
 @media (max-width: 900px) {
   .dd-screen .cols { flex-direction: column; gap: 10px; font-size: 18px; }
 }
+
+/* the constellation behind the menu cards (src/components/DotField.tsx) */
+.dd-dotfield { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.dd-landing .dd-screen { z-index: 1; padding: 2vh 2vw; box-sizing: border-box; }
+
+/* Menu cards sized to the window: everything scales with its height, so the
+   title card and the map-select card sit whole on screen without scrolling. */
+.dd-landing .dd-screen .panel {
+  max-width: min(880px, 94vw);
+  padding: clamp(12px, 2.2vh, 24px) clamp(18px, 3vw, 40px);
+  box-shadow: 6px 6px 0 rgba(26, 48, 192, 0.15), 0 10px 40px rgba(26, 48, 192, 0.08);
+}
+.dd-landing .dd-screen h1 { font-size: clamp(38px, 7.2vh, 76px); }
+.dd-landing .dd-screen h2 { font-size: clamp(18px, 3.1vh, 30px); margin: 2px 0 clamp(6px, 1.2vh, 12px); }
+.dd-landing .dd-screen .mainbtns { margin: clamp(6px, 1.2vh, 12px) 0 4px; gap: clamp(8px, 1.3vh, 12px); }
+.dd-landing .dd-screen .mainbtns button { font-size: clamp(18px, 2.8vh, 26px); padding: clamp(4px, 0.8vh, 8px) 26px; }
+.dd-landing .dd-screen .mainbtns button.start {
+  min-width: min(360px, 80vw);
+  font-size: clamp(26px, 4.8vh, 44px);
+  padding: clamp(8px, 1.5vh, 14px) 38px;
+}
+.dd-landing .dd-screen .mainbtns button.start i { font-size: clamp(13px, 1.9vh, 16px); }
+.dd-landing .dd-screen .mainbtns button.alt { font-size: clamp(16px, 2.4vh, 20px); }
+.dd-landing .dd-screen .cols { font-size: clamp(14px, 2.2vh, 19px); line-height: 1.3; margin-top: clamp(6px, 1.2vh, 12px); }
+.dd-landing .dd-screen .colhead { font-size: clamp(17px, 2.7vh, 23px); }
+.dd-landing .dd-screen .settings { font-size: clamp(14px, 2.2vh, 19px); margin-top: clamp(6px, 1.2vh, 10px); padding-top: clamp(4px, 1vh, 8px); gap: 2px; }
+.dd-landing .dd-screen .controls-note { font-size: clamp(13px, 2vh, 17px); }
+.dd-landing .dd-screen .beststat { font-size: clamp(15px, 2.2vh, 20px); }
+.dd-landing .dd-screen .mapgrid { max-width: min(700px, 82vh); margin: clamp(6px, 1.2vh, 14px) auto 4px; }
+.dd-landing .dd-screen .mapgrid button { font-size: clamp(18px, 2.9vh, 26px); padding: 6px 6px 8px; }
+.dd-landing .dd-screen .mapgrid button i { font-size: clamp(12px, 1.8vh, 15px); }
+.dd-landing .dd-screen .mapgrid button .mapthumb { margin-bottom: 4px; }
+.dd-landing .dd-netform { font-size: clamp(17px, 2.8vh, 24px); margin: 4px 0 2px; gap: 6px 22px; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+.dd-landing .dd-netform input { width: 210px; }
+.dd-landing .dd-netform input.code { width: 160px; letter-spacing: 10px; }
+.dd-landing .dd-netform input { font-size: clamp(18px, 3vh, 26px); padding: 2px 12px; }
 
 @media (max-width: 900px) {
   .dd-screen h1 { font-size: 56px; }

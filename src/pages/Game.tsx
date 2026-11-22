@@ -4,6 +4,7 @@ import { createGame } from "@/game/engine";
 import { grappleFromQuery, mapFromQuery } from "@/game/maps";
 import type { GameHandle } from "@/game/types";
 import type { GameOverStats, HudState } from "@/game/types";
+import { weaponLabel } from "@/game/arsenal";
 
 const EMPTY_HUD: HudState = {
   score: 0,
@@ -268,11 +269,11 @@ export default function Game() {
             {hud.slots.map((name, i) => (
               <span key={name} className={`slot ${i === hud.slot ? "on" : ""}`}>
                 <span className="num">{i + 1}</span>
-                {name}
+                {weaponLabel(name)}
               </span>
             ))}
           </div>
-          <div className="weapon">{hud.weapon}</div>
+          <div className="weapon">{weaponLabel(hud.weapon)}</div>
           <div className="hint">{hud.hint}</div>
         </div>
       </div>

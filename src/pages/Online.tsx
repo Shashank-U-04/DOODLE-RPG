@@ -39,6 +39,8 @@ import {
   ROOM_PARAM,
   writeRoomLease,
 } from "@/game/room";
+import { weaponLabel } from "@/game/arsenal";
+import DotField from "@/components/DotField";
 
 const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
 
@@ -309,6 +311,7 @@ export default function Online() {
 
   return (
     <div className="dd-landing">
+      <DotField />
       <div className="dd-screen">
         <div className="panel">
           {mode === "menu" && (
@@ -917,11 +920,11 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             {hud.slots.map((name, i) => (
               <span key={name} className={`slot ${i === hud.slot ? "on" : ""}`}>
                 <span className="num">{i + 1}</span>
-                {name}
+                {weaponLabel(name)}
               </span>
             ))}
           </div>
-          <div className="weapon">{hud.weapon}</div>
+          <div className="weapon">{weaponLabel(hud.weapon)}</div>
           <div className="hint">{hud.hint}</div>
         </div>
       </div>
