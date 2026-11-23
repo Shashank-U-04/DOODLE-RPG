@@ -5,6 +5,8 @@ export const Player = schema({
   /** the Colyseus session id; also the key in MatchState.players */
   id: t.string(),
   name: t.string(),
+  /** character-look code from the Locker (cosmetic; "" draws the default) */
+  look: t.string().default(""),
   /** ink palette index (0-5), unique within the room */
   ink: t.uint8(),
   isHost: t.boolean().default(false),

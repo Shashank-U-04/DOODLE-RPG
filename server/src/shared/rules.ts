@@ -13,6 +13,11 @@ export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
 /** Player names are cut to this many characters. */
 export const NAME_MAX = 16;
+/**
+ * Longest character-look code a player may send (the Locker, src/game/look.ts).
+ * The server only checks its shape; the browser decodes it.
+ */
+export const LOOK_MAX = 24;
 /** Ink palette size; every player in a room gets a different index. */
 export const INK_COUNT = 6;
 /** How long a dropped player (reload, lost network) keeps their seat, s. */

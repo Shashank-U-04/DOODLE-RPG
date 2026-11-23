@@ -132,6 +132,17 @@ describe("match room", () => {
     assert.deepStrictEqual(snapshot(g), snapshot(h));
   });
 
+  it("keeps each player's Locker look, dropping anything that is not a look code", async () => {
+    const h = await host({ look: "1012345012" });
+    const g = await colyseus.sdk.joinById(h.roomId, { name: "Grace", look: "<img src=x>" });
+    const l = await colyseus.sdk.joinById(h.roomId, { name: "Linus" });
+    await eventually(() => Object.keys(snapshot(g).players).length === 3, "guest sees everyone");
+    const players = snapshot(g).players as Record<string, { look?: string }>;
+    assert.strictEqual(players[h.sessionId].look, "1012345012");
+    assert.strictEqual(players[g.sessionId].look, "");
+    assert.strictEqual(players[l.sessionId].look, "");
+  });
+
   it("rejects an unknown room code", async () => {
     await assert.rejects(colyseus.sdk.joinById("ZZZZ", { name: "Grace" }));
   });

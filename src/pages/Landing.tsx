@@ -41,6 +41,15 @@ export default function Landing() {
   return (
     <div className="dd-landing">
       <DotField />
+      <button type="button" className="dd-side-custom" onClick={() => navigate("/customize")}>
+        <svg viewBox="0 0 40 56" aria-hidden="true">
+          <circle cx="20" cy="11" r="8" />
+          <path d="M8 50 L10 26 Q20 20 30 26 L32 50 M10 30 L3 42 M30 30 L37 42 M15 50 L15 38 M25 50 L25 38" />
+          <path d="M12 7 Q20 -1 28 7" />
+        </svg>
+        <b>CUSTOMIZE CHARACTER</b>
+        <i>hair · shirts · pants · shoes</i>
+      </button>
       <div className="dd-screen">
         <div className="panel">
           <h1>DOODLE SHOOTER</h1>

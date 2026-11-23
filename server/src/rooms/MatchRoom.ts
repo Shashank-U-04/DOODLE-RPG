@@ -7,6 +7,7 @@ import {
   MAP_IDS,
   normalizeMatchOptions,
   RECONNECT_SECONDS,
+  sanitizeLook,
   sanitizeName,
   type MapId,
 } from "../rules.js";
@@ -298,11 +299,13 @@ export class MatchRoom extends Room<{ state: MatchState }> {
 
   onJoin(client: Client, options: unknown) {
     const isHost = this.state.players.size === 0;
-    const raw = options && typeof options === "object" ? (options as { name?: unknown }).name : undefined;
+    const opts = options && typeof options === "object" ? (options as { name?: unknown; look?: unknown }) : {};
+    const raw = opts.name;
     const used = [...this.state.players.values()].map((p) => p.ink);
     const player = new Player();
     player.id = client.sessionId;
     player.name = sanitizeName(raw, isHost ? "HOST" : "GUEST");
+    player.look = sanitizeLook(opts.look);
     player.ink = freeInk(used);
     player.isHost = isHost;
     player.ready = isHost;

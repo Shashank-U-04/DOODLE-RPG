@@ -37,6 +37,8 @@ void main() {
   float shade = clamp(ndl * uShadeScale + uShadeBias, 0.0, 1.0);
   // -1 means "this surface is solid ink": filled panels and flat tracer/shards.
   if (uFill > 0.5) shade = -1.0;
+  // 2 = soft fill: solid ink that keeps its light, packed below -1.5
+  if (uFill > 1.5) shade = -1.5 - 0.5 * clamp(ndl, 0.0, 1.0);
   if (uFlat > 0.5) shade = -1.0;
   gl_FragColor = vec4(shade, uInk, n.x, n.y);
 }
@@ -58,10 +60,12 @@ uniform float uSlow;
 uniform float uLineSpacing;
 uniform float uLowHp;
 uniform vec3 uPaper;
-uniform vec3 uInks[12];
+uniform vec3 uInks[17];
 uniform mat4 uInvProj;
 uniform mat4 uInvView;
 uniform float uOutline;
+// 1 = plain paper (no ruled lines or margin), for the menu previews; the game leaves it unset (0)
+uniform float uPlain;
 
 float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) {
@@ -83,7 +87,12 @@ vec3 inkColor(float id) {
   if (i == 8) return uInks[8];
   if (i == 9) return uInks[9];
   if (i == 10) return uInks[10];
-  return uInks[11];
+  if (i == 11) return uInks[11];
+  if (i == 12) return uInks[12];
+  if (i == 13) return uInks[13];
+  if (i == 14) return uInks[14];
+  if (i == 15) return uInks[15];
+  return uInks[16];
 }
 float stripes(vec2 p, vec2 dir, float spacing, float width) {
   float t = dot(p, vec2(-dir.y, dir.x));
@@ -119,11 +128,11 @@ void main() {
   edge = max(edge, smoothstep(0.42, 0.85, nEdge));
   edge *= uOutline;
   // ink colour of the front-most sample around the edge
-  float zmin = z; float inkId = s.g;
-  if (zl < zmin) { zmin = zl; inkId = sl.g; }
-  if (zr < zmin) { zmin = zr; inkId = sr.g; }
-  if (zu < zmin) { zmin = zu; inkId = su.g; }
-  if (zd < zmin) { zmin = zd; inkId = sd.g; }
+  float zmin = z; float inkId = s.g; float frontShade = s.r;
+  if (zl < zmin) { zmin = zl; inkId = sl.g; frontShade = sl.r; }
+  if (zr < zmin) { zmin = zr; inkId = sr.g; frontShade = sr.r; }
+  if (zu < zmin) { zmin = zu; inkId = su.g; frontShade = su.r; }
+  if (zd < zmin) { zmin = zd; inkId = sd.g; frontShade = sd.r; }
   float dFront = linDepth(zmin);
   bool sky = z >= 0.99999;
 
@@ -181,14 +190,24 @@ void main() {
   float ls = uLineSpacing;
   float ly = mod(pp.y + ls * 0.5, ls);
   float rule = 1.0 - smoothstep(0.5 * sc, 1.7 * sc, abs(ly - ls * 0.5));
-  paper = mix(paper, vec3(0.58, 0.70, 0.92), rule * 0.5);
+  paper = mix(paper, vec3(0.58, 0.70, 0.92), rule * 0.5 * (1.0 - uPlain));
   float margin = 1.0 - smoothstep(0.9 * sc, 2.3 * sc, abs(pp.x - uRes.x * 0.07));
-  paper = mix(paper, vec3(0.92, 0.48, 0.55), margin * 0.55);
+  paper = mix(paper, vec3(0.92, 0.48, 0.55), margin * 0.55 * (1.0 - uPlain));
 
   vec3 col = paper;
   vec3 bodyInk = inkColor(s.g);
   vec3 edgeInk = inkColor(inkId) * 0.92;
-  col = mix(col, bodyInk, hatch * 0.72 * fade);
+  float fillAmt = 0.72;
+  if (!sky && shade < -1.25) {
+    // soft fill (player characters): lit flat colour, strokes in the shadow
+    float l = clamp((-shade - 1.5) * 2.0, 0.0, 1.0);
+    bodyInk *= mix(0.7, 1.06, l);
+    float sh = stripes(gl_FragCoord.xy + wob * 5.0 * sc, vec2(0.7071, 0.7071), 6.5 * sc, 1.2 * sc);
+    bodyInk = mix(bodyInk, bodyInk * 0.6, sh * smoothstep(0.42, 0.16, l) * 0.7);
+    fillAmt = 0.86;
+  }
+  if (frontShade < -1.25) edgeInk = inkColor(inkId) * 0.38;
+  col = mix(col, bodyInk, hatch * fillAmt * fade);
   float ew = 0.75 + 0.35 * vnoise(pp * 0.35);
   col = mix(col, edgeInk, clamp(edge * ew, 0.0, 1.0) * fadeE);
 

@@ -7,6 +7,7 @@ import {
   isMapId,
   MAP_IDS,
   normalizeMatchOptions,
+  sanitizeLook,
   sanitizeName,
 } from "../src/rules.js";
 
@@ -33,6 +34,18 @@ describe("rules", () => {
     assert.strictEqual(sanitizeName("   ", "GUEST"), "GUEST");
     assert.strictEqual(sanitizeName(undefined, "GUEST"), "GUEST");
     assert.strictEqual(sanitizeName({ toString: () => "Obj" }, "GUEST"), "Obj");
+  });
+
+  it("keeps a look code only when it is one", () => {
+    assert.strictEqual(sanitizeLook("1012345012"), "1012345012");
+    assert.strictEqual(sanitizeLook(""), "");
+    assert.strictEqual(sanitizeLook(undefined), "");
+    assert.strictEqual(sanitizeLook(42), "");
+    assert.strictEqual(sanitizeLook("1A23"), "");
+    assert.strictEqual(sanitizeLook("1 23"), "");
+    assert.strictEqual(sanitizeLook("<b>"), "");
+    assert.strictEqual(sanitizeLook("1".repeat(25)), "");
+    assert.strictEqual(sanitizeLook("1".repeat(24)), "1".repeat(24));
   });
 
   it("normalizes room options", () => {

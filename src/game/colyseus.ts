@@ -123,6 +123,8 @@ type RoomJSON = {
 type PlayerJSON = {
   id: string;
   name: string;
+  /** absent on a server from before the Locker */
+  look?: string;
   ink: number;
   isHost: boolean;
   ready: boolean;
@@ -293,6 +295,8 @@ export type ColyseusSessionDeps = {
    * Used when the lobby resumes on its own after a reload.
    */
   resumeOnly?: boolean;
+  /** this player's character-look code from the Locker (src/game/look.ts); "" for the default */
+  look?: string;
   /** how long connecting may take before giving up; JOIN_TIMEOUT_MS by default */
   joinTimeoutMs?: number;
   /** pause between restart checks while reconnecting; RESTART_PROBE_EVERY_MS by default */
@@ -316,6 +320,8 @@ export class ColyseusSession implements MatchSession {
   private readonly url: string | null;
   private readonly storage: SeatStorage | null;
   private readonly resumeOnly: boolean;
+  /** sent with create/join; the server keeps it on our seat for everyone to draw */
+  private readonly look: string;
   private readonly joinTimeoutMs: number;
   private joinTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly restartProbeMs: number;
@@ -372,6 +378,7 @@ export class ColyseusSession implements MatchSession {
     this.url = deps.url !== undefined ? deps.url : readColyseusUrl(viteEnv());
     this.storage = deps.storage !== undefined ? deps.storage : defaultStorage();
     this.resumeOnly = deps.resumeOnly ?? false;
+    this.look = typeof deps.look === "string" && /^[0-9a-z]{1,24}$/.test(deps.look) ? deps.look : "";
     this.joinTimeoutMs = deps.joinTimeoutMs ?? JOIN_TIMEOUT_MS;
     this.restartProbeMs = deps.restartProbeMs ?? RESTART_PROBE_EVERY_MS;
     this.silentSocketMs = deps.silentSocketMs ?? SILENT_SOCKET_MS;
@@ -489,9 +496,9 @@ export class ColyseusSession implements MatchSession {
   private async freshSeat(client: Client): Promise<Room | null> {
     try {
       if (this.isHost) {
-        return await client.create("match", { name: this.name, map: this.config.map, grapple: this.config.grapple });
+        return await client.create("match", { name: this.name, look: this.look, map: this.config.map, grapple: this.config.grapple });
       }
-      return await client.joinById(this.code, { name: this.name });
+      return await client.joinById(this.code, { name: this.name, look: this.look });
     } catch (err) {
       if (this.phase !== "closed") this.fail(describeJoinError(err, this.code, this.url ?? ""));
       return null;
@@ -754,6 +761,7 @@ export class ColyseusSession implements MatchSession {
           id: p.id,
           name: p.name,
           ink: p.ink,
+          look: p.look ?? "",
           isMe: p.id === this.me,
           isHost: p.isHost,
           kills: p.kills ?? 0,
@@ -788,7 +796,7 @@ export class ColyseusSession implements MatchSession {
     // Bodies change every patch; the roster, the score and the result rarely do. Re-render only for those.
     const key = JSON.stringify([
       this.winner,
-      this.snapshot.map((p) => [p.id, p.name, p.ink, p.isHost, p.ready, p.online, p.kills, p.deaths]),
+      this.snapshot.map((p) => [p.id, p.name, p.ink, p.look, p.isHost, p.ready, p.online, p.kills, p.deaths]),
     ]);
     if (key !== this.rosterKey) {
       this.rosterKey = key;

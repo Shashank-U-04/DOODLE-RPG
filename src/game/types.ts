@@ -160,6 +160,8 @@ export type NetRemotePlayer = {
   name: string;
   /** ink index (0-5) so every player can be told apart at a glance */
   ink: number;
+  /** their Locker look code (src/game/look.ts); unset or "" draws the default */
+  look?: string;
   state: NetPlayerState;
 };
 
