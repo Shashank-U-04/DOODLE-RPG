@@ -1,7 +1,7 @@
 // Game world building: materials, colliders, arena, and sketchy ragdoll enemies.
 
 import * as THREE from "three";
-import { INK_FRAG, INK_VERT } from "./shaders";
+import { INK_FRAG, INK_SKIN_VERT, INK_VERT } from "./shaders";
 
 export const INK = {
   BLUE: 0,
@@ -93,6 +93,39 @@ export const INK_LIST: InkId[] = [
   INK.GREY,
 ];
 
+/**
+ * The post pass' ink colours: a 1×INK_SLOTS texture shared by every paper pass
+ * (the game and the menu previews). The first INK_LIST.length texels are the
+ * fixed inks; the rest are claimed at runtime by the colours of loaded
+ * character models (inkForColor), so a model keeps its own olive, khaki or
+ * hazmat yellow, and a textured model keeps its painted colours.
+ */
+export const INK_SLOTS = 1024;
+const paletteData = new Float32Array(INK_SLOTS * 4);
+INK_LIST.forEach((ink, i) => paletteData.set([...INK_RGB[ink], 1], i * 4));
+export const INK_PALETTE = new THREE.DataTexture(paletteData, INK_SLOTS, 1, THREE.RGBAFormat, THREE.FloatType);
+INK_PALETTE.minFilter = THREE.NearestFilter;
+INK_PALETTE.magFilter = THREE.NearestFilter;
+INK_PALETTE.needsUpdate = true;
+const claimed = new Map<string, number>();
+/** An ink for an sRGB colour (0-1): a fixed ink when one is very close, else a runtime slot. */
+export function inkForColor(r: number, g: number, b: number): InkId {
+  for (let i = 0; i < INK_LIST.length; i++) {
+    const [ir, ig, ib] = INK_RGB[INK_LIST[i]];
+    if (Math.abs(ir - r) + Math.abs(ig - g) + Math.abs(ib - b) < 0.05) return INK_LIST[i];
+  }
+  const key = [r, g, b].map((v) => Math.round(v * 40)).join(",");
+  let slot = claimed.get(key);
+  if (slot === undefined) {
+    slot = INK_LIST.length + claimed.size;
+    if (slot >= INK_SLOTS) return INK.BLACK; // palette full: never expected with the shipped models
+    paletteData.set([r, g, b, 1], slot * 4);
+    INK_PALETTE.needsUpdate = true;
+    claimed.set(key, slot);
+  }
+  return slot as InkId;
+}
+
 // paper: (0.965, 0.955, 0.905) in the reference renderer
 export const PAPER_RGB: [number, number, number] = [0.965, 0.955, 0.905];
 export const PAPER = 0xf6f4e7;
@@ -154,6 +187,8 @@ export function makeSoftInkMaterial(ink: InkId): THREE.ShaderMaterial {
   const cached = softMaterials.get(ink);
   if (cached) return cached;
   const made = makeInkMaterial(ink, true).clone();
+  // the skinned vertex shader: also draws animated (skinned) character models
+  made.vertexShader = INK_SKIN_VERT;
   made.uniforms.uFill.value = 2;
   made.uniforms.uLightDir = shared.uLightDir;
   made.uniforms.uTime = shared.uTime;

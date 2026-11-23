@@ -519,7 +519,7 @@ export default function Online() {
                       {p.isHost ? " · host" : ""}
                       {p.isHost || p.ready ? " · ready" : " · waiting"}
                       {lookLabel(p.look) && (
-                        <span className="lk-as"> · {lookLabel(p.look) === "custom" ? "custom look" : `as ${lookLabel(p.look)}`}</span>
+                        <span className="lk-as"> · as {lookLabel(p.look)}</span>
                       )}
                     </span>
                   </div>

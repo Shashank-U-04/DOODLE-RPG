@@ -48,7 +48,7 @@ export default function Landing() {
           <path d="M12 7 Q20 -1 28 7" />
         </svg>
         <b>CUSTOMIZE CHARACTER</b>
-        <i>hair · shirts · pants · shoes</i>
+        <i>pick your battle fighter</i>
       </button>
       <div className="dd-screen">
         <div className="panel">

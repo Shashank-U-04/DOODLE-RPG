@@ -1,14 +1,13 @@
-// Customize Character's pictures: the turntable (one character on a little
-// plinth you can spin) and the item cards' thumbnails. Both are drawn through
-// the game's own ink-on-paper pass, on plain paper (no ruled lines), so what
-// you dress here is what friends see in the arena.
+// Customize Character's turntable: the picked character on a little plinth,
+// idling with its weapon (drag to spin), drawn through the game's own
+// ink-on-paper pass on plain paper (no ruled lines), so what you pick here is
+// what friends see in the arena. The character cards are static pictures of
+// the same render (public/characters/thumbs).
 
 import * as THREE from "three";
 import { PAPER_FRAG } from "./shaders";
-import { INK, INK_LIST, INK_RGB, LIGHT_DIR_WORLD, PAPER, PAPER_RGB, makeInkMaterial, shared } from "./world";
-import type { Rig } from "./rig";
-import { makeAvatar } from "./avatar";
-import type { Look, Slot } from "./look";
+import { INK, INK_PALETTE, LIGHT_DIR_WORLD, PAPER, PAPER_RGB, makeInkMaterial, shared } from "./world";
+import { loadCharacter, makeCharacterRig } from "./characters";
 
 /* ------------------------------------------------------------------ *
  * the paper pass, for a renderer of our own
@@ -48,7 +47,7 @@ function paperPass(renderer: THREE.WebGLRenderer): Paper {
       uOutline: { value: 1 },
       uPlain: { value: 1 },
       uPaper: { value: new THREE.Vector3(...PAPER_RGB) },
-      uInks: { value: INK_LIST.map((i) => new THREE.Vector3(...INK_RGB[i])) },
+      uInkTex: { value: INK_PALETTE },
       uNear: { value: 0.1 },
       uFar: { value: 40 },
       uAspect: { value: 1 },
@@ -101,34 +100,21 @@ function paperPass(renderer: THREE.WebGLRenderer): Paper {
   };
 }
 
-const releaseRig = (r: Rig) => r.root.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-
-/** an easy standing pose: arms relaxed, the gun carried low and pointing ahead */
-function standPose(r: Rig, t = 0) {
-  const P = r.parts;
-  const breathe = Math.sin(t * 1.7);
-  P.torso.rotation.x = 0.015 + breathe * 0.01;
-  P.head.rotation.y = Math.sin(t * 0.45) * 0.3;
-  P.head.rotation.x = Math.sin(t * 0.7) * 0.04;
-  P.armL.rotation.set(-0.06 + breathe * 0.025, 0, -0.1);
-  P.armR.rotation.set(-0.12 + breathe * 0.02, 0, 0.06);
-  P.foreR.rotation.x = -0.12;
-  P.foreL.rotation.x = -0.1;
-  P.legL.rotation.z = -0.025;
-  P.legR.rotation.z = 0.025;
-}
+type Body = NonNullable<ReturnType<typeof makeCharacterRig>>;
+/** a character's own parts: only the weapon geometry; the model is shared */
+const releaseBody = (b: Body) => (b.root.userData.own as THREE.Object3D | undefined)?.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
 
 /* ------------------------------------------------------------------ *
  * the turntable
  * ------------------------------------------------------------------ */
 
 export type LockerPreview = {
-  setLook(look: Look): void;
+  setCharacter(index: number): void;
   setWeapon(weapon: string): void;
   dispose(): void;
 };
 
-export function createLockerPreview(container: HTMLElement, look: Look, weapon = "rifle"): LockerPreview {
+export function createLockerPreview(container: HTMLElement, index: number, weapon = "rifle"): LockerPreview {
   const canvas = document.createElement("canvas");
   container.appendChild(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false });
@@ -153,16 +139,24 @@ export function createLockerPreview(container: HTMLElement, look: Look, weapon =
   turn.rotation.y = -0.45;
   scene.add(turn);
 
-  let current = look;
+  let current = index;
   let held = weapon;
-  let rig: Rig | null = null;
+  let body: Body | null = null;
+  let disposed = false;
+  let ticket = 0;
   const rebuild = () => {
-    if (rig) {
-      turn.remove(rig.root);
-      releaseRig(rig);
-    }
-    rig = makeAvatar(current, held);
-    turn.add(rig.root);
+    const mine = ++ticket;
+    void loadCharacter(current).then(() => {
+      if (disposed || mine !== ticket) return; // a newer pick won
+      const next = makeCharacterRig(current, held);
+      if (!next) return;
+      if (body) {
+        turn.remove(body.root);
+        releaseBody(body);
+      }
+      body = next;
+      turn.add(body.root);
+    });
   };
   rebuild();
 
@@ -216,13 +210,14 @@ export function createLockerPreview(container: HTMLElement, look: Look, weapon =
       spin *= Math.exp(-dt * 3);
       turn.rotation.y += spin * 0.02 + (idleFor > 1.5 ? 0.35 : 0) * dt;
     }
-    if (rig) standPose(rig, now * 0.001);
+    body?.anim.update(dt, { moving: false, firing: false, weapon: held });
     paper.render(scene, camera);
   };
   raf = requestAnimationFrame(frame);
 
   return {
-    setLook(next) {
+    setCharacter(next) {
+      if (next === current) return;
       current = next;
       rebuild();
     },
@@ -232,13 +227,14 @@ export function createLockerPreview(container: HTMLElement, look: Look, weapon =
       rebuild();
     },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onUp);
-      if (rig) releaseRig(rig);
+      if (body) releaseBody(body);
       for (const g of plinthGeos) g.dispose();
       paper.dispose();
       renderer.dispose();
@@ -248,28 +244,16 @@ export function createLockerPreview(container: HTMLElement, look: Look, weapon =
 }
 
 /* ------------------------------------------------------------------ *
- * item thumbnails
+ * card thumbnails (a dev step: scripts/_thumbs.ts saves them to public/characters/thumbs)
  * ------------------------------------------------------------------ */
 
-/** where each shelf's camera looks: target height, distance, height above target, and the body's turn */
-const FRAMING: Record<Slot, { y: number; dist: number; up: number; turn: number; z?: number }> = {
-  hair: { y: 1.7, dist: 0.85, up: 0.12, turn: 0.55 },
-  face: { y: 1.69, dist: 0.62, up: 0.02, turn: 0.15 },
-  hat: { y: 1.78, dist: 0.95, up: 0.15, turn: 0.45 },
-  skin: { y: 1.62, dist: 1.0, up: 0.05, turn: 0.25 },
-  shirt: { y: 1.25, dist: 1.45, up: 0.1, turn: 0.35 },
-  pants: { y: 0.6, dist: 1.75, up: 0.15, turn: 0.35 },
-  shoes: { y: 0.1, dist: 0.85, up: 0.35, turn: 0.7, z: 0.04 },
-  extra: { y: 1.15, dist: 2.0, up: 0.2, turn: Math.PI - 0.6 },
-};
-
 export type Thumbnailer = {
-  /** a picture of `look`, framed on the part `slot` dresses, as a data URL */
-  shot(look: Look, slot: Slot): string;
+  /** character `index`, whole body, front three-quarter view, as a PNG data URL */
+  shot(index: number, turn?: number): Promise<string | null>;
   dispose(): void;
 };
 
-export function createThumbnailer(size = 168): Thumbnailer {
+export function createThumbnailer(size = 240): Thumbnailer {
   const canvas = document.createElement("canvas");
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1);
@@ -277,22 +261,21 @@ export function createThumbnailer(size = 168): Thumbnailer {
   paper.resize(size, size);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PAPER);
-  const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 20);
-
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
+  camera.position.set(0, 1.25, 3.9);
+  camera.lookAt(0, 0.92, 0);
   return {
-    shot(look, slot) {
-      const f = FRAMING[slot];
-      const rig = makeAvatar(look, "");
-      standPose(rig);
-      rig.parts.head.rotation.set(0, 0, 0);
-      rig.root.rotation.y = f.turn;
-      scene.add(rig.root);
-      camera.position.set(0, f.y + f.up, (f.z ?? 0) + f.dist);
-      camera.lookAt(0, f.y, f.z ?? 0);
+    async shot(index, turn = 0.5) {
+      await loadCharacter(index);
+      const body = makeCharacterRig(index, "rifle");
+      if (!body) return null;
+      body.root.rotation.y = turn;
+      body.anim.update(0.4, { moving: false, firing: false, weapon: "rifle" });
+      scene.add(body.root);
       paper.render(scene, camera);
       const url = canvas.toDataURL("image/png");
-      scene.remove(rig.root);
-      releaseRig(rig);
+      scene.remove(body.root);
+      releaseBody(body);
       return url;
     },
     dispose() {

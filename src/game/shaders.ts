@@ -21,6 +21,23 @@ void main() {
 }
 `;
 
+/** INK_VERT with three's skinning chunks, for animated character models (a no-op on plain meshes). */
+export const INK_SKIN_VERT = /* glsl */ `
+#include <common>
+#include <skinning_pars_vertex>
+varying vec3 vNormalV;
+void main() {
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+  vNormalV = normalize(normalMatrix * objectNormal);
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
 export const INK_FRAG = /* glsl */ `
 precision highp float;
 uniform float uInk;
@@ -60,7 +77,7 @@ uniform float uSlow;
 uniform float uLineSpacing;
 uniform float uLowHp;
 uniform vec3 uPaper;
-uniform vec3 uInks[17];
+uniform sampler2D uInkTex;
 uniform mat4 uInvProj;
 uniform mat4 uInvView;
 uniform float uOutline;
@@ -75,24 +92,8 @@ float vnoise(vec2 p) {
 }
 float linDepth(float z) { float zn = z * 2.0 - 1.0; return 2.0 * uNear * uFar / (uFar + uNear - zn * (uFar - uNear)); }
 vec3 inkColor(float id) {
-  int i = int(id + 0.5);
-  if (i <= 0) return uInks[0];
-  if (i == 1) return uInks[1];
-  if (i == 2) return uInks[2];
-  if (i == 3) return uInks[3];
-  if (i == 4) return uInks[4];
-  if (i == 5) return uInks[5];
-  if (i == 6) return uInks[6];
-  if (i == 7) return uInks[7];
-  if (i == 8) return uInks[8];
-  if (i == 9) return uInks[9];
-  if (i == 10) return uInks[10];
-  if (i == 11) return uInks[11];
-  if (i == 12) return uInks[12];
-  if (i == 13) return uInks[13];
-  if (i == 14) return uInks[14];
-  if (i == 15) return uInks[15];
-  return uInks[16];
+  // one texel per ink (world.ts INK_PALETTE); WebGL2 fetches it by index
+  return texelFetch(uInkTex, ivec2(clamp(int(id + 0.5), 0, 1023), 0), 0).rgb;
 }
 float stripes(vec2 p, vec2 dir, float spacing, float width) {
   float t = dot(p, vec2(-dir.y, dir.x));
@@ -216,7 +217,7 @@ void main() {
   float vig = smoothstep(0.32, 0.9, length(vc));
   float scr = 0.55 + 0.45 * stripes(pp + wob * 8.0, normalize(vec2(1.0, 0.8)), 7.0 * sc, 2.2 * sc);
   float hurt = clamp(uHurt + uLowHp * (0.35 + 0.25 * sin(uTime * 6.0)), 0.0, 1.0);
-  col = mix(col, uInks[1] * 0.9, hurt * vig * scr);
+  col = mix(col, inkColor(1.0) * 0.9, hurt * vig * scr);
   col = mix(col, uPaper, uFlash);
   float lum = dot(col, vec3(0.3, 0.5, 0.2));
   col = mix(col, vec3(lum) * vec3(0.8, 0.86, 1.0), uSlow * 0.55);
