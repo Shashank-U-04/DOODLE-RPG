@@ -5,7 +5,7 @@
 // the server does with them: normalising a create request, sanitising names,
 // handing out inks.
 
-import { DEFAULT_MAP, INK_COUNT, isMapId, MAX_PLAYERS, MIN_PLAYERS, NAME_MAX, type MapId } from "./shared/rules.js";
+import { DEFAULT_MAP, INK_COUNT, isMapId, LOOK_MAX, MAX_PLAYERS, MIN_PLAYERS, NAME_MAX, type MapId } from "./shared/rules.js";
 
 export {
   CODE_ALPHABET,
@@ -14,6 +14,7 @@ export {
   drawRoomCode,
   INK_COUNT,
   isMapId,
+  LOOK_MAX,
   MAP_IDS,
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -38,6 +39,17 @@ export function sanitizeName(raw: unknown, fallback: string): string {
     .slice(0, NAME_MAX)
     .trim();
   return name || fallback;
+}
+
+/**
+ * A character-look code (cosmetic only), or "" for the default doodle. Only
+ * lowercase letters and digits, at most LOOK_MAX of them; anything else is
+ * dropped rather than trimmed, since a cut code would decode to a different
+ * outfit.
+ */
+export function sanitizeLook(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw.length <= LOOK_MAX && /^[0-9a-z]+$/.test(raw) ? raw : "";
 }
 
 /**

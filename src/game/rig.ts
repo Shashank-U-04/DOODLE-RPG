@@ -234,7 +234,7 @@ const RIG_GUN: Record<string, { kind: string; t: Tf }> = {
   blade: { kind: "katana", t: { ry: Math.PI / 2, x: 0.21 } },
 };
 
-function buildGun(gun: THREE.Group, weapon: string | undefined) {
+export function buildGun(gun: THREE.Group, weapon: string | undefined) {
   const b: Buckets = new Map();
   const metal = INK.BLACK;
   const real = RIG_GUN[weapon ?? "rifle"];

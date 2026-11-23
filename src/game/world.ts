@@ -20,6 +20,13 @@ export const INK = {
   TURQ: 9,
   GOLD: 10,
   BONE: 11,
+  // Clothes and skin for the player characters (src/game/avatar.ts): a
+  // peach skin tone, denim, purple, a clean white and a neutral grey.
+  PEACH: 12,
+  DENIM: 13,
+  PURPLE: 14,
+  WHITE: 15,
+  GREY: 16,
 } as const;
 export type InkId = (typeof INK)[keyof typeof INK];
 
@@ -38,6 +45,11 @@ export const INK_RGB: Record<InkId, [number, number, number]> = {
   [INK.TURQ]: [0.19, 0.56, 0.54],
   [INK.GOLD]: [0.93, 0.73, 0.25],
   [INK.BONE]: [0.89, 0.86, 0.76],
+  [INK.PEACH]: [0.96, 0.78, 0.64],
+  [INK.DENIM]: [0.27, 0.4, 0.62],
+  [INK.PURPLE]: [0.5, 0.3, 0.72],
+  [INK.WHITE]: [0.99, 0.99, 0.97],
+  [INK.GREY]: [0.55, 0.56, 0.6],
 };
 
 export const INK_HEX: Record<InkId, string> = {
@@ -53,6 +65,11 @@ export const INK_HEX: Record<InkId, string> = {
   [INK.TURQ]: "#308f8a",
   [INK.GOLD]: "#edba40",
   [INK.BONE]: "#e3dbc2",
+  [INK.PEACH]: "#f5c7a3",
+  [INK.DENIM]: "#45669e",
+  [INK.PURPLE]: "#804db8",
+  [INK.WHITE]: "#fcfcf7",
+  [INK.GREY]: "#8c8f99",
 };
 
 /** Every ink, in index order — what the post pass' `uInks` array is filled from. */
@@ -69,6 +86,11 @@ export const INK_LIST: InkId[] = [
   INK.TURQ,
   INK.GOLD,
   INK.BONE,
+  INK.PEACH,
+  INK.DENIM,
+  INK.PURPLE,
+  INK.WHITE,
+  INK.GREY,
 ];
 
 // paper: (0.965, 0.955, 0.905) in the reference renderer
@@ -119,6 +141,23 @@ export function makeInkMaterial(
     side,
   });
   inkMaterials.set(key, made);
+  return made;
+}
+
+/**
+ * Solid ink that still turns with the light: the player characters' material.
+ * The post pass draws it as a flat fill shaded lighter or darker, with a few
+ * strokes on the shadow side, and outlines it in a dark version of its ink.
+ */
+const softMaterials = new Map<number, THREE.ShaderMaterial>();
+export function makeSoftInkMaterial(ink: InkId): THREE.ShaderMaterial {
+  const cached = softMaterials.get(ink);
+  if (cached) return cached;
+  const made = makeInkMaterial(ink, true).clone();
+  made.uniforms.uFill.value = 2;
+  made.uniforms.uLightDir = shared.uLightDir;
+  made.uniforms.uTime = shared.uTime;
+  softMaterials.set(ink, made);
   return made;
 }
 

@@ -33,6 +33,8 @@ import { buildDistrict, DISTRICT_START, SAFE_SPAWNS, type District } from "./dis
 import { buildPyramid, type Mood, type PyramidMap } from "./pyramid";
 import type { MapId } from "./maps";
 import { makeBlobRig, makeMummyRig, makeRig, makeWaspRig, type Rig } from "./rig";
+import { decodeLook } from "./look";
+import { makeAvatar } from "./avatar";
 import type { NetCombatIntent, NetShotLanded } from "./types";
 import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
@@ -1637,6 +1639,8 @@ export function createGame(
     id: string;
     name: string;
     ink: InkId;
+    /** their character's look code (Customize Character); the rig is rebuilt when it changes */
+    look: string;
     rig: Rig;
     /** drawn position, smoothed towards `target` */
     pos: THREE.Vector3;
@@ -1700,7 +1704,11 @@ export function createGame(
     RIFLE: "rifle",
   };
 
-  function buildRemoteRig(ink: InkId, weapon: string): Rig {
+  function buildRemoteRig(ink: InkId, weapon: string, lookCode = ""): Rig {
+    // Their own character from Customize Character; a player without one (or
+    // on an older build) is the default vest doodle in their room ink.
+    const look = decodeLook(lookCode);
+    if (look) return makeAvatar(look, RIG_WEAPON[weapon] ?? "rifle");
     return makeRig({
       ink,
       bodyW: 1,
@@ -1720,7 +1728,7 @@ export function createGame(
       let a = pvp.remotes.get(p.id);
       if (!a) {
         const ink = PVP_INKS[((p.ink % PVP_INKS.length) + PVP_INKS.length) % PVP_INKS.length];
-        const built = buildRemoteRig(ink, p.state.weapon);
+        const built = buildRemoteRig(ink, p.state.weapon, p.look ?? "");
         built.root.position.set(p.state.x, p.state.y, p.state.z);
         built.root.rotation.y = p.state.yaw + Math.PI;
         scene.add(built.root);
@@ -1728,6 +1736,7 @@ export function createGame(
           id: p.id,
           name: p.name,
           ink,
+          look: p.look ?? "",
           rig: built,
           pos: new THREE.Vector3(p.state.x, p.state.y, p.state.z),
           target: new THREE.Vector3(p.state.x, p.state.y, p.state.z),
@@ -1768,9 +1777,10 @@ export function createGame(
 
       // Draw them holding what they actually hold. A katana rendered as a rifle
       // (and firing muzzle puffs) is half of why the blade "looks like a gun".
-      if (a.weapon !== p.state.weapon) {
+      if (a.weapon !== p.state.weapon || a.look !== (p.look ?? "")) {
         a.weapon = p.state.weapon;
-        const rebuilt = buildRemoteRig(a.ink, a.weapon);
+        a.look = p.look ?? "";
+        const rebuilt = buildRemoteRig(a.ink, a.weapon, a.look);
         rebuilt.root.position.copy(a.pos);
         rebuilt.root.rotation.y = a.yaw + Math.PI;
         scene.remove(a.rig.root);

@@ -10,6 +10,7 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Game = lazy(() => import("./pages/Game.tsx"));
 const Setup = lazy(() => import("./pages/Setup.tsx"));
 const Online = lazy(() => import("./pages/Online.tsx"));
+const Customize = lazy(() => import("./pages/Customize.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -68,6 +69,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/setup" element={<Setup />} />
             <Route path="/game" element={<Game />} />
             <Route path="/online" element={<Online />} />
+            <Route path="/customize" element={<Customize />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

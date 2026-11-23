@@ -53,6 +53,8 @@ export type NetPlayer = {
   name: string;
   /** ink palette index, so every player reads as a different doodle */
   ink: number;
+  /** their Locker look code (src/game/look.ts); unset or "" draws the default */
+  look?: string;
   isMe: boolean;
   isHost: boolean;
   kills: number;

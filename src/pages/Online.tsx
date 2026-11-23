@@ -41,6 +41,7 @@ import {
 } from "@/game/room";
 import { weaponLabel } from "@/game/arsenal";
 import DotField from "@/components/DotField";
+import { lookLabel, savedLookCode } from "@/game/look";
 
 const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
 
@@ -107,7 +108,7 @@ export default function Online() {
     let resumed = false;
     if (NET_TRANSPORT === "colyseus") {
       // The server draws the code; the session keeps its own reconnection seat.
-      s = new ColyseusSession("", who, true, match);
+      s = new ColyseusSession("", who, true, match, { look: savedLookCode() });
     } else {
       // Reuse this tab's live room instead of drawing a new code on every
       // mount/reload. A new code comes only after LEAVE (which clears the lease)
@@ -142,7 +143,7 @@ export default function Online() {
       localStorage.setItem("dd_name", who);
       let s: MatchSession;
       if (NET_TRANSPORT === "colyseus") {
-        s = new ColyseusSession(code, who, false, match);
+        s = new ColyseusSession(code, who, false, match, { look: savedLookCode() });
       } else {
         s = new NetSession(code, who, false, match);
         writeRoomLease(sessionStorage, { code: s.code, isHost: false, createdAt: Date.now() });
@@ -165,7 +166,7 @@ export default function Online() {
   const resume = useCallback(
     (seat: { code: string; isHost: boolean }) => {
       const who = name.trim().slice(0, NAME_MAX) || (seat.isHost ? "HOST" : "GUEST");
-      const s = new ColyseusSession(seat.code, who, seat.isHost, match, { resumeOnly: true });
+      const s = new ColyseusSession(seat.code, who, seat.isHost, match, { resumeOnly: true, look: savedLookCode() });
       wire(s);
       s.connect();
       ref.current = s;
@@ -517,6 +518,9 @@ export default function Online() {
                       {p.isMe ? " (you)" : ""}
                       {p.isHost ? " · host" : ""}
                       {p.isHost || p.ready ? " · ready" : " · waiting"}
+                      {lookLabel(p.look) && (
+                        <span className="lk-as"> · {lookLabel(p.look) === "custom" ? "custom look" : `as ${lookLabel(p.look)}`}</span>
+                      )}
                     </span>
                   </div>
                 ))}
@@ -716,7 +720,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
         if (p.isMe) continue;
         const s = remotes.current.get(p.id);
         if (!s) continue;
-        list.push({ id: p.id, name: p.name, ink: p.ink, state: s });
+        list.push({ id: p.id, name: p.name, ink: p.ink, look: p.look, state: s });
       }
       handle.setRemotePlayers(list);
     };
