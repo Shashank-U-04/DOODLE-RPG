@@ -10,8 +10,7 @@ import { AudioFX } from "./audio";
 import { PAPER_FRAG } from "./shaders";
 import {
   INK,
-  INK_LIST,
-  INK_RGB,
+  INK_PALETTE,
   LIGHT_DIR_WORLD,
   PAPER,
   PAPER_RGB,
@@ -34,7 +33,7 @@ import { buildPyramid, type Mood, type PyramidMap } from "./pyramid";
 import type { MapId } from "./maps";
 import { makeBlobRig, makeMummyRig, makeRig, makeWaspRig, type Rig } from "./rig";
 import { decodeLook } from "./look";
-import { makeAvatar } from "./avatar";
+import { characterReady, loadCharacter, makeCharacterRig, type CharacterAnim } from "./characters";
 import type { NetCombatIntent, NetShotLanded } from "./types";
 import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
@@ -233,9 +232,8 @@ export function createGame(
       uLowHp: { value: 0 },
       uOutline: { value: 1 },
       uPaper: { value: new THREE.Vector3(...PAPER_RGB) },
-      uInks: {
-        value: INK_LIST.map((i) => new THREE.Vector3(...INK_RGB[i])),
-      },
+      // shared with every paper pass; model colours are added to it at runtime
+      uInkTex: { value: INK_PALETTE },
       uNear: { value: camera.near },
       uFar: { value: camera.far },
       uAspect: { value: 1 },
@@ -539,7 +537,7 @@ export function createGame(
    * Online over the match server: the server decides every hit, the damage and
    * our health. Our attacks become intents (cb.onNetCombat); remote hit
    * feedback waits for its confirmation (showNetHit); nothing local changes
-   * our health. Off for solo play and for the PeerJS match.
+   * our health. Off for solo play.
    */
   let serverCombat = false;
   const netAuthority = () => pvp.active && serverCombat;
@@ -1464,6 +1462,12 @@ export function createGame(
   // wears the renderer down over a long run of waves.
   const deadGeos = new Set<THREE.BufferGeometry>();
   const releaseRig = (root: THREE.Object3D) => {
+    // A loaded character model shares its meshes with every other player who
+    // picked it; only the weapon in its hand is this rig's own.
+    if (root.userData.sharedGeometry) {
+      (root.userData.own as THREE.Object3D | undefined)?.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+      return;
+    }
     root.traverse((o) => {
       const g = (o as THREE.Mesh).geometry;
       if (g) deadGeos.add(g);
@@ -1705,10 +1709,16 @@ export function createGame(
   };
 
   function buildRemoteRig(ink: InkId, weapon: string, lookCode = ""): Rig {
-    // Their own character from Customize Character; a player without one (or
-    // on an older build) is the default vest doodle in their room ink.
+    // Their own character from Customize Character. A player without one (or
+    // on an older build) is the default vest doodle in their room ink, and so
+    // is anyone whose model is still downloading; syncRemotePlayers swaps the
+    // real one in the moment it is ready.
     const look = decodeLook(lookCode);
-    if (look) return makeAvatar(look, RIG_WEAPON[weapon] ?? "rifle");
+    if (look) {
+      const body = makeCharacterRig(look.char, RIG_WEAPON[weapon] ?? "rifle");
+      if (body) return body;
+      void loadCharacter(look.char);
+    }
     return makeRig({
       ink,
       bodyW: 1,
@@ -1777,7 +1787,9 @@ export function createGame(
 
       // Draw them holding what they actually hold. A katana rendered as a rifle
       // (and firing muzzle puffs) is half of why the blade "looks like a gun".
-      if (a.weapon !== p.state.weapon || a.look !== (p.look ?? "")) {
+      const wanted = decodeLook(p.look ?? "");
+      const arrived = !!wanted && !(a.rig as { anim?: CharacterAnim }).anim && characterReady(wanted.char);
+      if (a.weapon !== p.state.weapon || a.look !== (p.look ?? "") || arrived) {
         a.weapon = p.state.weapon;
         a.look = p.look ?? "";
         const rebuilt = buildRemoteRig(a.ink, a.weapon, a.look);
@@ -1829,6 +1841,10 @@ export function createGame(
       a.rig.root.rotation.y = a.yaw + Math.PI;
       a.rig.root.visible = s.alive;
       if (!s.alive) continue;
+
+      // a character model runs its own clips; the limb code below then only
+      // moves its stand-in groups
+      (a.rig as { anim?: CharacterAnim }).anim?.update(dt, { moving: s.moving, firing: s.firing, weapon: RIG_WEAPON[a.weapon] ?? "rifle" });
 
       const P = a.rig.parts;
       a.walkAmt = damp(a.walkAmt, s.moving ? 1 : 0, 8, dt);

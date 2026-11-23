@@ -1,24 +1,14 @@
-// Customize Character: start from a ready-made character, then swap any item
-// from the library shelves (10 of each: hair, faces, hats, shirts, pants, shoes,
-// extras). Every change is saved in this browser straight away (no account
-// needed) and goes with you into online rooms, where friends see the same
-// character (src/game/look.ts, src/game/avatar.ts).
+// Customize Character: pick the battle character you play as online. The pick
+// is saved in this browser straight away (no account needed) and goes with you
+// into online rooms, where friends see the same character
+// (src/game/look.ts, src/game/characters.ts).
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import DotField from "@/components/DotField";
-import { createLockerPreview, createThumbnailer, type LockerPreview, type Thumbnailer } from "@/game/preview";
-import {
-  CHARACTERS,
-  SHELVES,
-  loadLook,
-  randomLook,
-  saveLook,
-  starterLook,
-  starterOf,
-  type Look,
-  type Slot,
-} from "@/game/look";
+import { createLockerPreview, type LockerPreview } from "@/game/preview";
+import { CHARACTER_LIST } from "@/game/characters";
+import { loadLook, saveLook } from "@/game/look";
 
 /** what the turntable can hand the character, by rig weapon id */
 const PREVIEW_GUNS: [string, string][] = [
@@ -29,83 +19,40 @@ const PREVIEW_GUNS: [string, string][] = [
   ["pistol", "Deagle"],
 ];
 
-/** the plain model every item card is pictured on: the ROOKIE without a hat */
-const MANNEQUIN: Look = { ...starterLook(0), hat: 0 };
-
 export default function Customize() {
   const navigate = useNavigate();
-  const [look, setLook] = useState<Look>(() => loadLook());
-  const [shelf, setShelf] = useState<Slot>("hair");
+  const [char, setChar] = useState(() => loadLook().char);
   const [weapon, setWeapon] = useState("rifle");
-  const [thumbs, setThumbs] = useState<Partial<Record<Slot, string[]>>>({});
   const stage = useRef<HTMLDivElement>(null);
   const preview = useRef<LockerPreview | null>(null);
-  const shooter = useRef<Thumbnailer | null>(null);
-  const drawn = useRef<Partial<Record<Slot, string[]>>>({});
-  const first = useRef(look);
-  // the last character picked from the row, so RESET knows where to go back to
-  const [base, setBase] = useState(() => Math.max(0, starterOf(look)));
+  const first = useRef(char);
 
   useEffect(() => {
     if (!stage.current) return;
     let p: LockerPreview | null = null;
-    let s: Thumbnailer | null = null;
     try {
       p = createLockerPreview(stage.current, first.current);
-      s = createThumbnailer();
     } catch (err) {
-      // no WebGL: the shelves still work (as names) and still save
+      // no WebGL: the cards still work (as names) and still save
       console.error("[customize] preview unavailable", err);
     }
     preview.current = p;
-    shooter.current = s;
     return () => {
       p?.dispose();
-      s?.dispose();
       preview.current = null;
-      shooter.current = null;
     };
   }, []);
 
-  // Item pictures, the open shelf first and then the rest, one card per tick
-  // so the page never stalls while they are drawn.
   useEffect(() => {
-    let cancelled = false;
-    const order = [shelf, ...SHELVES.map((s) => s.slot).filter((s) => s !== shelf)];
-    (async () => {
-      for (const slot of order) {
-        if (!shooter.current || cancelled) return;
-        if (drawn.current[slot]) continue;
-        const items = SHELVES.find((s) => s.slot === slot)!.items;
-        const urls: string[] = [];
-        for (let i = 0; i < items.length; i++) {
-          await new Promise((r) => setTimeout(r, 0));
-          if (cancelled || !shooter.current) return;
-          urls.push(shooter.current.shot({ ...MANNEQUIN, [slot]: i }, slot));
-        }
-        if (cancelled) return;
-        drawn.current[slot] = urls;
-        setThumbs({ ...drawn.current });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [shelf]);
-
-  useEffect(() => {
-    preview.current?.setLook(look);
-    saveLook(look);
-  }, [look]);
+    preview.current?.setCharacter(char);
+    saveLook({ char });
+  }, [char]);
 
   useEffect(() => {
     preview.current?.setWeapon(weapon);
   }, [weapon]);
 
-  const starter = starterOf(look);
-  const who = starter >= 0 ? CHARACTERS[starter] : null;
-  const open = SHELVES.find((s) => s.slot === shelf)!;
-  const pics = thumbs[shelf];
+  const who = CHARACTER_LIST[char] ?? CHARACTER_LIST[0];
 
   return (
     <div className="dd-landing">
@@ -113,13 +60,13 @@ export default function Customize() {
       <div className="dd-screen">
         <div className="panel dd-locker">
           <h1>CUSTOMIZE CHARACTER</h1>
-          <h2>pick a character · swap any item · friends see it online</h2>
+          <h2>pick your fighter · friends see it online</h2>
 
           <div className="lk-body">
             <div className="lk-left">
               <div className="lk-stage" ref={stage} data-testid="locker-stage" />
-              <div className="lk-name">{who ? who.name : "YOUR OWN"}</div>
-              <div className="lk-blurb">{who ? who.blurb : `started from ${CHARACTERS[base].name.toLowerCase()} · all yours now`}</div>
+              <div className="lk-name">{who.name}</div>
+              <div className="lk-blurb">{who.blurb}</div>
               <div className="lk-chips lk-weapons">
                 {PREVIEW_GUNS.map(([id, label]) => (
                   <button key={id} type="button" className={weapon === id ? "on" : ""} onClick={() => setWeapon(id)}>
@@ -131,58 +78,27 @@ export default function Customize() {
 
             <div className="lk-right">
               <div className="colhead">CHARACTERS</div>
-              <div className="lk-chars">
-                {CHARACTERS.map((c, i) => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    className={i === starter ? "on" : ""}
-                    onClick={() => {
-                      setBase(i);
-                      setLook(starterLook(i));
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-
-              <div className="lk-tabs">
-                {SHELVES.map((s) => (
-                  <button key={s.slot} type="button" className={shelf === s.slot ? "on" : ""} onClick={() => setShelf(s.slot)}>
-                    {s.title}
-                  </button>
-                ))}
-              </div>
-
-              <div className="lk-items" data-testid="locker-items">
-                {open.items.map((item, i) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={look[shelf] === i ? "on" : ""}
-                    onClick={() => setLook((l) => ({ ...l, [shelf]: i }))}
-                    title={item.label}
-                  >
-                    <span className="pic">{pics?.[i] ? <img src={pics[i]} alt="" draggable={false} /> : <i />}</span>
-                    <span className="lbl">{item.label}</span>
+              <div className="lk-items lk-roster" data-testid="locker-items">
+                {CHARACTER_LIST.map((c, i) => (
+                  <button key={c.id} type="button" className={i === char ? "on" : ""} onClick={() => setChar(i)} title={c.blurb}>
+                    {/* pre-drawn through the ink pass, so the page only downloads the model you pick */}
+                    <span className="pic">
+                      <img src={`/characters/thumbs/${c.id}.png`} alt="" draggable={false} loading="lazy" />
+                    </span>
+                    <span className="lbl">{c.name}</span>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="lk-note">saved in this browser · looks are cosmetic, everyone has the same hitbox</div>
+          <div className="lk-note">
+            saved in this browser · looks are cosmetic, everyone has the same hitbox · models by Quaternius, Polygonal Mind, mastjie, Vaporworks, J-Toastie and Zsky (CC0 / CC-BY 3.0, see /characters/CREDITS.md)
+          </div>
 
           <div className="mainbtns">
             <button type="button" onClick={() => navigate("/")}>
               DONE
-            </button>
-            <button type="button" onClick={() => setLook(randomLook())}>
-              SURPRISE ME
-            </button>
-            <button type="button" className="alt" disabled={starter === base} onClick={() => setLook(starterLook(base))}>
-              RESET TO {CHARACTERS[base].name}
             </button>
           </div>
         </div>

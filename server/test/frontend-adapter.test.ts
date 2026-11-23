@@ -1,7 +1,6 @@
 // The browser's lobby transport (src/game/colyseus.ts), driven against this
-// server under Node. This is the same class Online.tsx constructs when the
-// build sets VITE_NET_TRANSPORT=colyseus, so these tests cover the frontend
-// half of the lobby without a browser.
+// server under Node. This is the same class Online.tsx constructs, so these
+// tests cover the frontend half of the lobby without a browser.
 //
 // Excluded from this package's `tsc` (it would type-check the frontend's
 // Three.js code with the server's settings); the root `tsc -b` covers it.
@@ -23,7 +22,7 @@ import {
   WAKE_HINT_MS,
   type ColyseusSessionDeps,
 } from "../../src/game/colyseus.js";
-import { matchWinner, readColyseusUrl, readNetTransport } from "../../src/game/transport.js";
+import { matchWinner, readColyseusUrl } from "../../src/game/transport.js";
 import type { NetPlayerState, NetShotLanded } from "../../src/game/types.js";
 
 const URL = "http://localhost:2568";
@@ -103,11 +102,7 @@ describe("frontend Colyseus lobby adapter", () => {
     return { h, g };
   }
 
-  it("reads the transport flag (PeerJS unless explicitly colyseus)", () => {
-    assert.strictEqual(readNetTransport({}), "peerjs");
-    assert.strictEqual(readNetTransport({ VITE_NET_TRANSPORT: "" }), "peerjs");
-    assert.strictEqual(readNetTransport({ VITE_NET_TRANSPORT: "webrtc" }), "peerjs");
-    assert.strictEqual(readNetTransport({ VITE_NET_TRANSPORT: " Colyseus " }), "colyseus");
+  it("reads the match server URL", () => {
     assert.strictEqual(readColyseusUrl({ DEV: true }), "http://localhost:2567");
     assert.strictEqual(readColyseusUrl({}), null, "a production build never guesses a server");
     assert.strictEqual(readColyseusUrl({ VITE_COLYSEUS_URL: "https://mp.example.com/" }), "https://mp.example.com");
@@ -118,7 +113,7 @@ describe("frontend Colyseus lobby adapter", () => {
     const row = (id: string, kills: number, isMe = false) =>
       ({ id, name: id.toUpperCase(), ink: 0, isMe, isHost: false, kills, deaths: 0, state: {} as NetPlayerState, online: true, ready: true });
     const players = [row("a", 15), row("b", 3, true)];
-    // PeerJS: no server verdict, every client counts the score itself
+    // no server verdict: the score counted here decides
     assert.deepStrictEqual(matchWinner(players, undefined, 15), { id: "a", name: "A", kills: 15, isMe: false });
     assert.strictEqual(matchWinner([row("a", 14)], undefined, 15), null);
     // the server's word, not the score: undecided, decided, decided for us

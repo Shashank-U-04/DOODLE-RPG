@@ -1,56 +1,48 @@
-// Customize Character (src/pages/Customize.tsx): a character picked there is
-// saved in the browser, sent with the join, kept by the match server, named in
-// friends' lobby rosters, and built into their bodies in the arena without a
-// fault.
+// Customize Character (src/pages/Customize.tsx): the battle character picked
+// there is saved in the browser, sent with the join, kept by the match server,
+// named in friends' lobby rosters, and loaded as their body in the arena.
 import { expect, test } from "./fixtures";
 import { GUEST, HOST, intoArena, player } from "./helpers";
 
-// encodeLook(starterLook(6)) and a ROCKER wearing a top hat (src/game/look.ts)
-const NINJA = "208671893";
-const ROCKER_CUSTOM = "209445114";
+// encodeLook({ char }) for SWAT (0) and HAZMAT (2) (src/game/look.ts)
+const SWAT = "30";
+const HAZMAT = "32";
+const CHARACTERS = 20;
+// BANANA (15) has no skeleton of its own: the game rigs it at load time (src/game/autorig.ts)
+const BANANA = "3f";
 
-test("Customize Character saves what you pick, with no account", async ({ page }) => {
+test("Customize Character saves the fighter you pick, with no account", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /CUSTOMIZE CHARACTER/ }).click();
   await expect(page).toHaveURL(/\/customize$/);
   await expect(page.locator("[data-testid=locker-stage] canvas")).toBeVisible();
-  // every shelf holds ten items
-  for (const shelf of ["HAIR", "FACE", "HAT", "SHIRT", "PANTS", "SHOES", "EXTRA"]) {
-    await page.locator(".lk-tabs button", { hasText: shelf }).click();
-    await expect(page.locator("[data-testid=locker-items] button")).toHaveCount(10);
-  }
+  await expect(page.locator("[data-testid=locker-items] button")).toHaveCount(CHARACTERS);
 
-  await page.locator(".lk-chars button", { hasText: "NINJA" }).click();
-  await expect(page.locator(".lk-name")).toHaveText("NINJA");
-  expect(await page.evaluate(() => localStorage.getItem("dd_look"))).toBe(NINJA);
+  await page.locator("[data-testid=locker-items] button", { hasText: "HAZMAT" }).click();
+  await expect(page.locator(".lk-name")).toHaveText("HAZMAT");
+  expect(await page.evaluate(() => localStorage.getItem("dd_look"))).toBe(HAZMAT);
 
-  await page.locator(".lk-tabs button", { hasText: "HAT" }).click();
-  await page.locator("[data-testid=locker-items] button", { hasText: "top hat" }).click();
-  await expect(page.locator(".lk-name")).toHaveText("YOUR OWN");
-
-  // still there after a reload, and RESET goes back to the character it came from
   await page.reload();
-  await expect(page.locator(".lk-name")).toHaveText("YOUR OWN");
-  await page.locator(".lk-chars button", { hasText: "NINJA" }).click();
-  await page.locator(".lk-tabs button", { hasText: "SHOES" }).click();
-  await page.locator("[data-testid=locker-items] button", { hasText: "sandals" }).click();
-  await page.getByRole("button", { name: "RESET TO NINJA" }).click();
-  expect(await page.evaluate(() => localStorage.getItem("dd_look"))).toBe(NINJA);
+  await expect(page.locator(".lk-name")).toHaveText("HAZMAT");
+  await expect(page.locator("[data-testid=locker-items] button.on")).toContainText("HAZMAT");
 });
 
-test("friends' characters are built in the arena without a fault", async ({ browser }) => {
+test("a friend's fighter, even an auto-rigged one, is loaded as their body in the arena", async ({ browser }) => {
   const offHost: string[] = [];
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
-  await hostContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(NINJA)})`);
-  await guestContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(ROCKER_CUSTOM)})`);
+  await hostContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(SWAT)})`);
+  await guestContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(BANANA)})`);
   const host = await player(hostContext, HOST, offHost);
   const guest = await player(guestContext, GUEST, offHost);
   const errors: string[] = [];
   for (const page of [host, guest]) page.on("pageerror", (e) => errors.push(e.message));
 
+  // the host's game fetches the guest's model, and the guest's fetches the host's
+  const hostGetsBanana = host.waitForResponse((r) => r.url().endsWith("/characters/banana.glb") && r.ok(), { timeout: 60_000 });
+  const guestGetsSwat = guest.waitForResponse((r) => r.url().endsWith("/characters/swat.glb") && r.ok(), { timeout: 60_000 });
   await intoArena(host, guest);
-  // a bad look would throw while building the other player's body
+  await Promise.all([hostGetsBanana, guestGetsSwat]);
   await host.waitForTimeout(1500);
   expect(errors).toEqual([]);
 
@@ -58,12 +50,12 @@ test("friends' characters are built in the arena without a fault", async ({ brow
   await guestContext.close();
 });
 
-test("the lobby roster names each friend's character", async ({ browser }) => {
+test("the lobby roster names each friend's fighter", async ({ browser }) => {
   const offHost: string[] = [];
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
-  await hostContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(NINJA)})`);
-  await guestContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(ROCKER_CUSTOM)})`);
+  await hostContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(SWAT)})`);
+  await guestContext.addInitScript(`localStorage.setItem("dd_look", ${JSON.stringify(HAZMAT)})`);
   const host = await player(hostContext, HOST, offHost);
   const guest = await player(guestContext, GUEST, offHost);
 
@@ -73,8 +65,8 @@ test("the lobby roster names each friend's character", async ({ browser }) => {
   await guest.goto(`/online?room=${code}`);
   for (const page of [host, guest]) {
     await expect(page.locator(".dd-roster")).toContainText("IN THE ROOM (2)", { timeout: 20_000 });
-    await expect(page.locator(".dd-roster .row", { hasText: HOST })).toContainText("as NINJA");
-    await expect(page.locator(".dd-roster .row", { hasText: GUEST })).toContainText("custom look");
+    await expect(page.locator(".dd-roster .row", { hasText: HOST })).toContainText("as SWAT");
+    await expect(page.locator(".dd-roster .row", { hasText: GUEST })).toContainText("as HAZMAT");
   }
 
   await hostContext.close();

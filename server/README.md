@@ -1,14 +1,12 @@
 # Doodle Shooter — multiplayer server
 
 A [Colyseus](https://colyseus.io) 0.18 server for Doodle Shooter's online
-matches, part of the migration away from PeerJS (see
-[`../docs/colyseus-migration.md`](../docs/colyseus-migration.md)). It owns the
+matches (history: [`../docs/colyseus-migration.md`](../docs/colyseus-migration.md)). It owns the
 lobby: roster, player limit, ready flags, match rules, the decision to start,
 and reconnection — and, in the arena, every player's body (position, facing,
 movement state) within server-enforced limits, and all combat: clients send
 intent, the server decides hits, damage, health, deaths, respawns, scores and
-the winner. The frontend uses it only when built with
-`VITE_NET_TRANSPORT=colyseus`; PeerJS is still the default.
+the winner. It is the game's only online transport.
 
 It is a standalone npm package with its own `package-lock.json`. The root
 frontend build, lint and Vercel deployment do not touch this folder.
@@ -31,8 +29,8 @@ npm start          # tsx watch on http://localhost:2567
 - `/monitor` shows the Colyseus room monitor in development only. It is not
   mounted when `NODE_ENV=production`.
 
-To try it with the game, run the frontend with the flag (from the repo root):
-`VITE_NET_TRANSPORT=colyseus bun run dev`, then open `/online` in two browsers.
+To try it with the game, run the frontend (from the repo root): `bun run dev`,
+then open `/online` in two browsers.
 
 ## Scripts
 
@@ -226,7 +224,7 @@ default 4).
 `start` is refused with `not-host`, `not-in-lobby`, `no-guests` (nobody to play),
 `guest-reconnecting` (a guest's seat is held for a reconnection) or
 `guests-not-ready`. On success `phase` becomes `playing`; lobby messages are
-ignored from then on. Players can still join a running match, as with PeerJS.
+ignored from then on. Players can still join a running match.
 
 A payload that fails validation disconnects its sender.
 

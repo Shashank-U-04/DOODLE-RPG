@@ -28,7 +28,7 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 describe("waking the match server from the menus", () => {
   let clock = 1_000_000;
-  const deps = (extra: Partial<WakeDeps> = {}): WakeDeps => ({ url: URL, transport: "colyseus", now: () => clock, ...extra });
+  const deps = (extra: Partial<WakeDeps> = {}): WakeDeps => ({ url: URL, now: () => clock, ...extra });
 
   beforeEach(() => {
     resetWakeForTests();
@@ -47,9 +47,8 @@ describe("waking the match server from the menus", () => {
     assert.strictEqual(healthUrl("http://localhost:2567"), "http://localhost:2567/health");
   });
 
-  it("sends nothing in a PeerJS build or without a server URL", () => {
+  it("sends nothing without a server URL", () => {
     const r = recorder();
-    assert.strictEqual(wakeMatchServer(deps({ transport: "peerjs", fetch: r.fetch })), false);
     assert.strictEqual(wakeMatchServer(deps({ url: null, fetch: r.fetch })), false);
     assert.strictEqual(wakeMatchServer(deps({ url: "", fetch: r.fetch })), false);
     assert.strictEqual(r.sent.length, 0);

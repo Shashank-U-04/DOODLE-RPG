@@ -4,7 +4,7 @@
 //   test-only fixtures (server/src/e2e.ts) and only the test frontend's origin
 //   allowed;
 // - a production build of the frontend (the same path a Vercel Preview takes:
-//   `vite build` with VITE_NET_TRANSPORT / VITE_COLYSEUS_URL baked in), served
+//   `vite build` with VITE_COLYSEUS_URL baked in), served
 //   by `vite preview` on E2E_WEB_PORT from its own output folder;
 // - no Convex or editor-bridge configuration at all (the Convex variables are
 //   forced empty), so the build proves the game starts without them
@@ -69,7 +69,6 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 180_000,
       env: {
-        VITE_NET_TRANSPORT: "colyseus",
         VITE_COLYSEUS_URL: E2E_SERVER,
         // empty even if the shell running the tests has them set
         VITE_CONVEX_URL: "",

@@ -1,26 +1,69 @@
-// Which transport carries online play, and the surface the pages use from it.
-//
-// PeerJS (src/game/net.ts) is the default. `VITE_NET_TRANSPORT=colyseus` opts a
-// build into the Colyseus lobby (src/game/colyseus.ts), which talks to the
-// server in server/. Anything else, including unset, keeps PeerJS.
-//
-// Kept free of browser globals so the server's tests can import it under Node.
+// The online match session: what the pages use from it, and the shapes it
+// hands them. Online play runs on the Colyseus match server (src/game/colyseus.ts,
+// server/). Kept free of browser globals so the server's tests can import it
+// under Node.
 
 import type { MatchConfig } from "./maps";
-import type { NetHandlers, NetPlayer } from "./net";
 import type { NetCombatIntent, NetPlayerState, NetShotLanded, NetShotOrigin } from "./types";
 
-export type NetTransport = "peerjs" | "colyseus";
+/** the connection's state, as the lobby shows it */
+export type SignalState = "idle" | "connecting" | "open" | "retrying" | "lost" | "closed";
+
+/** One player as the lobby and the scoreboard see them. */
+export type NetPlayer = {
+  id: string;
+  name: string;
+  /** ink palette index, so every player reads as a different doodle */
+  ink: number;
+  /** their Locker look code (src/game/look.ts); unset or "" draws the default */
+  look?: string;
+  isMe: boolean;
+  isHost: boolean;
+  kills: number;
+  deaths: number;
+  state: NetPlayerState;
+  /** false once their state stops arriving (closed tab, lost connection, …) */
+  online: boolean;
+  /** lobby ready state; the host is always ready */
+  ready: boolean;
+};
+
+/** What a session reports back to the page. */
+export type NetHandlers = {
+  /** a remote player's transform arrived — hand it straight to the engine */
+  onRemoteState?: (id: string, state: NetPlayerState) => void;
+  /**
+   * Someone's shot landed on us. `epoch` is the generation of our body the
+   * shooter aimed at (so a hit that predates our respawn can be dropped) and
+   * `origin` is where the shot came from (so its path can be checked).
+   */
+  onHitMe?: (dmg: number, killerId: string, epoch: number, origin: NetShotOrigin) => void;
+  onDeath?: (victimId: string, killerId: string) => void;
+  onRespawn?: (id: string, epoch: number) => void;
+  /** the host restarted the match: clear the scoreboard and drop the overlay */
+  onRematch?: () => void;
+  /** our measured half round trip changed — feed it to the engine's aim model */
+  onLatency?: (ms: number) => void;
+  /** the host said go; adopt `config` if it is present (it is authoritative) */
+  onStart?: (config?: MatchConfig) => void;
+  /** the host's match rules changed, or arrived for the first time */
+  onConfig?: (config: MatchConfig) => void;
+  onFeed?: (text: string, hot: boolean) => void;
+  onStatus?: (text: string) => void;
+  /** the connection's state changed — separate from errors */
+  onSignal?: (state: SignalState, detail?: string) => void;
+  onError?: (text: string) => void;
+  /** the roster or a score changed — re-render */
+  onChange?: () => void;
+  /** a peer left (cleanly, or by going silent) — drop whatever we cached for them */
+  onPeerGone?: (id: string) => void;
+};
 
 type Env = Record<string, unknown>;
 
 /** `import.meta.env` under Vite; empty under plain Node (scripts, tests). */
 export function viteEnv(): Env {
   return ((import.meta as { env?: Env }).env ?? {}) as Env;
-}
-
-export function readNetTransport(env: Env): NetTransport {
-  return String(env.VITE_NET_TRANSPORT ?? "").trim().toLowerCase() === "colyseus" ? "colyseus" : "peerjs";
 }
 
 /** The local server from server/README.md; only ever used by a development build. */
@@ -37,8 +80,6 @@ export function readColyseusUrl(env: Env): string | null {
   return env.DEV ? DEV_COLYSEUS_URL : null;
 }
 
-export const NET_TRANSPORT: NetTransport = readNetTransport(viteEnv());
-
 /** Who took the match, as the arena's overlay shows it. */
 export type MatchWinner = { id: string; name: string; kills: number; isMe: boolean };
 
@@ -47,8 +88,8 @@ export type MatchWinner = { id: string; name: string; kills: number; isMe: boole
  *
  * A server-refereed session names it (`winnerId`, "" while undecided), and its
  * word stands even if the winner has since left: combat stays stopped until a
- * rematch, so the overlay must stay up for the host. Otherwise (PeerJS) every
- * client derives it from the score it counted itself.
+ * rematch, so the overlay must stay up for the host. A session that names
+ * no referee (undefined) falls back to the score counted here.
  */
 export function matchWinner(players: NetPlayer[], winnerId: string | undefined, killsToWin: number): MatchWinner | null {
   if (winnerId === undefined) {
@@ -62,10 +103,7 @@ export function matchWinner(players: NetPlayer[], winnerId: string | undefined, 
     : { id: winnerId, name: "A PLAYER WHO LEFT", kills: killsToWin, isMe: false };
 }
 
-/**
- * Callbacks a session may call. The PeerJS session only ever uses NetHandlers;
- * the server-authoritative ones are the Colyseus session's.
- */
+/** Callbacks a session may call, including the server-authoritative combat ones. */
 export type MatchHandlers = NetHandlers & {
   /** the server confirmed one of our attacks landed */
   onShotLanded?: (hit: NetShotLanded) => void;
@@ -77,10 +115,7 @@ export type MatchHandlers = NetHandlers & {
   onLost?: (text: string) => void;
 };
 
-/**
- * Everything Online.tsx uses from a session. NetSession satisfies it as is;
- * ColyseusSession implements it over the server.
- */
+/** Everything Online.tsx uses from a session; ColyseusSession implements it over the server. */
 export interface MatchSession {
   readonly code: string;
   readonly isHost: boolean;

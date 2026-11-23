@@ -1,5 +1,4 @@
-// Online lobby over the Colyseus match server (server/), behind
-// VITE_NET_TRANSPORT=colyseus. PeerJS (net.ts) stays the default.
+// Online play over the Colyseus match server (server/).
 //
 // The server owns the roster, ready flags, match rules and the decision to
 // start; this class only mirrors its state into the shape Online.tsx already
@@ -8,8 +7,8 @@
 // In the arena, our engine's body goes up as a `move` message MOVE_RATE_HZ
 // times a second and every other body comes back in the room state, as the
 // server validated it (server/src/movement.ts), through the same
-// onRemoteState/onPeerGone callbacks the PeerJS transport uses — so the engine
-// draws remote players exactly as it does over WebRTC.
+// onRemoteState/onPeerGone callbacks, so the engine draws remote players from
+// one path whatever their source.
 //
 // Combat is the server's (server/src/rooms/Combat.ts): the engine's attacks
 // arrive here as intents and go up with a shot id and a lag estimate; the
@@ -23,7 +22,7 @@
 
 import type { Client, Room } from "@colyseus/sdk";
 import { normalizeMatchConfig, type MatchConfig } from "./maps";
-import type { NetPlayer, SignalState } from "./net";
+import type { NetPlayer, SignalState } from "./transport";
 import type { NetCombatIntent, NetPlayerState, NetShotOrigin } from "./types";
 import { readColyseusUrl, viteEnv, type MatchHandlers, type MatchSession } from "./transport";
 import {
@@ -37,7 +36,7 @@ import {
 import { wakeMatchServer } from "./wake";
 import { MOVE_RATE_HZ, NAME_MAX, RECONNECT_SECONDS, SERVER_CLOSING_MESSAGE } from "../../server/src/shared/rules.js";
 
-/** sessionStorage key for this tab's seat; separate from the PeerJS lease. */
+/** sessionStorage key for this tab's seat. */
 export const SEAT_KEY = "dd_colyseus_seat";
 /** A stored seat older than this is not worth a reconnection attempt. */
 const SEAT_TTL_MS = 6 * 60 * 60 * 1000;
@@ -262,7 +261,7 @@ export function leaveRoom(room: Room): Promise<number> {
   return left;
 }
 
-// The SDK chunk, loaded once per page, on demand: a PeerJS build never downloads it.
+// The SDK chunk, loaded once per page, on demand: solo play never downloads it.
 let sdkLoad: Promise<typeof import("@colyseus/sdk")> | null = null;
 function loadSdk() {
   sdkLoad ??= import("@colyseus/sdk").catch((err) => {
@@ -282,7 +281,7 @@ function loadSdk() {
 export function warmColyseus(url: string | null = readColyseusUrl(viteEnv())) {
   if (!url) return;
   void loadSdk().catch(() => {});
-  wakeMatchServer({ url, transport: "colyseus" });
+  wakeMatchServer({ url });
 }
 
 export type ColyseusSessionDeps = {
@@ -417,7 +416,7 @@ export class ColyseusSession implements MatchSession {
   private async boot() {
     if (!this.url) {
       this.fail(
-        "VITE_COLYSEUS_URL is not set, so this build has no match server to use. Set it, or build without VITE_NET_TRANSPORT=colyseus.",
+        "VITE_COLYSEUS_URL is not set, so this build has no match server to use. Set it to the match server's URL.",
       );
       return;
     }
@@ -984,8 +983,8 @@ export class ColyseusSession implements MatchSession {
     this.handlers.onHealth?.(hp, alive, this.killedBy);
   }
 
-  // The server keeps the score and decides deaths and respawns; these PeerJS
-  // reports have nothing to do here.
+  // The server keeps the score and decides deaths and respawns; these
+  // client-side reports (part of MatchSession) have nothing to do here.
   reportHit() {}
   reportDeath() {}
   reportRespawn() {}
