@@ -44,7 +44,7 @@ export default function Setup() {
 
   // Play with friends (from the title, or switched to here): wake a sleeping
   // match server before the player reaches the lobby (src/game/wake.ts).
-  // Fire-and-forget and throttled; solo play and PeerJS builds send nothing.
+  // Fire-and-forget and throttled; solo play sends nothing.
   useEffect(() => {
     if (mode === "friends") wakeMatchServer();
   }, [mode]);

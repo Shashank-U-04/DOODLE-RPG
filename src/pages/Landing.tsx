@@ -33,7 +33,7 @@ export default function Landing() {
   }, [navigate]);
   const online = useCallback(() => {
     // Start waking a sleeping match server while the player sets up the room
-    // (src/game/wake.ts). Fire-and-forget; solo play and PeerJS builds send nothing.
+    // (src/game/wake.ts). Fire-and-forget; solo play sends nothing.
     wakeMatchServer();
     navigate("/setup?mode=friends");
   }, [navigate]);

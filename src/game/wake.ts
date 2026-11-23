@@ -16,7 +16,7 @@
 // Kept small and free of the SDK, so the title screen can use it without
 // pulling in the lobby's code.
 
-import { NET_TRANSPORT, readColyseusUrl, viteEnv, type NetTransport } from "./transport";
+import { readColyseusUrl, viteEnv } from "./transport";
 
 /**
  * A knock within this long of the last one is skipped. PLAY WITH FRIENDS, the
@@ -29,8 +29,6 @@ export const WAKE_REPEAT_MS = 60_000;
 export type WakeDeps = {
   /** server URL; defaults to VITE_COLYSEUS_URL (or the local server in dev) */
   url?: string | null;
-  /** which transport the build uses; defaults to VITE_NET_TRANSPORT */
-  transport?: NetTransport;
   now?: () => number;
   fetch?: (input: string, init: RequestInit) => Promise<unknown>;
 };
@@ -45,13 +43,12 @@ export function healthUrl(url: string): string {
 
 /**
  * Knock on the match server so it is awake by the time the player creates or
- * joins a room. Does nothing in a PeerJS build, without a server URL, or within
+ * joins a room. Does nothing without a server URL, or within
  * WAKE_REPEAT_MS of the last knock. Never throws and never blocks: the request
  * runs on its own. Returns whether a request went out.
  */
 export function wakeMatchServer(deps: WakeDeps = {}): boolean {
   try {
-    if ((deps.transport ?? NET_TRANSPORT) !== "colyseus") return false;
     const url = deps.url === undefined ? readColyseusUrl(viteEnv()) : deps.url;
     if (!url) return false;
     const now = (deps.now ?? Date.now)();

@@ -537,7 +537,7 @@ export function createGame(
    * Online over the match server: the server decides every hit, the damage and
    * our health. Our attacks become intents (cb.onNetCombat); remote hit
    * feedback waits for its confirmation (showNetHit); nothing local changes
-   * our health. Off for solo play and for the PeerJS match.
+   * our health. Off for solo play.
    */
   let serverCombat = false;
   const netAuthority = () => pvp.active && serverCombat;
