@@ -8,8 +8,10 @@
 // every time, so the loss is in the hosting path.
 //
 // Colyseus' consented leave relies on the server's close (code 4000). Through
-// that path the SDK saw 1006, took it for a dropped connection and spent about
-// a minute reconnecting to a seat the server had already removed.
+// that path SDK 0.18.5 saw 1006, took it for a dropped connection and spent
+// about a minute reconnecting to a seat the server had already removed. 0.18.10
+// reports the leave correctly, but only once the path drops the socket, so the
+// game still closes the socket itself (leaveRoom).
 //
 // `lossyProxy` reproduces the path: it forwards HTTP and WebSocket traffic, but
 // a close from the server is not passed on; the client's connection is torn
@@ -150,7 +152,10 @@ describe("leaving through a hosting path that loses server-initiated closes", ()
     return s;
   };
 
-  it("reproduces the fault: the SDK's own leave gets no close, then an abnormal 1006", async () => {
+  // The fault leaveRoom exists for. SDK 0.18.5 reported 1006 here and went on
+  // to reconnect; 0.18.10 knows it was leaving and reports CONSENTED, but it
+  // still hears nothing until the path drops the socket (Render: ~20 s).
+  it("reproduces the fault: the SDK's own leave gets no close until the path drops the socket", async () => {
     const room = await new Client(proxy.url).create("match", { name: "CONTROL" });
     room.reconnection.enabled = false;
     const closes: number[] = [];
@@ -159,7 +164,7 @@ describe("leaving through a hosting path that loses server-initiated closes", ()
     await pause(DROP_AFTER_MS - 300);
     assert.deepStrictEqual(closes, [], "no close arrives while the path holds the socket");
     await eventually(() => closes.length > 0, "the path drops the socket", DROP_AFTER_MS + 2000);
-    assert.strictEqual(closes[0], 1006);
+    assert.deepStrictEqual(closes, [CONSENTED], "taken as the leave it was, not a dropped connection");
   });
 
   it("leaveRoom completes at once with CONSENTED, and the server took it as a leave", async () => {

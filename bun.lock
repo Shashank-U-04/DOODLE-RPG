@@ -5,7 +5,7 @@
     "": {
       "name": "vite-template",
       "dependencies": {
-        "@colyseus/sdk": "^0.18.5",
+        "@colyseus/sdk": "^0.18.10",
         "@tailwindcss/vite": "^4.1.17",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
@@ -80,7 +80,7 @@
 
     "@colyseus/schema": ["@colyseus/schema@5.0.42", "", { "peerDependencies": { "typescript": ">=5.0.0" }, "optionalPeers": ["typescript"], "bin": { "schema-debug": "bin/schema-debug", "schema-codegen": "bin/schema-codegen" } }, "sha512-Ovkt5p5p3slr5197WRFHOxf+UNO9qv6MvAHX8+qkecd5hUPLXQN/aWqbACf3/E5C/oimQvZCCav0baOMQffqDA=="],
 
-    "@colyseus/sdk": ["@colyseus/sdk@0.18.5", "", { "dependencies": { "@colyseus/better-call": "^1.3.1", "@colyseus/schema": "^5.0.8", "@colyseus/shared-types": "^0.18.3", "msgpackr": "^2.0.1", "tslib": "^2.1.0", "ws": "^8.13.0" }, "peerDependencies": { "@colyseus/core": "0.18.x" }, "optionalPeers": ["@colyseus/core"] }, "sha512-wHlUCq+oPeiI74mNM5p6yr8WE5EBJXwNxVIPnov7D8+Q/F6p7dyjWec3PfKOSv9or3uP5OjsCYKPwlC2hkxlHQ=="],
+    "@colyseus/sdk": ["@colyseus/sdk@0.18.10", "", { "dependencies": { "@colyseus/better-call": "^1.3.1", "@colyseus/schema": "^5.0.8", "@colyseus/shared-types": "^0.18.2", "msgpackr": "^2.0.1", "tslib": "^2.1.0", "ws": "^8.13.0" }, "peerDependencies": { "@colyseus/core": "0.18.x" }, "optionalPeers": ["@colyseus/core"] }, "sha512-9pjLukU2tqKRqcHSijrK/n3VJdeCnm1W/pNGWgc8HSecJkjnv+YKqf6dpYRkF2PPmv0sltxmGfXpIM2viJafvg=="],
 
     "@colyseus/shared-types": ["@colyseus/shared-types@0.18.3", "", { "dependencies": { "@standard-schema/spec": "^1.0.0" } }, "sha512-Kye6Lmpd4RXY52Ro8NawurUKMNagkNfAdV79Dx/cdWib1LrNW4e94JOtl9HIxy4QYVdHlkxc2m5ZjcwQXekWng=="],
 
