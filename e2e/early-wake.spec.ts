@@ -36,7 +36,9 @@ async function createFromTitle(page: Page): Promise<string> {
   return (await page.locator(".dd-netcode").textContent())!.trim();
 }
 
-test("opening the title screen sends nothing; PLAY WITH FRIENDS wakes the server, once for the whole way in", async ({ browser }) => {
+test("opening the title screen sends nothing; PLAY WITH FRIENDS wakes the server, once for the whole way in", async ({
+  browser,
+}) => {
   const offHost: string[] = [];
   const context = await browser.newContext();
   const page = await player(context, HOST, offHost);

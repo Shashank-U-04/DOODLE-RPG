@@ -5,7 +5,16 @@
 // the server does with them: normalising a create request, sanitising names,
 // handing out inks.
 
-import { DEFAULT_MAP, INK_COUNT, isMapId, LOOK_MAX, MAX_PLAYERS, MIN_PLAYERS, NAME_MAX, type MapId } from "./shared/rules.js";
+import {
+  DEFAULT_MAP,
+  INK_COUNT,
+  isMapId,
+  LOOK_MAX,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  NAME_MAX,
+  type MapId,
+} from "./shared/rules.js";
 
 export {
   CODE_ALPHABET,

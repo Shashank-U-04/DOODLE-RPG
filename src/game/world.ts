@@ -155,7 +155,8 @@ export function makeInkMaterial(
 ): THREE.ShaderMaterial {
   // The ink index gets its own byte: the palette grew past 8, so packing it
   // into the low bits would make `SAND` collide with a filled `BLUE`.
-  const key = ink * 128 + (fill ? 8 : 0) + (side === THREE.BackSide ? 16 : side === THREE.DoubleSide ? 32 : 0) + (flat ? 64 : 0);
+  const key =
+    ink * 128 + (fill ? 8 : 0) + (side === THREE.BackSide ? 16 : side === THREE.DoubleSide ? 32 : 0) + (flat ? 64 : 0);
   const cached = inkMaterials.get(key);
   if (cached) return cached;
   const made = new THREE.ShaderMaterial({
@@ -199,14 +200,7 @@ export function makeSoftInkMaterial(ink: InkId): THREE.ShaderMaterial {
 
 export type AABB = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
-export function box(
-  w: number,
-  h: number,
-  d: number,
-  x: number,
-  y: number,
-  z: number,
-): AABB {
+export function box(w: number, h: number, d: number, x: number, y: number, z: number): AABB {
   return { minX: x - w / 2, maxX: x + w / 2, minY: y, maxY: y + h, minZ: z - d / 2, maxZ: z + d / 2 };
 }
 
@@ -489,17 +483,9 @@ export function resolveMove(
         // body was already inside it, clamping would drag us through the wall
         // to the far side — often into the next box, where two opposing
         // clamps pinned the player permanently. Leave those to depenetration.
-        const wasInside = hits(
-          axis === "x" ? saved : pos.x,
-          pos.y,
-          axis === "z" ? saved : pos.z,
-          c,
-        );
+        const wasInside = hits(axis === "x" ? saved : pos.x, pos.y, axis === "z" ? saved : pos.z, c);
         if (wasInside) continue;
-        pos[axis] =
-          delta > 0
-            ? (axis === "x" ? c.minX : c.minZ) - radius
-            : (axis === "x" ? c.maxX : c.maxZ) + radius;
+        pos[axis] = delta > 0 ? (axis === "x" ? c.minX : c.minZ) - radius : (axis === "x" ? c.maxX : c.maxZ) + radius;
         vel[axis] = 0;
         hitWall = true;
       }

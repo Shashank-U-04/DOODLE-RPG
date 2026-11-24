@@ -13,7 +13,11 @@ import { loadCharacter, makeCharacterRig } from "./characters";
  * the paper pass, for a renderer of our own
  * ------------------------------------------------------------------ */
 
-type Paper = { resize(w: number, h: number): void; render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void; dispose(): void };
+type Paper = {
+  resize(w: number, h: number): void;
+  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void;
+  dispose(): void;
+};
 
 function paperPass(renderer: THREE.WebGLRenderer): Paper {
   const newDepth = (w: number, h: number) => {
@@ -102,7 +106,8 @@ function paperPass(renderer: THREE.WebGLRenderer): Paper {
 
 type Body = NonNullable<ReturnType<typeof makeCharacterRig>>;
 /** a character's own parts: only the weapon geometry; the model is shared */
-const releaseBody = (b: Body) => (b.root.userData.own as THREE.Object3D | undefined)?.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+const releaseBody = (b: Body) =>
+  (b.root.userData.own as THREE.Object3D | undefined)?.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
 
 /* ------------------------------------------------------------------ *
  * the turntable

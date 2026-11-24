@@ -104,7 +104,14 @@ export type NetCombatIntent =
   | { kind: "reload"; weapon: string };
 
 /** The server confirmed one of our attacks landed: draw the splash and the hitmarker. */
-export type NetShotLanded = { x: number; y: number; z: number; head: boolean; kill: boolean; /** a katana hit charges the focus meter */ focus: boolean };
+export type NetShotLanded = {
+  x: number;
+  y: number;
+  z: number;
+  head: boolean;
+  kill: boolean;
+  /** a katana hit charges the focus meter */ focus: boolean;
+};
 
 /** A remote player the engine should draw this frame. */
 export type NetRemotePlayer = {

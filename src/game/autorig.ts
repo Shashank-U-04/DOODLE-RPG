@@ -48,7 +48,9 @@ function bake(scene: THREE.Object3D, paint: boolean): Baked {
     if (paint) paintMesh(tmp);
     let g = tmp.geometry.index ? tmp.geometry.toNonIndexed() : tmp.geometry;
     if (!g.getAttribute("normal")) g.computeVertexNormals();
-    const groups = g.groups.length ? g.groups : [{ start: 0, count: g.getAttribute("position").count, materialIndex: 0 }];
+    const groups = g.groups.length
+      ? g.groups
+      : [{ start: 0, count: g.getAttribute("position").count, materialIndex: 0 }];
     const tm = Array.isArray(tmp.material) ? tmp.material : [tmp.material];
     const base = mats.length;
     mats.push(...tm);
@@ -82,7 +84,9 @@ function normalise(geo: THREE.BufferGeometry): THREE.Matrix4 {
   const s = H / Math.max(1e-6, b.max.y - b.min.y);
   const m = new THREE.Matrix4()
     .makeScale(s, s, s)
-    .premultiply(new THREE.Matrix4().makeTranslation(-((b.min.x + b.max.x) / 2) * s, -b.min.y * s, -((b.min.z + b.max.z) / 2) * s));
+    .premultiply(
+      new THREE.Matrix4().makeTranslation(-((b.min.x + b.max.x) / 2) * s, -b.min.y * s, -((b.min.z + b.max.z) / 2) * s),
+    );
   geo.applyMatrix4(m);
   return m;
 }
@@ -94,14 +98,19 @@ function normalise(geo: THREE.BufferGeometry): THREE.Matrix4 {
  */
 function alignArms(geo: THREE.BufferGeometry) {
   const pos = geo.getAttribute("position") as THREE.BufferAttribute;
-  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  let x0 = Infinity,
+    x1 = -Infinity,
+    z0 = Infinity,
+    z1 = -Infinity;
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
     if (y < 0.45 * H || y > 0.9 * H) continue;
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    x0 = Math.min(x0, x); x1 = Math.max(x1, x);
-    z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    x0 = Math.min(x0, x);
+    x1 = Math.max(x1, x);
+    z0 = Math.min(z0, z);
+    z1 = Math.max(z1, z);
   }
   if (z1 - z0 > (x1 - x0) * 1.2) {
     geo.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI / 2));
@@ -269,7 +278,11 @@ const SPINE = ["Hips", "Abdomen", "Torso", "Chest", "Neck", "Head"];
  * Rig a statue with the donor's skeleton and clips. Returns a scene holding
  * the skinned, ink-painted mesh and the armature, plus clips that drive it.
  */
-export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: boolean } = {}): { scene: THREE.Group; clips: THREE.AnimationClip[] } {
+export function autorig(
+  statue: THREE.Object3D,
+  donor: Donor,
+  opts: { paint?: boolean } = {},
+): { scene: THREE.Group; clips: THREE.AnimationClip[] } {
   /* ---- the statue, baked and measured ---- */
   const target = bake(statue, opts.paint !== false);
   normalise(target.geo);
@@ -309,8 +322,8 @@ export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: bo
 
   // which side is ".L": the donor's left wrist sits at +x or -x
   const sideL = (wpos(bone("Wrist.L")!).x >= 0 ? 1 : -1) as 1 | -1;
-  const handOf = (m: Marks, s: "L" | "R") => ((s === "L") === (sideL > 0) ? m.handP : m.handN);
-  const toeOf = (m: Marks, s: "L" | "R") => ((s === "L") === (sideL > 0) ? m.toeP : m.toeN);
+  const handOf = (m: Marks, s: "L" | "R") => ((s === "L") === sideL > 0 ? m.handP : m.handN);
+  const toeOf = (m: Marks, s: "L" | "R") => ((s === "L") === sideL > 0 ? m.toeP : m.toeN);
 
   /** donor height → statue height, through the landmarks */
   const ys = [0, D.crotch, D.shoulderY, D.neck, H];
@@ -339,7 +352,11 @@ export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: bo
   for (const s of ["L", "R"] as const) {
     const sgn = s === "L" ? sideL : -sideL;
     const sh = restD.get(bn(`Shoulder.${s}`));
-    if (sh) want.set(bn(`Shoulder.${s}`), new THREE.Vector3(sh.x * (T.shoulderX / Math.max(1e-6, D.shoulderX)), mapY(sh.y), sh.z));
+    if (sh)
+      want.set(
+        bn(`Shoulder.${s}`),
+        new THREE.Vector3(sh.x * (T.shoulderX / Math.max(1e-6, D.shoulderX)), mapY(sh.y), sh.z),
+      );
     // the arm: each joint keeps its fraction of the way from shoulder to hand tip
     const sD = restD.get(bn(`UpperArm.${s}`))!;
     const tD = handOf(D, s);
@@ -412,7 +429,10 @@ export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: bo
   if (bodyB && bodyB.parent) {
     bodyB.parent.updateMatrixWorld(true);
     // Body sits where the donor's does relative to its hips
-    const off = restD.get(bn("Body"))!.clone().sub(restD.get(bn("Hips"))!);
+    const off = restD
+      .get(bn("Body"))!
+      .clone()
+      .sub(restD.get(bn("Hips"))!);
     want.set(bn("Body"), hipsT.clone().add(off));
     place("Body");
   }
@@ -440,7 +460,10 @@ export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: bo
   const index = new Map(bones.map((b, i) => [b.name, i]));
   type Chain = { bones: number[]; pts: THREE.Vector3[]; before?: number };
   const J = (k: string) => want.get(bn(k)) ?? want.get(k)!;
-  const spineChain: Chain = { bones: SPINE.map((s) => index.get(bn(s))!), pts: [...SPINE.map((s) => J(s)), J("__top")] };
+  const spineChain: Chain = {
+    bones: SPINE.map((s) => index.get(bn(s))!),
+    pts: [...SPINE.map((s) => J(s)), J("__top")],
+  };
   const armChain = (s: "L" | "R"): Chain => ({
     bones: ["UpperArm", "LowerArm", "Wrist"].map((j) => index.get(bn(`${j}.${s}`))!),
     pts: [J(`UpperArm.${s}`), J(`LowerArm.${s}`), J(`Wrist.${s}`), J(`__hand.${s}`)],
@@ -481,7 +504,7 @@ export function autorig(statue: THREE.Object3D, donor: Donor, opts: { paint?: bo
   const p = new THREE.Vector3();
   for (let v = 0; v < pos.count; v++) {
     p.fromBufferAttribute(pos, v);
-    const s: "L" | "R" = (p.x >= 0) === (sideL > 0) ? "L" : "R";
+    const s: "L" | "R" = p.x >= 0 === sideL > 0 ? "L" : "R";
     let ch: Chain = spineChain;
     if (p.y < T.neck - 0.01) {
       const dS = nearest(spineChain, p).d / trunkR;

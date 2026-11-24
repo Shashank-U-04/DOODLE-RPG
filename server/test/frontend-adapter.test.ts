@@ -57,8 +57,20 @@ type Tab = {
   configs: string[];
 };
 
-function open(code: string, name: string, isHost: boolean, storage = new TabStorage(), extra: ColyseusSessionDeps = {}): Tab {
-  const session = new ColyseusSession(code, name, isHost, { map: "district", grapple: true }, { url: URL, storage, ...extra });
+function open(
+  code: string,
+  name: string,
+  isHost: boolean,
+  storage = new TabStorage(),
+  extra: ColyseusSessionDeps = {},
+): Tab {
+  const session = new ColyseusSession(
+    code,
+    name,
+    isHost,
+    { map: "district", grapple: true },
+    { url: URL, storage, ...extra },
+  );
   const tab: Tab = { session, storage, errors: [], starts: 0, configs: [] };
   session.setHandlers({
     onError: (t) => tab.errors.push(t),
@@ -73,7 +85,9 @@ const count = (tab: Tab) => tab.session.getPlayers().length;
 
 /** Close the tab's socket without a goodbye, as a reload does. */
 async function reload(tab: Tab) {
-  const room = (tab.session as unknown as { room: { reconnection: { enabled: boolean }; leave(c: boolean): Promise<number> } }).room;
+  const room = (
+    tab.session as unknown as { room: { reconnection: { enabled: boolean }; leave(c: boolean): Promise<number> } }
+  ).room;
   room.reconnection.enabled = false;
   await room.leave(false);
 }
@@ -110,8 +124,18 @@ describe("frontend Colyseus lobby adapter", () => {
   });
 
   it("takes the winner from the server when it names one, from the score otherwise", () => {
-    const row = (id: string, kills: number, isMe = false) =>
-      ({ id, name: id.toUpperCase(), ink: 0, isMe, isHost: false, kills, deaths: 0, state: {} as NetPlayerState, online: true, ready: true });
+    const row = (id: string, kills: number, isMe = false) => ({
+      id,
+      name: id.toUpperCase(),
+      ink: 0,
+      isMe,
+      isHost: false,
+      kills,
+      deaths: 0,
+      state: {} as NetPlayerState,
+      online: true,
+      ready: true,
+    });
     const players = [row("a", 15), row("b", 3, true)];
     // no server verdict: the score counted here decides
     assert.deepStrictEqual(matchWinner(players, undefined, 15), { id: "a", name: "A", kills: 15, isMe: false });
@@ -120,7 +144,12 @@ describe("frontend Colyseus lobby adapter", () => {
     assert.strictEqual(matchWinner(players, "", 15), null);
     assert.deepStrictEqual(matchWinner(players, "b", 15), { id: "b", name: "B", kills: 3, isMe: true });
     // the winner has left, but combat stays stopped until a rematch: keep the overlay up
-    assert.deepStrictEqual(matchWinner(players, "gone", 15), { id: "gone", name: "A PLAYER WHO LEFT", kills: 15, isMe: false });
+    assert.deepStrictEqual(matchWinner(players, "gone", 15), {
+      id: "gone",
+      name: "A PLAYER WHO LEFT",
+      kills: 15,
+      isMe: false,
+    });
   });
 
   it("creates a room and lets a guest join it by code", async () => {
@@ -283,7 +312,16 @@ describe("frontend Colyseus lobby adapter", () => {
 
     /** What PvpMatch does on mount: install the arena handlers and start ticking. */
     function enterArena(t: Tab, body: NetPlayerState): Arena {
-      const arena: Arena = { bodies: new Map(), gone: [], body, landed: [], hurt: [], health: [], feed: [], rematches: 0 };
+      const arena: Arena = {
+        bodies: new Map(),
+        gone: [],
+        body,
+        landed: [],
+        hurt: [],
+        health: [],
+        feed: [],
+        rematches: 0,
+      };
       t.session.setStateProvider(() => arena.body);
       t.session.startTicking();
       t.session.setHandlers({
@@ -336,7 +374,10 @@ describe("frontend Colyseus lobby adapter", () => {
     it("hands a late arena every body already standing still", async () => {
       const { h, g } = await started();
       enterArena(g, engineBody({ x: 3 }));
-      await eventually(() => serverRoom(h.session.code).state.players.get(g.session.me)?.spawned === true, "guest placed");
+      await eventually(
+        () => serverRoom(h.session.code).state.players.get(g.session.me)?.spawned === true,
+        "guest placed",
+      );
       await new Promise((r) => setTimeout(r, 300)); // no patches about the guest any more
       const ha = enterArena(h, engineBody());
       assert.ok(close(ha.bodies.get(g.session.me)?.x, 3), "delivered at once, not on the next move");
@@ -394,7 +435,14 @@ describe("frontend Colyseus lobby adapter", () => {
       };
       /** What the engine emits when it fires at a point (the server rolls the spread). */
       const shootAt = (t: Tab, from: typeof A, at: typeof A, weapon = "RIFLE") =>
-        t.session.reportCombat({ kind: "fire", weapon, origin: eye(from), dir: toward(eye(from), at), ads: true, air: false });
+        t.session.reportCombat({
+          kind: "fire",
+          weapon,
+          origin: eye(from),
+          dir: toward(eye(from), at),
+          ads: true,
+          air: false,
+        });
 
       async function armed() {
         const { h, g } = await started();
@@ -418,18 +466,39 @@ describe("frontend Colyseus lobby adapter", () => {
 
       it("reports a kill: health, killer, score and feed agree", async () => {
         const { h, g, ha, ga } = await armed();
-        h.session.reportCombat({ kind: "fire", weapon: "SNIPER", origin: eye(A), dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }), ads: true, air: false });
+        h.session.reportCombat({
+          kind: "fire",
+          weapon: "SNIPER",
+          origin: eye(A),
+          dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }),
+          ads: true,
+          air: false,
+        });
         await eventually(() => ga.health.some((x) => !x.alive), "victim down");
-        assert.deepStrictEqual(ga.health.find((x) => !x.alive), { hp: 0, alive: false, killer: h.session.me });
+        assert.deepStrictEqual(
+          ga.health.find((x) => !x.alive),
+          { hp: 0, alive: false, killer: h.session.me },
+        );
         assert.strictEqual(ha.landed.at(-1)?.kill, true);
         await eventually(() => h.session.getPlayers().find((p) => p.isMe)?.kills === 1, "score");
         assert.strictEqual(g.session.getPlayers().find((p) => p.isMe)?.deaths, 1);
-        assert.deepStrictEqual(ga.feed.filter((t) => t.includes("ERASED")), [], "the victim writes their own obituary");
+        assert.deepStrictEqual(
+          ga.feed.filter((t) => t.includes("ERASED")),
+          [],
+          "the victim writes their own obituary",
+        );
       });
 
       it("drops a non-finite intent instead of getting itself disconnected", async () => {
         const { h, ga } = await armed();
-        h.session.reportCombat({ kind: "fire", weapon: "RIFLE", origin: { x: Number.NaN, y: 1, z: 1 }, dir: { x: 0, y: 0, z: -1 }, ads: false, air: false });
+        h.session.reportCombat({
+          kind: "fire",
+          weapon: "RIFLE",
+          origin: { x: Number.NaN, y: 1, z: 1 },
+          dir: { x: 0, y: 0, z: -1 },
+          ads: false,
+          air: false,
+        });
         await new Promise((r) => setTimeout(r, 200));
         assert.strictEqual(h.session.joined, true);
         assert.strictEqual(ga.hurt.length, 0);
@@ -437,7 +506,14 @@ describe("frontend Colyseus lobby adapter", () => {
 
       it("restarts both arenas on the host's rematch, with a clean score", async () => {
         const { h, g, ha, ga } = await armed();
-        h.session.reportCombat({ kind: "fire", weapon: "SNIPER", origin: eye(A), dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }), ads: true, air: false });
+        h.session.reportCombat({
+          kind: "fire",
+          weapon: "SNIPER",
+          origin: eye(A),
+          dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }),
+          ads: true,
+          air: false,
+        });
         await eventually(() => h.session.getPlayers().find((p) => p.isMe)?.kills === 1, "a kill on the board");
         g.session.rematch(); // a guest cannot
         h.session.rematch();
@@ -453,10 +529,22 @@ describe("frontend Colyseus lobby adapter", () => {
         assert.strictEqual(g.session.winnerId, "", "undecided");
         let changes = 0;
         g.session.setHandlers({ onChange: () => changes++ });
-        h.session.reportCombat({ kind: "fire", weapon: "SNIPER", origin: eye(A), dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }), ads: true, air: false });
+        h.session.reportCombat({
+          kind: "fire",
+          weapon: "SNIPER",
+          origin: eye(A),
+          dir: toward(eye(A), { x: B.x, y: B.y + 1.52, z: B.z }),
+          ads: true,
+          air: false,
+        });
         await eventually(() => h.session.winnerId === hid && g.session.winnerId === hid, "both told who won");
         assert.ok(changes > 0, "the arena re-renders for the result");
-        assert.deepStrictEqual(matchWinner(g.session.getPlayers(), g.session.winnerId, 15), { id: hid, name: "Ada", kills: 15, isMe: false });
+        assert.deepStrictEqual(matchWinner(g.session.getPlayers(), g.session.winnerId, 15), {
+          id: hid,
+          name: "Ada",
+          kills: 15,
+          isMe: false,
+        });
         assert.strictEqual(matchWinner(h.session.getPlayers(), h.session.winnerId, 15)?.isMe, true);
         h.session.rematch();
         await eventually(() => ha.rematches === 1 && ga.rematches === 1, "both restart");
@@ -493,7 +581,13 @@ describe("frontend Colyseus lobby adapter", () => {
     await new Promise<void>((r) => sleepy.listen(0, "127.0.0.1", () => r()));
     const { port } = sleepy.address() as { port: number };
     const statuses: string[] = [];
-    const session = new ColyseusSession("", "Ada", true, { map: "district", grapple: true }, { url: `http://127.0.0.1:${port}`, storage: new TabStorage() });
+    const session = new ColyseusSession(
+      "",
+      "Ada",
+      true,
+      { map: "district", grapple: true },
+      { url: `http://127.0.0.1:${port}`, storage: new TabStorage() },
+    );
     session.setHandlers({ onStatus: (t) => statuses.push(t) });
     try {
       session.connect();
@@ -513,11 +607,17 @@ describe("frontend Colyseus lobby adapter", () => {
     await new Promise<void>((r) => silent.listen(0, "127.0.0.1", () => r()));
     const { port } = silent.address() as { port: number };
     const lost: string[] = [];
-    const session = new ColyseusSession("ABCD", "Ada", false, { map: "district", grapple: true }, {
-      url: `http://127.0.0.1:${port}`,
-      storage: new TabStorage(),
-      joinTimeoutMs: 400,
-    });
+    const session = new ColyseusSession(
+      "ABCD",
+      "Ada",
+      false,
+      { map: "district", grapple: true },
+      {
+        url: `http://127.0.0.1:${port}`,
+        storage: new TabStorage(),
+        joinTimeoutMs: 400,
+      },
+    );
     session.setHandlers({ onLost: (t) => lost.push(t) });
     try {
       session.connect();
@@ -550,7 +650,13 @@ describe("frontend Colyseus lobby adapter", () => {
   });
 
   it("says so when the build has no server URL", async () => {
-    const session = new ColyseusSession("", "Ada", true, { map: "district", grapple: true }, { url: null, storage: null });
+    const session = new ColyseusSession(
+      "",
+      "Ada",
+      true,
+      { map: "district", grapple: true },
+      { url: null, storage: null },
+    );
     const errors: string[] = [];
     session.setHandlers({ onError: (t) => errors.push(t) });
     session.connect();

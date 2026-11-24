@@ -1,0 +1,8 @@
+# Unix line endings in every checkout, Windows included, so Prettier's check
+# (endOfLine: lf) passes everywhere.
+* text=auto eol=lf
+
+*.glb binary
+*.png binary
+*.jpg binary
+*.ico binary

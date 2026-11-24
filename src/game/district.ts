@@ -89,7 +89,14 @@ export function buildDistrict(scene: THREE.Object3D): District {
     g.translate(cx, y0 + h / 2, cz);
     addGeo(g, o.ink ?? INK.BLUE, o.fill);
     if (!o.noCollide) {
-      colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minY: y0, maxY: y0 + h, minZ: cz - d / 2, maxZ: cz + d / 2 });
+      colliders.push({
+        minX: cx - w / 2,
+        maxX: cx + w / 2,
+        minY: y0,
+        maxY: y0 + h,
+        minZ: cz - d / 2,
+        maxZ: cz + d / 2,
+      });
     }
   };
 
@@ -136,15 +143,41 @@ export function buildDistrict(scene: THREE.Object3D): District {
   };
 
   /** wall along X, constant z */
-  const wallX = (x0: number, x1: number, z: number, y0: number, h: number, t: number, holes: Hole[] = [], o: Opts = {}) => {
+  const wallX = (
+    x0: number,
+    x1: number,
+    z: number,
+    y0: number,
+    h: number,
+    t: number,
+    holes: Hole[] = [],
+    o: Opts = {},
+  ) => {
     for (const [a, b, ya, yb] of spans(x0, x1, h, holes)) box((a + b) / 2, y0 + ya, z, b - a, yb - ya, t, o);
   };
   /** wall along Z, constant x */
-  const wallZ = (z0: number, z1: number, x: number, y0: number, h: number, t: number, holes: Hole[] = [], o: Opts = {}) => {
+  const wallZ = (
+    z0: number,
+    z1: number,
+    x: number,
+    y0: number,
+    h: number,
+    t: number,
+    holes: Hole[] = [],
+    o: Opts = {},
+  ) => {
     for (const [a, b, ya, yb] of spans(z0, z1, h, holes)) box(x, y0 + ya, (a + b) / 2, t, yb - ya, b - a, o);
   };
 
-  const stairs = (x: number, y0: number, z: number, dir: "+x" | "-x" | "+z" | "-z", steps: number, width: number, o: StepOpts = {}) => {
+  const stairs = (
+    x: number,
+    y0: number,
+    z: number,
+    dir: "+x" | "-x" | "+z" | "-z",
+    steps: number,
+    width: number,
+    o: StepOpts = {},
+  ) => {
     const rise = o.rise ?? 0.2857142857142857;
     const run = o.run ?? 0.45;
     const dx = dir === "+x" ? 1 : dir === "-x" ? -1 : 0;
@@ -198,7 +231,8 @@ export function buildDistrict(scene: THREE.Object3D): District {
     addGeo(g, INK.ORANGE);
   };
 
-  const spawn = (x: number, y: number, z: number) => spawnPoints.push(new THREE.Vector3(x, y, z));  const sniper = (x: number, y: number, z: number) => sniperSpots.push(new THREE.Vector3(x, y, z));
+  const spawn = (x: number, y: number, z: number) => spawnPoints.push(new THREE.Vector3(x, y, z));
+  const sniper = (x: number, y: number, z: number) => sniperSpots.push(new THREE.Vector3(x, y, z));
   const pickup = (x: number, y: number, z: number) => pickupSpots.push(new THREE.Vector3(x, y, z));
 
   /* ---------------- ground, boundary walls, sky dome ---------------- */
@@ -335,13 +369,42 @@ export function buildDistrict(scene: THREE.Object3D): District {
 
   /* ---------------- NW block: walled floors + fire escape ---------------- */
   for (let n = 1; n <= 3; n++) slab(-43, 4, -25, 20, n * 4, 0.4);
-  wallZ(4, 20, -25, 0, 12, 0.4, [[10, 13, 0, 3.2], [6, 9, 5, 7], [14, 17, 5, 7], [6, 9, 9, 11], [14, 17, 9, 11]]);
-  wallZ(4, 20, -43, 0, 12, 0.4, [[8, 11, 0, 3.2], [8, 11, 4.5, 7.5], [8, 11, 8.5, 11.5]]);
-  wallX(-43, -25, 4, 0, 12, 0.4, [[-36, -33, 0, 3.2], [-40, -37, 5, 7], [-31, -28, 5, 7], [-36, -32, 8.5, 11.5]]);
-  wallX(-43, -25, 20, 0, 12, 0.4, [[-36, -32, 0, 3.2], [-31, -27, 0, 3.2], [-42, -39, 0, 3.2], [-37.2, -33.5, 4.05, 7.2], [-36, -32, 8.4, 11.4], [-41, -27, 4.6, 7.6], [-29, -25.5, 8.05, 11.2]]);
-  wallX(-43, -25, 12, 0, 4, 0.3, [[-40, -37.5], [-30, -27.5]]);
+  wallZ(4, 20, -25, 0, 12, 0.4, [
+    [10, 13, 0, 3.2],
+    [6, 9, 5, 7],
+    [14, 17, 5, 7],
+    [6, 9, 9, 11],
+    [14, 17, 9, 11],
+  ]);
+  wallZ(4, 20, -43, 0, 12, 0.4, [
+    [8, 11, 0, 3.2],
+    [8, 11, 4.5, 7.5],
+    [8, 11, 8.5, 11.5],
+  ]);
+  wallX(-43, -25, 4, 0, 12, 0.4, [
+    [-36, -33, 0, 3.2],
+    [-40, -37, 5, 7],
+    [-31, -28, 5, 7],
+    [-36, -32, 8.5, 11.5],
+  ]);
+  wallX(-43, -25, 20, 0, 12, 0.4, [
+    [-36, -32, 0, 3.2],
+    [-31, -27, 0, 3.2],
+    [-42, -39, 0, 3.2],
+    [-37.2, -33.5, 4.05, 7.2],
+    [-36, -32, 8.4, 11.4],
+    [-41, -27, 4.6, 7.6],
+    [-29, -25.5, 8.05, 11.2],
+  ]);
+  wallX(-43, -25, 12, 0, 4, 0.3, [
+    [-40, -37.5],
+    [-30, -27.5],
+  ]);
   wallX(-43, -25, 12, 4, 4, 0.3, [[-36, -32]]);
-  wallZ(4, 20, -34, 8, 4, 0.3, [[8, 11], [14, 17]]);
+  wallZ(4, 20, -34, 8, 4, 0.3, [
+    [8, 11],
+    [14, 17],
+  ]);
   rail(-43, 4, -37, 4, 12);
   rail(-31, 4, -25, 4, 12);
   rail(-43, 20, -37.4, 20, 12);
@@ -366,7 +429,8 @@ export function buildDistrict(scene: THREE.Object3D): District {
     const armEnd = -7;
     const len = armEnd + 25.2;
     box((armEnd - 25.2) / 2, 11.6, 6, len, 0.4, 2.4, { ink: INK.ORANGE });
-    for (let x = 0; x <= Math.floor(len); x++) box(-25 + x, 12, 5, 0.06, 0.02, x % 5 === 0 ? 0.6 : 0.35, { ink: INK.BLACK, noCollide: true });
+    for (let x = 0; x <= Math.floor(len); x++)
+      box(-25 + x, 12, 5, 0.06, 0.02, x % 5 === 0 ? 0.6 : 0.35, { ink: INK.BLACK, noCollide: true });
     rail(-25, 7.2, armEnd, 7.2, 12, { ink: INK.ORANGE });
   }
   spawn(-34, 0, 10);
@@ -381,10 +445,28 @@ export function buildDistrict(scene: THREE.Object3D): District {
   slab(24, 15, 44, 20, 12, 0.4);
   slab(24, 9, 31, 15, 12, 0.4);
   slab(37, 9, 44, 15, 12, 0.4);
-  wallZ(4, 20, 24, 0, 12, 0.4, [[10, 14, 0, 3.6], [6, 9, 7, 10], [15, 18, 7, 10]]);
-  wallZ(4, 20, 44, 0, 12, 0.4, [[7, 10, 0, 3.2], [14, 17, 0, 3.2], [8, 16, 7, 10]]);
-  wallX(24, 44, 4, 0, 12, 0.4, [[32, 36, 0, 3.6], [27, 30, 7, 10], [38, 41, 7, 10]]);
-  wallX(24, 44, 20, 0, 12, 0.4, [[26, 29, 0, 3.2], [39, 42, 0, 3.2], [33.5, 36.5, 4.05, 7.2], [25.5, 28.5, 8.05, 11.2], [32, 36, 8, 11]]);
+  wallZ(4, 20, 24, 0, 12, 0.4, [
+    [10, 14, 0, 3.6],
+    [6, 9, 7, 10],
+    [15, 18, 7, 10],
+  ]);
+  wallZ(4, 20, 44, 0, 12, 0.4, [
+    [7, 10, 0, 3.2],
+    [14, 17, 0, 3.2],
+    [8, 16, 7, 10],
+  ]);
+  wallX(24, 44, 4, 0, 12, 0.4, [
+    [32, 36, 0, 3.6],
+    [27, 30, 7, 10],
+    [38, 41, 7, 10],
+  ]);
+  wallX(24, 44, 20, 0, 12, 0.4, [
+    [26, 29, 0, 3.2],
+    [39, 42, 0, 3.2],
+    [33.5, 36.5, 4.05, 7.2],
+    [25.5, 28.5, 8.05, 11.2],
+    [32, 36, 8, 11],
+  ]);
   // first-floor walkway ringing the two-storey atrium, with its interior stairs
   slab(24.4, 4.4, 26, 19.6, 6, 0.3);
   slab(42, 4.4, 43.6, 19.6, 6, 0.3);
@@ -432,8 +514,15 @@ export function buildDistrict(scene: THREE.Object3D): District {
 
   /* ---------------- elevated road across the map (z = -30) ---------------- */
   slab(-52, -34.5, 52, -25.5, 7, 0.6);
-  wallX(-52, 52, -34.3, 7, 0.9, 0.4, [[-33, -29], [27, 31], [-2, 2]]);
-  wallX(-52, 52, -25.7, 7, 0.9, 0.4, [[-36.5, -33], [33, 36.5]]);
+  wallX(-52, 52, -34.3, 7, 0.9, 0.4, [
+    [-33, -29],
+    [27, 31],
+    [-2, 2],
+  ]);
+  wallX(-52, 52, -25.7, 7, 0.9, 0.4, [
+    [-36.5, -33],
+    [33, 36.5],
+  ]);
   for (let x = -48; x <= 48; x += 12) box(x, 0, -30, 1.4, 6.4, 1.4);
   stairs(-46.5, 0, -24.5, "+x", 25, 2, { rise: 0.28, run: 0.45 });
   stairs(46.5, 0, -24.5, "-x", 25, 2, { rise: 0.28, run: 0.45 });
@@ -512,11 +601,19 @@ export function buildDistrict(scene: THREE.Object3D): District {
     basin.translate(-36.6, 1.8, 32);
     addGeo(basin, INK.BLUE);
   }
-  for (const [x, z] of [[-10, 46], [10, 46], [-22, 24], [22, 24]] as const) {
+  for (const [x, z] of [
+    [-10, 46],
+    [10, 46],
+    [-22, 24],
+    [22, 24],
+  ] as const) {
     box(x, 0, z, 0.25, 6, 0.25);
     box(x, 6, z, 1.4, 0.3, 0.5, { noCollide: true });
   }
-  for (const [x, z] of [[-4, 46], [4, 46]] as const) {
+  for (const [x, z] of [
+    [-4, 46],
+    [4, 46],
+  ] as const) {
     box(x, 0.4, z, 3, 0.15, 0.6);
     box(x, 0, z, 2.6, 0.4, 0.2, { noCollide: true });
   }
@@ -532,10 +629,22 @@ export function buildDistrict(scene: THREE.Object3D): District {
    * ------------------------------------------------------------------ */
   slab(-45, -22, -27, -6, 9, 0.4); // roof plate
   slab(-45, -22, -27, -6, 4.5, 0.35); // mezzanine floor
-  wallX(-45, -27, -22, 0, 9, 0.4, [[-40, -36, 0, 3.6], [-33, -29, 0, 3.6]]);
-  wallX(-45, -27, -6, 0, 9, 0.4, [[-38, -34, 0, 3.6], [-31, -27, 4.6, 8.2]]);
-  wallZ(-22, -6, -45, 0, 9, 0.4, [[-19, -15, 0, 3.6], [-13, -9, 4.6, 8.2]]);
-  wallZ(-22, -6, -27, 0, 9, 0.4, [[-19, -15, 0, 3.6], [-13, -9, 4.6, 8.2]]);
+  wallX(-45, -27, -22, 0, 9, 0.4, [
+    [-40, -36, 0, 3.6],
+    [-33, -29, 0, 3.6],
+  ]);
+  wallX(-45, -27, -6, 0, 9, 0.4, [
+    [-38, -34, 0, 3.6],
+    [-31, -27, 4.6, 8.2],
+  ]);
+  wallZ(-22, -6, -45, 0, 9, 0.4, [
+    [-19, -15, 0, 3.6],
+    [-13, -9, 4.6, 8.2],
+  ]);
+  wallZ(-22, -6, -27, 0, 9, 0.4, [
+    [-19, -15, 0, 3.6],
+    [-13, -9, 4.6, 8.2],
+  ]);
   wallZ(-22, -6, -36, 0, 4.5, 0.3, [[-19, -16, 0, 3.2]]); // interior partition
   // mezzanine stair in the west bay
   stairs(-44, 0, -9, "-z", 16, 1.8, { rise: 4.5 / 16, run: 0.45 });
@@ -685,7 +794,8 @@ export function buildDistrict(scene: THREE.Object3D): District {
     [30, 80, 180, 1.2],
     [-90, 60, 170, 0.8],
   ] as const) {
-    for (let n = 0; n < 6; n++) sphere(x + (n - 2.5) * 5 * k, y + Math.sin(n * 1.7) * 2.5 * k, z, (4 + (n % 3)) * k, { seg: 10 });
+    for (let n = 0; n < 6; n++)
+      sphere(x + (n - 2.5) * 5 * k, y + Math.sin(n * 1.7) * 2.5 * k, z, (4 + (n % 3)) * k, { seg: 10 });
   }
 
   // three paper planes drifting over the district (the reference's orbiting cones)
@@ -696,7 +806,13 @@ export function buildDistrict(scene: THREE.Object3D): District {
     g.rotateX(Math.PI / 2);
     const mesh = new THREE.Mesh(g, makeInkMaterial(INK.BLUE));
     scene.add(mesh);
-    movers.push({ mesh, radius: 30 + i * (8 * scale), height: 30 + i * (6 * scale), phase: i * 2.1, speed: 0.11 + i * 0.01 });
+    movers.push({
+      mesh,
+      radius: 30 + i * (8 * scale),
+      height: 30 + i * (6 * scale),
+      phase: i * 2.1,
+      speed: 0.11 + i * 0.01,
+    });
   }
   const update = (t: number) => {
     for (const m of movers) {

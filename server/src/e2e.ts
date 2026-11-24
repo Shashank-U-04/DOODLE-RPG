@@ -31,7 +31,8 @@ export function mountE2eFixtures(app: Application) {
     const players = room ? [...room.state.players.values()] : [];
     const winner = players.find((p) => p.name === name);
     if (!room || !winner) return void res.status(404).json({ error: "no such room or player" });
-    if (room.state.phase !== "playing" || room.state.winnerId) return void res.status(409).json({ error: "not in play" });
+    if (room.state.phase !== "playing" || room.state.winnerId)
+      return void res.status(409).json({ error: "not in play" });
     const victim = players.find((p) => p.id !== winner.id && p.spawned && p.alive);
     if (!victim) return void res.status(409).json({ error: "no placed, living opponent yet" });
     winner.kills = KILLS_TO_WIN - 1;

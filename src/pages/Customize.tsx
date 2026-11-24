@@ -80,7 +80,13 @@ export default function Customize() {
               <div className="colhead">CHARACTERS</div>
               <div className="lk-items lk-roster" data-testid="locker-items">
                 {CHARACTER_LIST.map((c, i) => (
-                  <button key={c.id} type="button" className={i === char ? "on" : ""} onClick={() => setChar(i)} title={c.blurb}>
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={i === char ? "on" : ""}
+                    onClick={() => setChar(i)}
+                    title={c.blurb}
+                  >
                     {/* pre-drawn through the ink pass, so the page only downloads the model you pick */}
                     <span className="pic">
                       <img src={`/characters/thumbs/${c.id}.png`} alt="" draggable={false} loading="lazy" />
@@ -93,7 +99,8 @@ export default function Customize() {
           </div>
 
           <div className="lk-note">
-            saved in this browser · looks are cosmetic, everyone has the same hitbox · models by Quaternius, Polygonal Mind, mastjie, Vaporworks, J-Toastie and Zsky (CC0 / CC-BY 3.0, see /characters/CREDITS.md)
+            saved in this browser · looks are cosmetic, everyone has the same hitbox · models by Quaternius, Polygonal
+            Mind, mastjie, Vaporworks, J-Toastie and Zsky (CC0 / CC-BY 3.0, see /characters/CREDITS.md)
           </div>
 
           <div className="mainbtns">

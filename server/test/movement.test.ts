@@ -53,7 +53,11 @@ describe("movement rules", () => {
     for (const map of MAP_IDS) {
       assert.ok(ARRIVALS[map].length >= 6, `${map} has arrival points`);
       for (const a of ARRIVALS[map]) {
-        assert.deepStrictEqual(clampToEnvelope(a, ENVELOPES[map]), a, `${map} arrival ${JSON.stringify(a)} inside the volume`);
+        assert.deepStrictEqual(
+          clampToEnvelope(a, ENVELOPES[map]),
+          a,
+          `${map} arrival ${JSON.stringify(a)} inside the volume`,
+        );
         assert.ok(isArrival(a, ARRIVALS[map]));
       }
     }
@@ -62,7 +66,12 @@ describe("movement rules", () => {
   it("places a body that has no position yet on an arrival, or on the nearest one", () => {
     const pad = pads[3];
     const onPad = stepMotion(newMotion(0), null, { ...pad, x: pad.x + 1 }, false, 0, district, pads);
-    assert.deepStrictEqual(onPad, { pos: { ...pad, x: pad.x + 1 }, teleported: true, adoptEpoch: true, refusedTeleport: false });
+    assert.deepStrictEqual(onPad, {
+      pos: { ...pad, x: pad.x + 1 },
+      teleported: true,
+      adoptEpoch: true,
+      refusedTeleport: false,
+    });
 
     // a first move into the middle of nowhere lands on the nearest arrival instead
     const off = stepMotion(newMotion(0), null, { x: 70, y: 30, z: 3 }, false, 0, district, pads);
@@ -74,7 +83,12 @@ describe("movement rules", () => {
     const m = newMotion(0);
     const from = { x: 0, y: 0, z: 0 };
     const r = stepMotion(m, from, { x: 3, y: 0, z: 4 }, false, 50, district, NONE);
-    assert.deepStrictEqual(r, { pos: { x: 3, y: 0, z: 4 }, teleported: false, adoptEpoch: false, refusedTeleport: false });
+    assert.deepStrictEqual(r, {
+      pos: { x: 3, y: 0, z: 4 },
+      teleported: false,
+      adoptEpoch: false,
+      refusedTeleport: false,
+    });
   });
 
   it("limits a step that is too long to the banked allowance", () => {
@@ -103,7 +117,8 @@ describe("movement rules", () => {
     const m = newMotion(0);
     let pos = { x: -50, y: 0, z: 0 };
     // claim 120 m/s for two seconds, at 20 Hz
-    for (let t = 50; t <= 2000; t += 50) pos = stepMotion(m, pos, { x: pos.x + 6, y: 0, z: 0 }, false, t, district, NONE).pos;
+    for (let t = 50; t <= 2000; t += 50)
+      pos = stepMotion(m, pos, { x: pos.x + 6, y: 0, z: 0 }, false, t, district, NONE).pos;
     const travelled = pos.x + 50;
     assert.ok(travelled <= MOVE_BURST + MAX_SPEED * 2 + 1e-6, `travelled ${travelled}`);
   });
@@ -135,11 +150,14 @@ describe("movement rules", () => {
     const nowhere = { x: 30, y: 25, z: 30 }; // a rooftop, far from any pad
     assert.strictEqual(isArrival(nowhere, pads), false);
     const r = stepMotion(m, from, nowhere, true, 0, district, pads);
-    assert.deepStrictEqual({ teleported: r.teleported, adoptEpoch: r.adoptEpoch, refusedTeleport: r.refusedTeleport }, {
-      teleported: false,
-      adoptEpoch: false,
-      refusedTeleport: true,
-    });
+    assert.deepStrictEqual(
+      { teleported: r.teleported, adoptEpoch: r.adoptEpoch, refusedTeleport: r.refusedTeleport },
+      {
+        teleported: false,
+        adoptEpoch: false,
+        refusedTeleport: true,
+      },
+    );
     assert.ok(near(dist(from, r.pos), MOVE_BURST), `walked ${dist(from, r.pos)}`);
     assert.strictEqual(m.teleports, TELEPORT_BURST, "a refused jump costs no teleport");
   });
@@ -149,7 +167,12 @@ describe("movement rules", () => {
     const m = newMotion(0);
     const from = { x: 10, y: 0, z: 10 };
     const r = stepMotion(m, from, { x: 11, y: 0, z: 10 }, true, 50, district, pads);
-    assert.deepStrictEqual(r, { pos: { x: 11, y: 0, z: 10 }, teleported: false, adoptEpoch: true, refusedTeleport: false });
+    assert.deepStrictEqual(r, {
+      pos: { x: 11, y: 0, z: 10 },
+      teleported: false,
+      adoptEpoch: true,
+      refusedTeleport: false,
+    });
   });
 
   it("allows one short jump right after an accepted focus dash", () => {
@@ -164,11 +187,19 @@ describe("movement rules", () => {
 
     const late = newMotion(0);
     grantDash(late, 0);
-    assert.strictEqual(stepMotion(late, from, hop, true, DASH_GRANT_MS + 1, district, pads).teleported, false, "too late");
+    assert.strictEqual(
+      stepMotion(late, from, hop, true, DASH_GRANT_MS + 1, district, pads).teleported,
+      false,
+      "too late",
+    );
 
     const tooFar = newMotion(0);
     grantDash(tooFar, 0);
     const beyond = { x: -40 + DASH_REACH + 5, y: 0, z: -40 };
-    assert.strictEqual(stepMotion(tooFar, from, beyond, true, 100, district, pads).teleported, false, "beyond a dash's reach");
+    assert.strictEqual(
+      stepMotion(tooFar, from, beyond, true, 100, district, pads).teleported,
+      false,
+      "beyond a dash's reach",
+    );
   });
 });

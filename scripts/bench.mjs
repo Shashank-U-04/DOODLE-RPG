@@ -75,9 +75,15 @@ const cols = [
   ["heap MB", "heapMb"],
 ];
 console.log(`### Frame times (${seconds}s per map after ${warmup}s warm-up, ${width}x${height}, gpu mode ${gpu})\n`);
-console.log(`GPU: ${results[0]?.gpu ?? "?"} · DPR ${results[0]?.devicePixelRatio ?? "?"} · buffer ${results[0]?.drawingBuffer ?? "?"}\n`);
+console.log(
+  `GPU: ${results[0]?.gpu ?? "?"} · DPR ${results[0]?.devicePixelRatio ?? "?"} · buffer ${results[0]?.drawingBuffer ?? "?"}\n`,
+);
 console.log(`| ${cols.map(([h]) => h).join(" | ")} |`);
 console.log(`|${cols.map(() => "---").join("|")}|`);
 for (const r of results) console.log(`| ${cols.map(([, k]) => r[k] ?? "–").join(" | ")} |`);
 if (results.some((r) => r.pageErrors)) console.log("\nPage errors occurred; see stderr.");
-if (jsonOut) writeFileSync(jsonOut, JSON.stringify({ when: new Date().toISOString(), url, seconds, warmup, width, height, gpu, results }, null, 2));
+if (jsonOut)
+  writeFileSync(
+    jsonOut,
+    JSON.stringify({ when: new Date().toISOString(), url, seconds, warmup, width, height, gpu, results }, null, 2),
+  );

@@ -45,21 +45,21 @@ Not measured yet:
 
 Machine: the development laptop.
 
-| | |
-|---|---|
-| GPU | Intel Arc (integrated, 0x7D55), ANGLE Direct3D 11 |
-| Browser | Chromium (Playwright), headless |
-| Resolution | 1600×900, device pixel ratio 1 |
-| State | menu, no enemies |
-| Sampling | 15 s per map after 4 s warm-up |
-| Build | `feat/perf-benchmark` |
+|            |                                                   |
+| ---------- | ------------------------------------------------- |
+| GPU        | Intel Arc (integrated, 0x7D55), ANGLE Direct3D 11 |
+| Browser    | Chromium (Playwright), headless                   |
+| Resolution | 1600×900, device pixel ratio 1                    |
+| State      | menu, no enemies                                  |
+| Sampling   | 15 s per map after 4 s warm-up                    |
+| Build      | `feat/perf-benchmark`                             |
 
-| map | fps | frame p50 | p95 | p99 | max | >33 ms | cpu p50 | cpu p95 | draws | tris | first frame ms | heap MB |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| district | 60.01 | 16.8 | 22.1 | 24.8 | 29.5 | 0 | 2.2 | 3.0 | 134 | 42182 | 1181 | 17 |
-| valley | 60.02 | 16.6 | 21.7 | 24.7 | 27.7 | 0 | 2.3 | 3.6 | 187 | 70952 | 1085 | 23 |
-| sanctuary | 60.02 | 16.6 | 22.5 | 24.5 | 25.4 | 0 | 2.3 | 3.4 | 213 | 33214 | 977 | 36 |
-| tomb | 59.87 | 16.6 | 23.7 | 25.6 | 38.3 | 2 | 3.1 | 4.3 | 302 | 70450 | 1046 | 23 |
+| map       | fps   | frame p50 | p95  | p99  | max  | >33 ms | cpu p50 | cpu p95 | draws | tris  | first frame ms | heap MB |
+| --------- | ----- | --------- | ---- | ---- | ---- | ------ | ------- | ------- | ----- | ----- | -------------- | ------- |
+| district  | 60.01 | 16.8      | 22.1 | 24.8 | 29.5 | 0      | 2.2     | 3.0     | 134   | 42182 | 1181           | 17      |
+| valley    | 60.02 | 16.6      | 21.7 | 24.7 | 27.7 | 0      | 2.3     | 3.6     | 187   | 70952 | 1085           | 23      |
+| sanctuary | 60.02 | 16.6      | 22.5 | 24.5 | 25.4 | 0      | 2.3     | 3.4     | 213   | 33214 | 977            | 36      |
+| tomb      | 59.87 | 16.6      | 23.7 | 25.6 | 38.3 | 2      | 3.1     | 4.3     | 302   | 70450 | 1046           | 23      |
 
 ### What this says
 

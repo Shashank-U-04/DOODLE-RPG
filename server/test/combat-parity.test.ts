@@ -10,7 +10,19 @@
 import assert from "assert";
 import { readFileSync } from "fs";
 
-import { FOCUS, GRENADE, GUNS, HEALTH, HITBOX, KILLS_TO_WIN, MELEE, MIN_WALL_TOP, RANGE, RESPAWN_MS, AIR_SPREAD } from "../src/combat.js";
+import {
+  FOCUS,
+  GRENADE,
+  GUNS,
+  HEALTH,
+  HITBOX,
+  KILLS_TO_WIN,
+  MELEE,
+  MIN_WALL_TOP,
+  RANGE,
+  RESPAWN_MS,
+  AIR_SPREAD,
+} from "../src/combat.js";
 import { KATANA_MELEE, PVP, WEAPONS } from "../../src/game/arsenal.js";
 import { exportArrivals, exportColliders, serializeArrivals } from "../../scripts/export-colliders.js";
 
@@ -18,8 +30,12 @@ const source = (path: string) => readFileSync(new URL(`../../${path}`, import.me
 const engine = source("src/game/engine.ts");
 const online = source("src/pages/Online.tsx");
 
+// Whitespace is ignored on both sides, so the formatter wrapping a line in the
+// engine cannot fail a check; a changed number or name still does.
+const squash = (s: string) => s.replace(/\s+/g, "");
+
 function contains(text: string, snippet: string, what: string) {
-  assert.ok(text.includes(snippet), `${what}: expected the game to still contain \`${snippet}\``);
+  assert.ok(squash(text).includes(squash(snippet)), `${what}: expected the game to still contain \`${snippet}\``);
 }
 
 describe("combat parity with the game", () => {
@@ -40,7 +56,11 @@ describe("combat parity with the game", () => {
   });
 
   it("deals the player-versus-player damage, not the solo rack's", () => {
-    assert.deepStrictEqual(Object.keys(PVP.weapons).sort(), WEAPONS.map((w) => w.name).sort(), "a PVP entry per weapon");
+    assert.deepStrictEqual(
+      Object.keys(PVP.weapons).sort(),
+      WEAPONS.map((w) => w.name).sort(),
+      "a PVP entry per weapon",
+    );
     for (const [name, pvp] of Object.entries(PVP.weapons)) {
       const s = name === MELEE.name ? MELEE : GUNS[name];
       assert.deepStrictEqual({ damage: s.damage, headMul: s.headMul }, pvp, name);
@@ -65,12 +85,20 @@ describe("combat parity with the game", () => {
     contains(engine, `minX: body.x - ${HITBOX.half}, maxX: body.x + ${HITBOX.half}`, "body width");
     contains(engine, `minY: body.y, maxY: body.y + ${HITBOX.height}`, "body height");
     contains(engine, `const wallT = raycastWorld(eye, dir, ${RANGE});`, "range");
-    contains(engine, `function raycastWorld(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number, minTopY = ${MIN_WALL_TOP})`, "low walls");
+    contains(
+      engine,
+      `function raycastWorld(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number, minTopY = ${MIN_WALL_TOP})`,
+      "low walls",
+    );
     contains(engine, `* (player.onGround ? 1 : ${AIR_SPREAD})`, "air spread");
   });
 
   it("uses the engine's grenade", () => {
-    contains(engine, `vel: fwdVec().multiplyScalar(${GRENADE.speed}).add(new THREE.Vector3(0, ${GRENADE.lift}, 0)),`, "throw");
+    contains(
+      engine,
+      `vel: fwdVec().multiplyScalar(${GRENADE.speed}).add(new THREE.Vector3(0, ${GRENADE.lift}, 0)),`,
+      "throw",
+    );
     contains(engine, `fuse: ${GRENADE.fuse},`, "fuse");
     contains(engine, `g.vel.y -= ${GRENADE.gravity} * dt;`, "gravity");
     contains(engine, `if (g.pos.y < ${GRENADE.bounceY}) {`, "bounce height");

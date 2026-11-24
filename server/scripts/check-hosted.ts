@@ -32,7 +32,11 @@ const check = (label: string, ok: boolean, detail = "") => {
 const preflight = (from: string) =>
   fetch(`${server}/matchmake/create/match`, {
     method: "OPTIONS",
-    headers: { Origin: from, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" },
+    headers: {
+      Origin: from,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type",
+    },
   });
 
 /** Status of a WebSocket upgrade sent with this Origin: a number when refused, "open" when accepted. */
@@ -65,8 +69,15 @@ const started = Date.now();
 try {
   const res = await fetch(`${server}/health`, { signal: AbortSignal.timeout(120_000) });
   const body = (await res.json().catch(() => ({}))) as { status?: string; instance?: string };
-  check("/health answers 200 {status: ok}", res.status === 200 && body.status === "ok", `${res.status} in ${Date.now() - started} ms`);
-  check("/health names the server process (clients detect a restart with it)", typeof body.instance === "string" && body.instance.length > 0);
+  check(
+    "/health answers 200 {status: ok}",
+    res.status === 200 && body.status === "ok",
+    `${res.status} in ${Date.now() - started} ms`,
+  );
+  check(
+    "/health names the server process (clients detect a restart with it)",
+    typeof body.instance === "string" && body.instance.length > 0,
+  );
 } catch (e) {
   check("/health answers 200 {status: ok}", false, String(e));
   console.log("\nThe server is unreachable; nothing else can be checked.");
@@ -76,10 +87,18 @@ try {
 // 2. CORS: the Preview is named, anyone else is not, and never `*`
 const allowed = await preflight(origin);
 const named = allowed.headers.get("access-control-allow-origin");
-check("CORS names the Preview origin", named === origin, named === origin ? "" : `got ${named ?? "none"} — is it in ALLOWED_ORIGINS exactly?`);
+check(
+  "CORS names the Preview origin",
+  named === origin,
+  named === origin ? "" : `got ${named ?? "none"} — is it in ALLOWED_ORIGINS exactly?`,
+);
 check("CORS allows credentials only alongside it", allowed.headers.get("access-control-allow-credentials") === "true");
 const foreign = await preflight(FOREIGN);
-check("CORS names no other origin", foreign.headers.get("access-control-allow-origin") === null, `got ${foreign.headers.get("access-control-allow-origin") ?? "none"}`);
+check(
+  "CORS names no other origin",
+  foreign.headers.get("access-control-allow-origin") === null,
+  `got ${foreign.headers.get("access-control-allow-origin") ?? "none"}`,
+);
 
 // 3. matchmaking and sockets refuse other origins
 const refused = await fetch(`${server}/matchmake/create/match`, {
@@ -91,7 +110,11 @@ check("matchmaking refuses another origin", refused.status === 403, `status ${re
 const wsForeign = await upgrade(FOREIGN);
 check("WebSocket upgrade refuses another origin", wsForeign === 403, String(wsForeign));
 const wsAllowed = await upgrade(origin);
-check("WebSocket upgrade accepts the Preview origin", wsAllowed !== 403 && !String(wsAllowed).startsWith("error") && wsAllowed !== "timeout", String(wsAllowed));
+check(
+  "WebSocket upgrade accepts the Preview origin",
+  wsAllowed !== 403 && !String(wsAllowed).startsWith("error") && wsAllowed !== "timeout",
+  String(wsAllowed),
+);
 
 // 4. production mode: no room monitor, no test fixtures
 check("/monitor is not served (NODE_ENV=production)", (await fetch(`${server}/monitor`)).status === 404);
@@ -153,7 +176,9 @@ try {
   const closed = new Promise<number>((r) => probe.onLeave(r));
   probe.send("move", { x: "not a number" });
   const code = await within(closed, LEAVE_TIMEOUT_MS);
-  console.log(`INFO  a server-initiated close reaches the client — ${code === "timeout" ? `no: nothing within ${LEAVE_TIMEOUT_MS / 1000} s (the hosting path loses it)` : `yes: code ${code}`}`);
+  console.log(
+    `INFO  a server-initiated close reaches the client — ${code === "timeout" ? `no: nothing within ${LEAVE_TIMEOUT_MS / 1000} s (the hosting path loses it)` : `yes: code ${code}`}`,
+  );
   if (code === "timeout") probe.connection.close(CONSENTED);
 } catch (e) {
   console.log(`INFO  a server-initiated close reaches the client — could not tell (${String(e)})`);

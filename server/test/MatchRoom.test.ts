@@ -102,14 +102,24 @@ describe("match room", () => {
     const h = await host({ map: "pyramid", grapple: false });
     const s = snapshot(h);
     assert.strictEqual(s.code.length, CODE_LENGTH);
-    assert.ok([...s.code].every((c) => CODE_ALPHABET.includes(c)), `code ${s.code} uses the lobby alphabet`);
+    assert.ok(
+      [...s.code].every((c) => CODE_ALPHABET.includes(c)),
+      `code ${s.code} uses the lobby alphabet`,
+    );
     assert.strictEqual(h.roomId, s.code);
     assert.strictEqual(s.phase, "lobby");
     assert.strictEqual(s.map, "pyramid");
     assert.strictEqual(s.grapple, false);
     assert.strictEqual(s.maxPlayers, 4);
     assert.strictEqual(s.hostId, h.sessionId);
-    assert.deepStrictEqual(roster(s.players[h.sessionId]), { id: h.sessionId, name: "Ada", ink: 0, isHost: true, ready: true, connected: true });
+    assert.deepStrictEqual(roster(s.players[h.sessionId]), {
+      id: h.sessionId,
+      name: "Ada",
+      ink: 0,
+      isHost: true,
+      ready: true,
+      connected: true,
+    });
   });
 
   it("falls back to defaults for malformed options and clamps the player limit", async () => {
@@ -128,7 +138,14 @@ describe("match room", () => {
     await eventually(() => Object.keys(snapshot(g).players).length === 2, "guest sees host");
 
     const guest = snapshot(h).players[g.sessionId];
-    assert.deepStrictEqual(roster(guest), { id: g.sessionId, name: "Grace", ink: 1, isHost: false, ready: false, connected: true });
+    assert.deepStrictEqual(roster(guest), {
+      id: g.sessionId,
+      name: "Grace",
+      ink: 1,
+      isHost: false,
+      ready: false,
+      connected: true,
+    });
     assert.deepStrictEqual(snapshot(g), snapshot(h));
   });
 
@@ -451,7 +468,10 @@ describe("match room", () => {
       move(g, { x: START.x + 0.5, y: START.y, z: START.z - 0.3, yaw: 1, pitch: 0.2, moving: true, weapon: "SNIPER" });
       await eventually(() => snapshot(h).players[g.sessionId].spawned, "host sees the guest's body");
       const b = snapshot(h).players[g.sessionId];
-      assert.ok(close(b.x, START.x + 0.5) && close(b.y, START.y) && close(b.z, START.z - 0.3), `at ${b.x},${b.y},${b.z}`);
+      assert.ok(
+        close(b.x, START.x + 0.5) && close(b.y, START.y) && close(b.z, START.z - 0.3),
+        `at ${b.x},${b.y},${b.z}`,
+      );
       assert.ok(close(b.yaw, 1) && close(b.pitch, 0.2));
       assert.strictEqual(b.moving, true);
       assert.strictEqual(b.alive, true);
@@ -638,7 +658,10 @@ describe("match room", () => {
       const back = await colyseus.sdk.reconnect(reconnectionToken);
       // a reloaded page runs a fresh engine: its epoch counter starts over, and it spawns on a pad
       back.send("move", body({ ...WEST_GATE, epoch: 1 }));
-      await eventually(() => close(snapshot(h).players[sessionId]?.x ?? 0, WEST_GATE.x), "re-spawned where the new engine says");
+      await eventually(
+        () => close(snapshot(h).players[sessionId]?.x ?? 0, WEST_GATE.x),
+        "re-spawned where the new engine says",
+      );
       assert.strictEqual(snapshot(h).players[sessionId].epoch, 2, "viewers snap instead of sliding");
       assert.strictEqual(snapshot(h).players[sessionId].connected, true);
       assert.strictEqual(Object.keys(snapshot(h).players).length, 2);

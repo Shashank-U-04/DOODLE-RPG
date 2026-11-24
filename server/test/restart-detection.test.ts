@@ -17,7 +17,12 @@ import { INSTANCE_ID } from "../src/lifecycle.js";
 import type { MatchRoom } from "../src/rooms/MatchRoom.js";
 import { testServer } from "./harness.js";
 import { ColyseusSession } from "../../src/game/colyseus.js";
-import { awaitInstanceVerdict, probeServerInstance, RestartWatch, type InstanceProbe } from "../../src/game/serverRestart.js";
+import {
+  awaitInstanceVerdict,
+  probeServerInstance,
+  RestartWatch,
+  type InstanceProbe,
+} from "../../src/game/serverRestart.js";
 
 const UPSTREAM = "http://localhost:2568"; // @colyseus/testing default
 const RESTARTED = "The match server restarted, so this match has ended. Create or join a match again.";
@@ -56,10 +61,14 @@ class FaultyPath {
         this.healthRequests++;
         if (this.healthDelayMs > 0) await pause(this.healthDelayMs);
         if (this.health === "down") return void req.socket.destroy();
-        if (this.health === "html") return void res.writeHead(200, { "content-type": "text/html" }).end("<html>Sign in to Wi-Fi</html>");
-        if (this.health === "no-instance") return void res.writeHead(200, { "content-type": "application/json" }).end('{"status":"ok","uptime":1}');
+        if (this.health === "html")
+          return void res.writeHead(200, { "content-type": "text/html" }).end("<html>Sign in to Wi-Fi</html>");
+        if (this.health === "no-instance")
+          return void res.writeHead(200, { "content-type": "application/json" }).end('{"status":"ok","uptime":1}');
         if (this.health !== "pass") {
-          return void res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ status: "ok", uptime: 1, instance: this.health.instance }));
+          return void res
+            .writeHead(200, { "content-type": "application/json" })
+            .end(JSON.stringify({ status: "ok", uptime: 1, instance: this.health.instance }));
         }
       } else if (this.down) {
         return void req.socket.destroy();
@@ -71,7 +80,9 @@ class FaultyPath {
         req.on("end", () => resolve(Buffer.concat(chunks)));
       });
       const headers = Object.fromEntries(
-        Object.entries(req.headers).filter(([k, v]) => typeof v === "string" && !["host", "connection", "content-length"].includes(k)),
+        Object.entries(req.headers).filter(
+          ([k, v]) => typeof v === "string" && !["host", "connection", "content-length"].includes(k),
+        ),
       ) as Record<string, string>;
       const upstream = await fetch(`${UPSTREAM}${req.url}`, {
         method: req.method,
@@ -93,7 +104,11 @@ class FaultyPath {
         upstream.on("open", () => {
           for (const m of pending.splice(0)) upstream.send(m.data, { binary: m.binary });
         });
-        upstream.on("message", (data: Buffer, binary) => !this.muted && client.readyState === WebSocket.OPEN && client.send(data, { binary }));
+        upstream.on(
+          "message",
+          (data: Buffer, binary) =>
+            !this.muted && client.readyState === WebSocket.OPEN && client.send(data, { binary }),
+        );
         upstream.on("close", (code, reason) => {
           // 1005/1006 cannot be sent in a close frame
           if (this.forwardCloses && code >= 1000 && code !== 1005 && code !== 1006) client.close(code, reason);
@@ -137,7 +152,10 @@ async function eventually(check: () => boolean, what: string, timeoutMs = 4000) 
 }
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type SdkRoom = { reconnection: { minUptime: number; maxRetries: number; maxDelay: number; isReconnecting: boolean }; sessionId: string };
+type SdkRoom = {
+  reconnection: { minUptime: number; maxRetries: number; maxDelay: number; isReconnecting: boolean };
+  sessionId: string;
+};
 const roomOf = (s: ColyseusSession) => (s as unknown as { room: SdkRoom | null }).room;
 
 describe("telling a server restart from a network problem", function () {
@@ -160,7 +178,11 @@ describe("telling a server restart from a network problem", function () {
 
   function open(code: string, name: string, isHost: boolean): Tracked {
     const store = new Map<string, string>();
-    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
     const session = new ColyseusSession(
       code,
       name,
@@ -172,7 +194,11 @@ describe("telling a server restart from a network problem", function () {
     const lost: string[] = [];
     const errors: string[] = [];
     const statuses: string[] = [];
-    session.setHandlers({ onLost: (t) => lost.push(t), onError: (t) => errors.push(t), onStatus: (t) => statuses.push(t) });
+    session.setHandlers({
+      onLost: (t) => lost.push(t),
+      onError: (t) => errors.push(t),
+      onStatus: (t) => statuses.push(t),
+    });
     session.connect();
     return { session, lost, errors, statuses };
   }
@@ -253,7 +279,11 @@ describe("telling a server restart from a network problem", function () {
   it("sockets lost but /health still names the same process: keeps reconnecting, no message", async () => {
     const { host, guest } = await twoPlayers();
     path.cut();
-    await eventually(() => host.statuses.includes("RECONNECTED") && guest.statuses.includes("RECONNECTED"), "both back", 15_000);
+    await eventually(
+      () => host.statuses.includes("RECONNECTED") && guest.statuses.includes("RECONNECTED"),
+      "both back",
+      15_000,
+    );
     assert.deepStrictEqual(host.lost, []);
     assert.deepStrictEqual(guest.lost, []);
     assert.ok(path.healthRequests > 0, "the server was asked");
@@ -427,7 +457,11 @@ describe("telling a server restart from a network problem", function () {
     it("only a clear answer naming another process counts as a change", async () => {
       path.health = "pass";
       assert.strictEqual(await probeServerInstance(path.url, INSTANCE_ID), "same");
-      assert.strictEqual(await probeServerInstance(path.url.replace(/^http/, "ws"), INSTANCE_ID), "same", "a ws:// URL works too");
+      assert.strictEqual(
+        await probeServerInstance(path.url.replace(/^http/, "ws"), INSTANCE_ID),
+        "same",
+        "a ws:// URL works too",
+      );
       assert.strictEqual(await probeServerInstance(path.url, "another"), "changed");
       for (const health of ["down", "html", "no-instance"] as const) {
         path.health = health;
@@ -519,7 +553,11 @@ describe("telling a server restart from a network problem", function () {
       assert.strictEqual(calls, 3);
       assert.strictEqual(most, 1);
 
-      const stopped = new RestartWatch(async () => "changed", () => fired++, 1);
+      const stopped = new RestartWatch(
+        async () => "changed",
+        () => fired++,
+        1,
+      );
       stopped.start();
       stopped.stop();
       await pause(30);

@@ -23,33 +23,27 @@ export default defineConfig({
         // Manual chunk splitting for better caching and lazy loading
         manualChunks: {
           // Vendor chunks for large libraries
-          'react-vendor': ['react', 'react-dom', 'react-router'],
+          "react-vendor": ["react", "react-dom", "react-router"],
         },
         // Optimize chunk size
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
     // Increase chunk size warning limit for better chunking
     chunkSizeWarningLimit: 1000,
     // Target modern browsers for better optimization
-    target: 'esnext',
+    target: "esnext",
     // Minify options - using esbuild (faster than terser)
-    minify: 'esbuild',
+    minify: "esbuild",
   },
   // Optimize dependencies
   optimizeDeps: {
     // Only scan the app entry HTML; avoids crawling unrelated *.html files
     // if a legacy snapshot accidentally contains leaked package folders.
-    entries: ['index.html'],
-    include: [
-      'react',
-      'react/jsx-runtime',
-      'react-dom',
-      'react-dom/client',
-      'react-router',
-    ],
+    entries: ["index.html"],
+    include: ["react", "react/jsx-runtime", "react-dom", "react-dom/client", "react-router"],
   },
   // Performance hints
   server: {

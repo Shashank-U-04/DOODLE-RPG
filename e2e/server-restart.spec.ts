@@ -57,7 +57,9 @@ async function faultyNetwork(context: BrowserContext) {
     upstream.addEventListener("open", () => {
       for (const m of pending.splice(0)) upstream.send(m);
     });
-    upstream.addEventListener("message", (e) => ws.send(typeof e.data === "string" ? e.data : Buffer.from(e.data as ArrayBuffer)));
+    upstream.addEventListener("message", (e) =>
+      ws.send(typeof e.data === "string" ? e.data : Buffer.from(e.data as ArrayBuffer)),
+    );
     upstream.addEventListener("close", (e) => {
       if (live.delete(link)) void ws.close({ code: e.code === 1005 ? 1006 : e.code });
     });
@@ -111,7 +113,14 @@ async function twoInArena(browser: import("@playwright/test").Browser) {
   const guestNet = await faultyNetwork(guestContext);
   const code = await intoArena(host, guest);
   await guest.waitForTimeout(SDK_MIN_UPTIME_MS + 500);
-  return { host, guest, hostNet, guestNet, code, close: () => Promise.all([hostContext.close(), guestContext.close()]) };
+  return {
+    host,
+    guest,
+    hostNet,
+    guestNet,
+    code,
+    close: () => Promise.all([hostContext.close(), guestContext.close()]),
+  };
 }
 
 const sockets = (page: Page) => page.evaluate("window.__sockets") as Promise<number>;
@@ -132,7 +141,9 @@ test("from the page, /health is readable and names the server process the room i
   const context = await browser.newContext();
   const page = await player(context, "ADA", offHost);
   await page.goto("/online");
-  const body = (await page.evaluate(`fetch(${JSON.stringify(`${E2E_SERVER}/health`)}, { cache: "no-store" }).then((r) => r.json())`)) as {
+  const body = (await page.evaluate(
+    `fetch(${JSON.stringify(`${E2E_SERVER}/health`)}, { cache: "no-store" }).then((r) => r.json())`,
+  )) as {
     status: string;
     instance: string;
   };
@@ -141,7 +152,9 @@ test("from the page, /health is readable and names the server process the room i
   await context.close();
 });
 
-test("a short interruption: reconnected in the same seat, and nobody is told the server restarted", async ({ browser }) => {
+test("a short interruption: reconnected in the same seat, and nobody is told the server restarted", async ({
+  browser,
+}) => {
   const { host, guest, guestNet, close } = await twoInArena(browser);
   const before = await sockets(guest);
   guestNet.state.health = "fail";
@@ -152,7 +165,12 @@ test("a short interruption: reconnected in the same seat, and nobody is told the
   expect(await sockets(guest), "the SDK kept trying").toBeGreaterThan(before);
 
   guestNet.restore();
-  await expect.poll(() => consoleLines.filter((l) => l.includes("reconnected")).length, { message: "the guest is back", timeout: 15_000 }).toBeGreaterThan(0);
+  await expect
+    .poll(() => consoleLines.filter((l) => l.includes("reconnected")).length, {
+      message: "the guest is back",
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0);
   await expect(host.locator(".dd-hud-tr .wave")).toHaveText("FREE FOR ALL 2");
   await guest.waitForTimeout(3000);
   for (const page of [host, guest]) await expectStillPlaying(page);
@@ -160,7 +178,9 @@ test("a short interruption: reconnected in the same seat, and nobody is told the
   await close();
 });
 
-test("a long interruption: the seat expires and the guest is told that, not a restart, and can join again", async ({ browser }) => {
+test("a long interruption: the seat expires and the guest is told that, not a restart, and can join again", async ({
+  browser,
+}) => {
   test.setTimeout(180_000);
   const { host, guest, guestNet, code, close } = await twoInArena(browser);
   guestNet.state.health = "fail";
@@ -175,7 +195,9 @@ test("a long interruption: the seat expires and the guest is told that, not a re
   await expectStillPlaying(host);
   await expect(host.locator(".dd-hud-tr .wave")).toHaveText("FREE FOR ALL 1", { timeout: 5000 });
 
-  await overlay(guest).getByRole("button", { name: /LEAVE MATCH/ }).click();
+  await overlay(guest)
+    .getByRole("button", { name: /LEAVE MATCH/ })
+    .click();
   await guest.getByRole("button", { name: /JOIN A MATCH/ }).click();
   await guest.getByPlaceholder("ABCD").fill(code);
   await guest.getByRole("button", { name: /CONNECT/ }).click();
@@ -183,7 +205,9 @@ test("a long interruption: the seat expires and the guest is told that, not a re
   await close();
 });
 
-test("a restart with no notice and no close: both told at once, then LEAVE MATCH and a new room work", async ({ browser }) => {
+test("a restart with no notice and no close: both told at once, then LEAVE MATCH and a new room work", async ({
+  browser,
+}) => {
   const { host, guest, hostNet, guestNet, close } = await twoInArena(browser);
   const replaced = { instance: "a-new-process" };
   hostNet.state.health = replaced;
@@ -207,7 +231,9 @@ test("a restart with no notice and no close: both told at once, then LEAVE MATCH
   hostNet.restore();
   guestNet.restore();
   for (const page of [host, guest]) {
-    await overlay(page).getByRole("button", { name: /LEAVE MATCH/ }).click();
+    await overlay(page)
+      .getByRole("button", { name: /LEAVE MATCH/ })
+      .click();
     await expect(page.locator(".dd-exit")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /JOIN A MATCH/ })).toBeVisible();
   }
@@ -226,7 +252,9 @@ test("a restart with no notice and no close: both told at once, then LEAVE MATCH
   await close();
 });
 
-test("the server unavailable during the reconnect: no verdict until a new process actually answers", async ({ browser }) => {
+test("the server unavailable during the reconnect: no verdict until a new process actually answers", async ({
+  browser,
+}) => {
   const { host, guest, hostNet, guestNet, close } = await twoInArena(browser);
   for (const net of [hostNet, guestNet]) {
     net.state.health = "fail";

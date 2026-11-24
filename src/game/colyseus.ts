@@ -58,7 +58,8 @@ export const WAKE_HINT = "WAKING THE MATCH SERVER — A SLEEPING SERVER CAN TAKE
  * unreachable server left the lobby on JOINING… for good.
  */
 export const JOIN_TIMEOUT_MS = 90_000;
-export const JOIN_TIMEOUT_TEXT = "The match server did not answer in time. It may still be waking up — press TRY AGAIN.";
+export const JOIN_TIMEOUT_TEXT =
+  "The match server did not answer in time. It may still be waking up — press TRY AGAIN.";
 /** What the arena says when the match server restarted (or redeployed) under a match. */
 const RESTARTED_TEXT = "The match server restarted, so this match has ended. Create or join a match again.";
 
@@ -98,7 +99,17 @@ const LOST_TEXT = "Lost the connection to the match server and could not get bac
 const VIEW_DELAY_MS = 100;
 
 /** server/src/rooms/Combat.ts events */
-type HitEvent = { attacker: string; victim: string; weapon: string; damage: number; head: boolean; kill: boolean; x: number; y: number; z: number };
+type HitEvent = {
+  attacker: string;
+  victim: string;
+  weapon: string;
+  damage: number;
+  head: boolean;
+  kill: boolean;
+  x: number;
+  y: number;
+  z: number;
+};
 type EliminatedEvent = { victim: string; killer: string; weapon: string };
 
 /** What the server answers to `start` (server/src/rooms/MatchRoom.ts). */
@@ -155,9 +166,18 @@ type Seat = {
 type SeatStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 const IDLE: NetPlayerState = {
-  x: 0, y: 0.2, z: 38, yaw: Math.PI, pitch: 0,
-  hp: 100, alive: false, moving: false, firing: false, weapon: "RIFLE",
-  epoch: 0, seq: 0,
+  x: 0,
+  y: 0.2,
+  z: 38,
+  yaw: Math.PI,
+  pitch: 0,
+  hp: 100,
+  alive: false,
+  moving: false,
+  firing: false,
+  weapon: "RIFLE",
+  epoch: 0,
+  seq: 0,
 };
 
 const START_REFUSALS: Record<string, string> = {
@@ -428,7 +448,8 @@ export class ColyseusSession implements MatchSession {
       sdk = await loadSdk();
     } catch {
       globalThis.clearTimeout(hint);
-      if (this.phase !== "closed") this.fail("Could not load the multiplayer code. Check your connection and press TRY AGAIN.");
+      if (this.phase !== "closed")
+        this.fail("Could not load the multiplayer code. Check your connection and press TRY AGAIN.");
       return;
     }
     const client = new sdk.Client(this.url);
@@ -436,7 +457,8 @@ export class ColyseusSession implements MatchSession {
     let room = await this.resumeSeat(client);
     if (!room && this.resumeOnly) {
       globalThis.clearTimeout(hint);
-      if (this.phase !== "closed") this.fail(`Your seat in match ${this.code || "the match"} has expired. Create or join a match again.`);
+      if (this.phase !== "closed")
+        this.fail(`Your seat in match ${this.code || "the match"} has expired. Create or join a match again.`);
       return;
     }
     // LEAVE, or the join timeout, while the seat was being tried: ask for nothing new.
@@ -493,7 +515,12 @@ export class ColyseusSession implements MatchSession {
   private async freshSeat(client: Client): Promise<Room | null> {
     try {
       if (this.isHost) {
-        return await client.create("match", { name: this.name, look: this.look, map: this.config.map, grapple: this.config.grapple });
+        return await client.create("match", {
+          name: this.name,
+          look: this.look,
+          map: this.config.map,
+          grapple: this.config.grapple,
+        });
       }
       return await client.joinById(this.code, { name: this.name, look: this.look });
     } catch (err) {
@@ -593,7 +620,10 @@ export class ColyseusSession implements MatchSession {
         // The socket still looks open, but nothing has come back: the server's
         // close may be lost on the way (see leaveRoom). Ask /health meanwhile;
         // only a clear answer naming another process ends the match.
-        this.logConnection(room, `no answer to pings for ${Math.round((now - this.pingUnansweredSince) / 1000)} s; asking the server`);
+        this.logConnection(
+          room,
+          `no answer to pings for ${Math.round((now - this.pingUnansweredSince) / 1000)} s; asking the server`,
+        );
         this.watchForRestart(room);
       }
       room.ping((ms) => {
@@ -870,7 +900,8 @@ export class ColyseusSession implements MatchSession {
     room
       .request("start")
       .then((result: StartResult) => {
-        if (!result.ok) this.handlers.onError?.(START_REFUSALS[result.reason] ?? "The server refused to start the match.");
+        if (!result.ok)
+          this.handlers.onError?.(START_REFUSALS[result.reason] ?? "The server refused to start the match.");
       })
       .catch(() => this.handlers.onError?.("Could not reach the match server to start the match."));
   }
@@ -893,7 +924,10 @@ export class ColyseusSession implements MatchSession {
     if (this.previewNoted) return;
     this.previewNoted = true;
     // Deferred so it lands after the arena has installed its feed handler.
-    globalThis.setTimeout(() => this.handlers.onFeed?.("COLYSEUS PREVIEW — THE MATCH SERVER REFEREES EVERY SHOT", true), 0);
+    globalThis.setTimeout(
+      () => this.handlers.onFeed?.("COLYSEUS PREVIEW — THE MATCH SERVER REFEREES EVERY SHOT", true),
+      0,
+    );
   }
 
   private stopTicking() {
@@ -934,7 +968,15 @@ export class ColyseusSession implements MatchSession {
     const lag = Math.max(0, Math.min(5000, Math.round(this.rtt + VIEW_DELAY_MS)));
     switch (i.kind) {
       case "fire":
-        room.send("fire", { shot: ++this.shotSeq, weapon: i.weapon, origin: i.origin, dir: i.dir, ads: i.ads, air: i.air, lag });
+        room.send("fire", {
+          shot: ++this.shotSeq,
+          weapon: i.weapon,
+          origin: i.origin,
+          dir: i.dir,
+          ads: i.ads,
+          air: i.air,
+          lag,
+        });
         break;
       case "slash":
       case "dash":
@@ -954,7 +996,14 @@ export class ColyseusSession implements MatchSession {
       if (e.kill) this.killedBy = e.attacker === this.me ? null : e.attacker;
       this.handlers.onHurt?.(e.damage, e.attacker === this.me ? null : e.attacker);
     } else if (e.attacker === this.me) {
-      this.handlers.onShotLanded?.({ x: e.x, y: e.y, z: e.z, head: e.head, kill: e.kill, focus: e.weapon === "KATANA" });
+      this.handlers.onShotLanded?.({
+        x: e.x,
+        y: e.y,
+        z: e.z,
+        head: e.head,
+        kill: e.kill,
+        focus: e.weapon === "KATANA",
+      });
     }
   }
 

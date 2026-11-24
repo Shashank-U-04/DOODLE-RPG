@@ -39,8 +39,12 @@ test("a friend's fighter, even an auto-rigged one, is loaded as their body in th
   for (const page of [host, guest]) page.on("pageerror", (e) => errors.push(e.message));
 
   // the host's game fetches the guest's model, and the guest's fetches the host's
-  const hostGetsBanana = host.waitForResponse((r) => r.url().endsWith("/characters/banana.glb") && r.ok(), { timeout: 60_000 });
-  const guestGetsSwat = guest.waitForResponse((r) => r.url().endsWith("/characters/swat.glb") && r.ok(), { timeout: 60_000 });
+  const hostGetsBanana = host.waitForResponse((r) => r.url().endsWith("/characters/banana.glb") && r.ok(), {
+    timeout: 60_000,
+  });
+  const guestGetsSwat = guest.waitForResponse((r) => r.url().endsWith("/characters/swat.glb") && r.ok(), {
+    timeout: 60_000,
+  });
   await intoArena(host, guest);
   await Promise.all([hostGetsBanana, guestGetsSwat]);
   await host.waitForTimeout(1500);

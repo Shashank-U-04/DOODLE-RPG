@@ -31,9 +31,18 @@ async function startServer(how: "entry-point" | "npm-run-serve" | "node-build" =
   const env = { ...process.env, NODE_ENV: "production", PORT: String(PORT), ALLOWED_ORIGINS: "" };
   const proc =
     how === "entry-point"
-      ? spawn(process.execPath, ["--import", "tsx", "test/fixtures/shutdown-child.ts"], { cwd: serverDir, env, stdio: ["ignore", "pipe", "pipe", "ipc"] })
+      ? spawn(process.execPath, ["--import", "tsx", "test/fixtures/shutdown-child.ts"], {
+          cwd: serverDir,
+          env,
+          stdio: ["ignore", "pipe", "pipe", "ipc"],
+        })
       : how === "node-build"
-        ? spawn(process.execPath, ["build/index.js"], { cwd: serverDir, env, stdio: ["ignore", "pipe", "pipe"], detached: true })
+        ? spawn(process.execPath, ["build/index.js"], {
+            cwd: serverDir,
+            env,
+            stdio: ["ignore", "pipe", "pipe"],
+            detached: true,
+          })
         : spawn("npm", ["run", "serve"], { cwd: serverDir, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   let output = "";
   proc.stdout?.on("data", (d) => (output += d));
@@ -41,7 +50,9 @@ async function startServer(how: "entry-point" | "npm-run-serve" | "node-build" =
   const exited = new Promise<number | null>((resolve) => proc.on("exit", (code) => resolve(code)));
   const deadline = Date.now() + 30_000;
   for (;;) {
-    const up = await fetch(`${BASE}/health`).then((r) => r.ok).catch(() => false);
+    const up = await fetch(`${BASE}/health`)
+      .then((r) => r.ok)
+      .catch(() => false);
     if (up) break;
     if (Date.now() > deadline) throw new Error(`server did not start:\n${output}`);
     await new Promise((r) => setTimeout(r, 100));
@@ -101,7 +112,13 @@ describe("graceful shutdown", function () {
       proc.kill("SIGKILL");
     }
     const deadline = Date.now() + 5000;
-    while (Date.now() < deadline && (await fetch(`${BASE}/health`).then(() => true, () => false))) {
+    while (
+      Date.now() < deadline &&
+      (await fetch(`${BASE}/health`).then(
+        () => true,
+        () => false,
+      ))
+    ) {
       await new Promise((r) => setTimeout(r, 100));
     }
   });
@@ -116,7 +133,10 @@ describe("graceful shutdown", function () {
     for (const { seen } of players) {
       assert.strictEqual(seen.closeCode, SERVER_SHUTDOWN, server.output());
       assert.strictEqual(seen.notices.length, 1, "exactly one notice");
-      assert.ok(seen.closedAt - seen.notices[0] >= NOTICE_GRACE_MS - 100, `notice ${seen.closedAt - seen.notices[0]} ms before the close`);
+      assert.ok(
+        seen.closedAt - seen.notices[0] >= NOTICE_GRACE_MS - 100,
+        `notice ${seen.closedAt - seen.notices[0]} ms before the close`,
+      );
     }
     assert.strictEqual(await within(server.exited, 15_000, "process exit"), 0, server.output());
     assert.ok(Date.now() - startedAt < 10_000, "shutdown is bounded");
@@ -124,10 +144,25 @@ describe("graceful shutdown", function () {
 
     // every step is on the record, in order
     const stages = lifecycle(server.output()).map((l) => l.stage);
-    const expected = ["boot", "shutdown-started", "room-notice-sent", "room-closing-sockets", "room-disposed", "shutdown-finished", "process-exit"];
+    const expected = [
+      "boot",
+      "shutdown-started",
+      "room-notice-sent",
+      "room-closing-sockets",
+      "room-disposed",
+      "shutdown-finished",
+      "process-exit",
+    ];
     const positions = expected.map((s) => stages.indexOf(s));
-    assert.ok(positions.every((p) => p >= 0), `stages: ${stages.join(", ")}`);
-    assert.deepStrictEqual(positions, [...positions].sort((a, b) => a - b), `stages: ${stages.join(", ")}`);
+    assert.ok(
+      positions.every((p) => p >= 0),
+      `stages: ${stages.join(", ")}`,
+    );
+    assert.deepStrictEqual(
+      positions,
+      [...positions].sort((a, b) => a - b),
+      `stages: ${stages.join(", ")}`,
+    );
     assert.ok(stages.includes("signal-received"), "the signal is on the record");
 
     const notice = lifecycle(server.output()).find((l) => l.stage === "room-notice-sent") as unknown as {
@@ -135,7 +170,11 @@ describe("graceful shutdown", function () {
       sockets: { session: string; readyState: number }[];
     };
     assert.strictEqual(notice.room, host.roomId);
-    assert.deepStrictEqual(notice.sockets.map((s) => s.readyState), [1, 1], "both sockets open when the notice was sent");
+    assert.deepStrictEqual(
+      notice.sockets.map((s) => s.readyState),
+      [1, 1],
+      "both sockets open when the notice was sent",
+    );
   });
 
   it("a repeated SIGTERM changes nothing: one notice each, a clean exit", async () => {
@@ -226,7 +265,10 @@ describe("graceful shutdown", function () {
       const tree = execSync(`ps -o pid,ppid,pgid,args -g ${pid}`, { encoding: "utf8" });
       const npmVersion = execSync("npm --version", { encoding: "utf8" }).trim();
       server.proc.kill("SIGTERM");
-      const closed = await within(Promise.all(players.map((p) => p.closed)), 8000, "closed").then(() => true, () => false);
+      const closed = await within(Promise.all(players.map((p) => p.closed)), 8000, "closed").then(
+        () => true,
+        () => false,
+      );
       const stages = lifecycle(server.output()).map((l) => l.stage);
       const npmExited = server.proc.exitCode !== null || server.proc.signalCode !== null;
       const report = {
@@ -237,7 +279,10 @@ describe("graceful shutdown", function () {
         notices: players.map((p) => p.seen.notices.length),
         npmExited,
         npmExit: { code: server.proc.exitCode, signal: server.proc.signalCode },
-        nodeStillAnswering: await fetch(`${BASE}/health`).then(() => true, () => false),
+        nodeStillAnswering: await fetch(`${BASE}/health`).then(
+          () => true,
+          () => false,
+        ),
       };
       console.log(`[npm-signal-report] ${JSON.stringify(report)}\n${tree}`);
     });

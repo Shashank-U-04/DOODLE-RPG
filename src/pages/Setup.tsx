@@ -156,7 +156,11 @@ export default function Setup() {
           {mode === "solo" ? (
             <div className="mainbtns">
               <button type="button" className="start" onClick={startSolo}>
-                START MATCH<i>{info.name.toLowerCase()}{grapple ? " · grapple on" : " · grapple off"}</i>
+                START MATCH
+                <i>
+                  {info.name.toLowerCase()}
+                  {grapple ? " · grapple on" : " · grapple off"}
+                </i>
               </button>
             </div>
           ) : (

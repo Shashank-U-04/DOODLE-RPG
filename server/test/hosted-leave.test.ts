@@ -46,7 +46,9 @@ async function lossyProxy(): Promise<Proxy> {
       req.on("end", () => resolve(Buffer.concat(chunks)));
     });
     const headers = Object.fromEntries(
-      Object.entries(req.headers).filter(([k, v]) => typeof v === "string" && !["host", "connection", "content-length"].includes(k)),
+      Object.entries(req.headers).filter(
+        ([k, v]) => typeof v === "string" && !["host", "connection", "content-length"].includes(k),
+      ),
     ) as Record<string, string>;
     const upstream = await fetch(`${UPSTREAM}${req.url}`, {
       method: req.method,
@@ -65,7 +67,10 @@ async function lossyProxy(): Promise<Proxy> {
       upstream.on("open", () => {
         for (const m of pending.splice(0)) upstream.send(m.data, { binary: m.binary });
       });
-      upstream.on("message", (data: Buffer, binary) => client.readyState === WebSocket.OPEN && client.send(data, { binary }));
+      upstream.on(
+        "message",
+        (data: Buffer, binary) => client.readyState === WebSocket.OPEN && client.send(data, { binary }),
+      );
       // the server closed: the frame is lost; the client's socket dies later, abnormally (1006)
       upstream.on("close", () => setTimeout(() => client.terminate(), DROP_AFTER_MS));
       client.on("message", (data: Buffer, binary) => {
@@ -112,7 +117,11 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** A real client session (src/game/colyseus.ts) talking through the proxy. */
 function session(url: string, code: string, name: string, isHost: boolean) {
   const store = new Map<string, string>();
-  const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+  const storage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
   const s = new ColyseusSession(code, name, isHost, { map: "district", grapple: true }, { url, storage });
   s.connect();
   return s;
@@ -159,7 +168,10 @@ describe("leaving through a hosting path that loses server-initiated closes", ()
     const code = await leaveRoom(room);
     assert.strictEqual(code, CONSENTED);
     assert.ok(Date.now() - started < 1000, `took ${Date.now() - started} ms`);
-    await eventually(() => colyseus.getRoomById(room.roomId) === undefined, "the room is gone (it was the only player)");
+    await eventually(
+      () => colyseus.getRoomById(room.roomId) === undefined,
+      "the room is gone (it was the only player)",
+    );
   });
 
   it("a player who leaves is gone for everyone at once: no held seat, no reconnecting", async () => {

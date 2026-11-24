@@ -81,7 +81,11 @@ export type MatchWinner = { id: string; name: string; kills: number; isMe: boole
  * rematch, so the overlay must stay up for the host. A session that names
  * no referee (undefined) falls back to the score counted here.
  */
-export function matchWinner(players: NetPlayer[], winnerId: string | undefined, killsToWin: number): MatchWinner | null {
+export function matchWinner(
+  players: NetPlayer[],
+  winnerId: string | undefined,
+  killsToWin: number,
+): MatchWinner | null {
   if (winnerId === undefined) {
     const p = players.find((x) => x.kills >= killsToWin);
     return p ? { id: p.id, name: p.name, kills: p.kills, isMe: p.isMe } : null;

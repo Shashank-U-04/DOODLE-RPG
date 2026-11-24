@@ -90,7 +90,9 @@ export const ARRIVALS: Record<MapId, readonly Vec3[]> = {
 };
 
 export function isArrival(p: Vec3, arrivals: readonly Vec3[]): boolean {
-  return arrivals.some((a) => Math.hypot(p.x - a.x, p.z - a.z) <= ARRIVAL_RADIUS && Math.abs(p.y - a.y) <= ARRIVAL_HEIGHT);
+  return arrivals.some(
+    (a) => Math.hypot(p.x - a.x, p.z - a.z) <= ARRIVAL_RADIUS && Math.abs(p.y - a.y) <= ARRIVAL_HEIGHT,
+  );
 }
 
 /** The arrival closest to `p`, or null when there are none. */

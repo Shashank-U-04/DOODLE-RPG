@@ -55,7 +55,9 @@ export function wakeMatchServer(deps: WakeDeps = {}): boolean {
     if (lastKnockAt !== null && now - lastKnockAt < WAKE_REPEAT_MS) return false;
     const send =
       deps.fetch ??
-      (typeof globalThis.fetch === "function" ? (input: string, init: RequestInit) => globalThis.fetch(input, init) : null);
+      (typeof globalThis.fetch === "function"
+        ? (input: string, init: RequestInit) => globalThis.fetch(input, init)
+        : null);
     if (!send) return false; // no fetch here (old browsers, some tests): creating or joining a room wakes it anyway
     lastKnockAt = now;
     const knockedAt = now;

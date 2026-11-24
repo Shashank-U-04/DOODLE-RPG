@@ -80,7 +80,12 @@ export class Metrics {
   /** Close the window: what happened in it, then start a new one. Null when nothing did. */
   flush(rooms: number, players: number, memory: { rss: number; heapUsed: number }): MetricsSnapshot | null {
     const now = this.clock();
-    const quiet = rooms === 0 && this.ticks === 0 && this.createsRefused === 0 && this.roomsCreated === 0 && this.roomsDisposed === 0;
+    const quiet =
+      rooms === 0 &&
+      this.ticks === 0 &&
+      this.createsRefused === 0 &&
+      this.roomsCreated === 0 &&
+      this.roomsDisposed === 0;
     const sorted = [...this.samples].sort((a, b) => a - b);
     const snapshot: MetricsSnapshot = {
       event: "metrics",

@@ -37,14 +37,30 @@ import { PerfProbe, perfRequested } from "./perf";
 import { damp, smooth01, Spring } from "./feel";
 import { buildGunSpec, type GunSpec } from "./guns";
 import { makeAmmoPack, makeGrenade, makeMedkit } from "./props";
-import { ED, PR, QR, VR, XN, XN_AIR, CI, JN, BASE_FOV, DR, NR, FR, OR_, type EnemyKind, type EnemyDef } from "./enemies-data";
+import {
+  ED,
+  PR,
+  QR,
+  VR,
+  XN,
+  XN_AIR,
+  CI,
+  JN,
+  BASE_FOV,
+  DR,
+  NR,
+  FR,
+  OR_,
+  type EnemyKind,
+  type EnemyDef,
+} from "./enemies-data";
 import type { EngineCallbacks, GameHandle, HudState, NetPlayerState, NetRemotePlayer } from "./types";
 
 THREE.ColorManagement.enabled = false;
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
-const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 type Enemy = {
   kind: EnemyKind;
   def: EnemyDef;
@@ -132,7 +148,6 @@ type BossAtk = {
 
 /* ============================== data ============================== */
 
-
 const SPAWN_TABLE: { t: EnemyKind; from: number; w: number }[] = [
   { t: "grunt", from: 1, w: 10 },
   { t: "rusher", from: 2, w: 6 },
@@ -191,7 +206,12 @@ export function createGame(
   canvas.className = "dd-canvas";
   container.appendChild(canvas);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, stencil: false, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: false,
+    stencil: false,
+    powerPreference: "high-performance",
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
   const scene = new THREE.Scene();
@@ -580,7 +600,14 @@ export function createGame(
   // Biased darker, blued steel cross-hatches densely and wood shows its grain.
   // The uniforms object is spread so the shared light and time stay shared.
   const gunMats = new Map<string, THREE.ShaderMaterial>();
-  const GUN_SHADE: Partial<Record<InkId, number>> = { [INK.BLACK]: -0.34, [INK.STONE]: -0.2, [INK.OCHRE]: -0.12, [INK.GREEN]: -0.14, [INK.SAND]: -0.1, [INK.BLUE]: -0.24 };
+  const GUN_SHADE: Partial<Record<InkId, number>> = {
+    [INK.BLACK]: -0.34,
+    [INK.STONE]: -0.2,
+    [INK.OCHRE]: -0.12,
+    [INK.GREEN]: -0.14,
+    [INK.SAND]: -0.1,
+    [INK.BLUE]: -0.24,
+  };
   const gunMaterial = (ink: InkId, fill: boolean) => {
     const base = makeInkMaterial(ink, fill);
     const bias = GUN_SHADE[ink];
@@ -704,18 +731,44 @@ export function createGame(
     arm.quaternion.setFromUnitVectors(V(0, 1, 0), dir);
     p.add(arm);
     const lathe = (pts: [number, number][], mat: THREE.Material, sx = 1.18) => {
-      const g = new THREE.LatheGeometry(pts.map(([r, h]) => new THREE.Vector2(r, h)), 16);
+      const g = new THREE.LatheGeometry(
+        pts.map(([r, h]) => new THREE.Vector2(r, h)),
+        16,
+      );
       g.scale(sx, 1, 1);
       arm.add(new THREE.Mesh(g, mat));
     };
-    lathe([[0, -0.012], [0.022, -0.008], [0.027, 0.02], [0.03, 0.05], [0, 0.05]], matHand, 1.25);
-    lathe([[0, 0.04], [0.03, 0.042], [0.035, 0.11], [0.039, 0.24], [0.041, 0.5], [0, 0.5]], matArm);
+    lathe(
+      [
+        [0, -0.012],
+        [0.022, -0.008],
+        [0.027, 0.02],
+        [0.03, 0.05],
+        [0, 0.05],
+      ],
+      matHand,
+      1.25,
+    );
+    lathe(
+      [
+        [0, 0.04],
+        [0.03, 0.042],
+        [0.035, 0.11],
+        [0.039, 0.24],
+        [0.041, 0.5],
+        [0, 0.5],
+      ],
+      matArm,
+    );
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.0045, 6, 18), matBand);
     cuff.rotation.x = Math.PI / 2;
     cuff.scale.set(1.18, 1, 1);
     cuff.position.y = 0.045;
     arm.add(cuff);
-    for (const [h, r] of [[0.16, 0.037], [0.3, 0.04]] as const) {
+    for (const [h, r] of [
+      [0.16, 0.037],
+      [0.3, 0.04],
+    ] as const) {
       const fold = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0045, 5, 18, Math.PI * 1.2), matArm);
       fold.rotation.set(Math.PI / 2, 0.25, f * 1.2);
       fold.scale.set(1.18, 1, 1);
@@ -967,7 +1020,19 @@ export function createGame(
     // spent on a body, the ink has to stop there — a streak continuing out the
     // far side would say the opposite of what just happened.
     const life = maxDist === undefined ? 2.2 : Math.min(2.2, Math.max(0.05, (maxDist - 0.6) / 70));
-    bullets.push({ pos: pos.clone(), vel: vel.clone(), life, dmg, headMul, friendly, ink, mesh, source, off: drawFrom ? drawFrom.clone().sub(pos) : undefined, travel: 0 });
+    bullets.push({
+      pos: pos.clone(),
+      vel: vel.clone(),
+      life,
+      dmg,
+      headMul,
+      friendly,
+      ink,
+      mesh,
+      source,
+      off: drawFrom ? drawFrom.clone().sub(pos) : undefined,
+      travel: 0,
+    });
   };
 
   const shardGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
@@ -978,7 +1043,9 @@ export function createGame(
       scene.add(mesh);
       shards.push({
         mesh,
-        vel: new THREE.Vector3(rand(-1, 1), rand(0.2, 1.4), rand(-1, 1)).normalize().multiplyScalar(force * rand(0.5, 1.3)),
+        vel: new THREE.Vector3(rand(-1, 1), rand(0.2, 1.4), rand(-1, 1))
+          .normalize()
+          .multiplyScalar(force * rand(0.5, 1.3)),
         life: rand(0.35, 0.8),
         spin: rand(-8, 8),
       });
@@ -1024,7 +1091,12 @@ export function createGame(
   const DOWN = new THREE.Vector3(0, -1, 0);
   const tmpOffset = new THREE.Vector3();
   const eyePos = () => new THREE.Vector3(player.pos.x, player.pos.y + (player.crouch ? JN * 0.94 : 1.6), player.pos.z);
-  const fwdVec = () => new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch));
+  const fwdVec = () =>
+    new THREE.Vector3(
+      -Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      -Math.cos(player.yaw) * Math.cos(player.pitch),
+    );
 
   function rayAABB(origin: THREE.Vector3, dir: THREE.Vector3, c: Collider, maxDist: number): number {
     let tmin = 0;
@@ -1060,7 +1132,14 @@ export function createGame(
 
   function segmentHitsPlayer(from: THREE.Vector3, to: THREE.Vector3): boolean {
     const p = player.pos;
-    const c: Collider = { minX: p.x - 0.4, maxX: p.x + 0.4, minY: p.y, maxY: p.y + player.height, minZ: p.z - 0.4, maxZ: p.z + 0.4 };
+    const c: Collider = {
+      minX: p.x - 0.4,
+      maxX: p.x + 0.4,
+      minY: p.y,
+      maxY: p.y + player.height,
+      minZ: p.z - 0.4,
+      maxZ: p.z + 0.4,
+    };
     const dir = to.clone().sub(from);
     const len = dir.length();
     if (len < 1e-6) return false;
@@ -1115,7 +1194,15 @@ export function createGame(
       gun.root.updateWorldMatrix(true, false);
       muzzleAt = gun.root.localToWorld(gun.spec.muzzle.clone());
     }
-    if (netAuthority()) intent({ kind: "fire", weapon: def.name, origin: vec(eye), dir: vec(base), ads: mouseAim, air: !player.onGround });
+    if (netAuthority())
+      intent({
+        kind: "fire",
+        weapon: def.name,
+        origin: vec(eye),
+        dir: vec(base),
+        ads: mouseAim,
+        air: !player.onGround,
+      });
     for (let i = 0; i < def.pellets; i++) {
       const dir = base.clone();
       dir.x += rand(-spread, spread);
@@ -1243,7 +1330,10 @@ export function createGame(
     let bestD = 14;
     for (const e of enemies) {
       if (!e.alive) continue;
-      const to = e.pos.clone().add(new THREE.Vector3(0, 1, 0)).sub(eye);
+      const to = e.pos
+        .clone()
+        .add(new THREE.Vector3(0, 1, 0))
+        .sub(eye);
       const d = to.length();
       if (d < bestD && to.normalize().dot(fwd) > 0.4) {
         target = e;
@@ -1255,7 +1345,10 @@ export function createGame(
     // payoff move had no target at all in a deathmatch.
     for (const a of pvp.remotes.values()) {
       if (!a.state.alive) continue;
-      const to = a.pos.clone().add(new THREE.Vector3(0, 1, 0)).sub(eye);
+      const to = a.pos
+        .clone()
+        .add(new THREE.Vector3(0, 1, 0))
+        .sub(eye);
       const d = to.length();
       if (d < bestD && to.normalize().dot(fwd) > 0.4) {
         victim = a;
@@ -1313,7 +1406,12 @@ export function createGame(
     // play and the part a player needs to be told was worth it.
     if (source === "katana") addFocus(KATANA_MELEE.focusGain);
     if (e.def.boss) cb.onBoss(e.def.name, clamp(e.hp / e.maxHp, 0, 1));
-    spawnShards(e.pos.clone().add(new THREE.Vector3(0, 1.2 * e.def.scale, 0)), crit ? INK.RED : e.def.ink, crit ? 7 : 3, 2.4);
+    spawnShards(
+      e.pos.clone().add(new THREE.Vector3(0, 1.2 * e.def.scale, 0)),
+      crit ? INK.RED : e.def.ink,
+      crit ? 7 : 3,
+      2.4,
+    );
     if (e.hp <= 0) killEnemy(e, source, crit);
     else {
       fx.hitEnemy();
@@ -1350,7 +1448,8 @@ export function createGame(
     spawnSplat(e.pos, e.def.ink);
     spawnShards(e.pos.clone().add(new THREE.Vector3(0, 1, 0)), e.def.ink, e.def.boss ? 22 : 12, 4);
     // Tomb guardians carry tomb goods: one supply drop, on the floor, in reach.
-    if (e.kind === "mummy") spawnPickupAt(Math.random() < 0.58 ? "ammo" : "health", e.pos.clone().setY(world.floorY + 0.55));
+    if (e.kind === "mummy")
+      spawnPickupAt(Math.random() < 0.58 ? "ammo" : "health", e.pos.clone().setY(world.floorY + 0.55));
 
     // A blade kill is worth a second helping of focus (it is the harder thing to
     // do), while any other weapon's kill wipes the meter: the SLASH window is
@@ -1431,9 +1530,38 @@ export function createGame(
   function makeLocalRig(def: EnemyDef) {
     let rigB: Rig;
     if (def.model === "flyer") rigB = makeWaspRig({ ink: def.ink, bodyW: 1, headS: 1, limbR: 0.03, scale: def.scale });
-    else if (def.model === "mummy") rigB = makeMummyRig({ ink: def.ink, accent: def.accent ?? INK.TURQ, bodyW: def.bodyW ?? 1, headS: def.headS ?? 1, limbR: def.limbR ?? 0.036, scale: def.scale });
-    else if (def.model === "blob") rigB = makeBlobRig({ ink: def.ink, bodyW: 1, headS: 1, limbR: 0.03, scale: def.scale, weapon: def.weapon }, def.bossKind);
-    else rigB = makeRig({ ink: def.ink, accent: def.accent ?? INK.BLACK, bodyW: def.bodyW ?? 1, headS: def.headS ?? 1, limbR: def.limbR ?? 0.032, hat: def.hat, shield: def.shield, weapon: def.weapon, scale: def.scale, smile: def.weapon === "blade", vest: def.vest, coat: def.coat, visor: def.visor, bulky: def.bulky, backpack: def.backpack });
+    else if (def.model === "mummy")
+      rigB = makeMummyRig({
+        ink: def.ink,
+        accent: def.accent ?? INK.TURQ,
+        bodyW: def.bodyW ?? 1,
+        headS: def.headS ?? 1,
+        limbR: def.limbR ?? 0.036,
+        scale: def.scale,
+      });
+    else if (def.model === "blob")
+      rigB = makeBlobRig(
+        { ink: def.ink, bodyW: 1, headS: 1, limbR: 0.03, scale: def.scale, weapon: def.weapon },
+        def.bossKind,
+      );
+    else
+      rigB = makeRig({
+        ink: def.ink,
+        accent: def.accent ?? INK.BLACK,
+        bodyW: def.bodyW ?? 1,
+        headS: def.headS ?? 1,
+        limbR: def.limbR ?? 0.032,
+        hat: def.hat,
+        shield: def.shield,
+        weapon: def.weapon,
+        scale: def.scale,
+        smile: def.weapon === "blade",
+        vest: def.vest,
+        coat: def.coat,
+        visor: def.visor,
+        bulky: def.bulky,
+        backpack: def.backpack,
+      });
     const P = rigB.parts;
     return {
       root: rigB.root,
@@ -1460,7 +1588,11 @@ export function createGame(
     if (def.flying) {
       const a = rand(0, Math.PI * 2);
       const r = rand(20, 34);
-      pos = new THREE.Vector3(clamp(player.pos.x + Math.cos(a) * r, world.bounds.minX, world.bounds.maxX), rand(4, 9), clamp(player.pos.z + Math.sin(a) * r, world.bounds.minZ, world.bounds.maxZ));
+      pos = new THREE.Vector3(
+        clamp(player.pos.x + Math.cos(a) * r, world.bounds.minX, world.bounds.maxX),
+        rand(4, 9),
+        clamp(player.pos.z + Math.sin(a) * r, world.bounds.minZ, world.bounds.maxZ),
+      );
     } else {
       // pick the far point that is actually standing room: a spawn inside a wall
       // is an enemy nobody can ever reach.
@@ -1769,7 +1901,11 @@ export function createGame(
 
       // a character model runs its own clips; the limb code below then only
       // moves its stand-in groups
-      (a.rig as { anim?: CharacterAnim }).anim?.update(dt, { moving: s.moving, firing: s.firing, weapon: RIG_WEAPON[a.weapon] ?? "rifle" });
+      (a.rig as { anim?: CharacterAnim }).anim?.update(dt, {
+        moving: s.moving,
+        firing: s.firing,
+        weapon: RIG_WEAPON[a.weapon] ?? "rifle",
+      });
 
       const P = a.rig.parts;
       a.walkAmt = damp(a.walkAmt, s.moving ? 1 : 0, 8, dt);
@@ -1813,7 +1949,10 @@ export function createGame(
         a.fireT = blade ? 0.22 : 0.09;
         if (blade) a.swingT = KATANA_SWING_DUR;
         const dir = new THREE.Vector3(Math.sin(a.yaw + Math.PI), 0, Math.cos(a.yaw + Math.PI));
-        const m = a.pos.clone().add(new THREE.Vector3(0, blade ? 1.15 : 1.25, 0)).addScaledVector(dir, blade ? 0.9 : 0.5);
+        const m = a.pos
+          .clone()
+          .add(new THREE.Vector3(0, blade ? 1.15 : 1.25, 0))
+          .addScaledVector(dir, blade ? 0.9 : 0.5);
         if (blade) {
           const side = new THREE.Vector3(-dir.z, 0, dir.x);
           for (let i = 0; i < 5; i++) {
@@ -1850,9 +1989,12 @@ export function createGame(
         continue;
       }
       const c: Collider = {
-        minX: body.x - 0.42, maxX: body.x + 0.42,
-        minY: body.y, maxY: body.y + 1.75,
-        minZ: body.z - 0.42, maxZ: body.z + 0.42,
+        minX: body.x - 0.42,
+        maxX: body.x + 0.42,
+        minY: body.y,
+        maxY: body.y + 1.75,
+        minZ: body.z - 0.42,
+        maxZ: body.z + 0.42,
       };
       const t = rayAABB(origin, dir, c, maxDist);
       if (t >= 0 && (!best || t < best.dist)) best = { dist: t };
@@ -1951,7 +2093,14 @@ export function createGame(
   function pointInSolid(x: number, y: number, z: number, pad = 0.5) {
     for (const c of world.colliders) {
       if (c.maxY - world.floorY <= 0.55) continue; // floor and steps are fine
-      if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad && y > c.minY - pad && y < c.maxY) {
+      if (
+        x > c.minX - pad &&
+        x < c.maxX + pad &&
+        z > c.minZ - pad &&
+        z < c.maxZ + pad &&
+        y > c.minY - pad &&
+        y < c.maxY
+      ) {
         return true;
       }
     }
@@ -2581,7 +2730,6 @@ export function createGame(
     }
   }
 
-
   const smooth = (cur: number, to: number, k: number, dt: number) => cur + (to - cur) * (1 - Math.exp(-k * dt));
   const blankAtk = (kind: BossAtk["kind"]): BossAtk => ({ kind, t: 0, done: false, dir: null, hit: false, shots: 0 });
 
@@ -2648,7 +2796,10 @@ export function createGame(
         if (atk.t > 0.6 && !atk.done) {
           atk.done = true;
           const from = e.pos.clone().add(new THREE.Vector3(0, 1.55 * def.scale + 1, 0));
-          const dir = target.clone().add(new THREE.Vector3(0, 1, 0)).sub(from);
+          const dir = target
+            .clone()
+            .add(new THREE.Vector3(0, 1, 0))
+            .sub(from);
           const len = Math.max(1e-3, dir.length());
           dir.divideScalar(len);
           dir.y += len * 0.012;
@@ -2892,7 +3043,6 @@ export function createGame(
     }
     e.cooldown -= dt;
 
-
     if (e.state === "stunned") {
       e.stunDur -= dt;
       e.vel.x *= Math.max(0, 1 - 6 * dt);
@@ -3058,10 +3208,14 @@ export function createGame(
     if (e.def.boss) {
       // bosses telegraph: the arm winds up, then slams (the reference's pose maths)
       const atk = e.bossAtk;
-      const wind = atk && (atk.kind === "stomp" || atk.kind === "throw") ? clamp(atk.t / (atk.kind === "stomp" ? 0.6 : 0.5), 0, 1) : 0;
+      const wind =
+        atk && (atk.kind === "stomp" || atk.kind === "throw")
+          ? clamp(atk.t / (atk.kind === "stomp" ? 0.6 : 0.5), 0, 1)
+          : 0;
       const slam = atk && atk.kind === "stomp" && atk.t >= 0.75 ? 1 : 0;
       const charge = atk && atk.kind === "charge" ? 1 : 0;
-      e.armR.rotation.x += (-0.4 - sw * amp * 0.5 - wind * 2.4 + slam * 0.9 - e.armR.rotation.x) * (1 - Math.exp(-10 * dt));
+      e.armR.rotation.x +=
+        (-0.4 - sw * amp * 0.5 - wind * 2.4 + slam * 0.9 - e.armR.rotation.x) * (1 - Math.exp(-10 * dt));
       e.armR.rotation.z = -0.2 - wind * 0.2;
       e.foreR.rotation.x = -1.1 + wind * 0.3 + slam * 0.7;
       e.armL.rotation.x = swB * amp * 0.5 - wind * 1.1 + slam * 0.4;
@@ -3117,7 +3271,14 @@ export function createGame(
       cb.onMessage(`WAVE ${n}`, `${BOSS_NAMES[bossKind]} IS COMING`, 3);
       fx.bossRoar();
     } else {
-      const subs = ["they are crawling off the page", "ink harder", "keep scribbling", "stay off the ground", "swing for it", "return their bullets"];
+      const subs = [
+        "they are crawling off the page",
+        "ink harder",
+        "keep scribbling",
+        "stay off the ground",
+        "swing for it",
+        "return their bullets",
+      ];
       cb.onMessage(`WAVE ${n}`, n === 1 ? subs[0] : modifierName || pick(subs), 2.6);
     }
     const avail = SPAWN_TABLE.filter((r) => n >= r.from);
@@ -3172,11 +3333,17 @@ export function createGame(
       let pos: THREE.Vector3;
       if (pyramid) {
         // A random ring would drop crates inside the monuments: use the open pads.
-        pos = pick(active.spawns).clone().setY(world.floorY + 0.6);
+        pos = pick(active.spawns)
+          .clone()
+          .setY(world.floorY + 0.6);
       } else {
         const a = rand(0, Math.PI * 2);
         const r = rand(8, 40);
-        pos = new THREE.Vector3(clamp(Math.cos(a) * r, world.bounds.minX, world.bounds.maxX), world.floorY + 0.6, clamp(Math.sin(a) * r, world.bounds.minZ, world.bounds.maxZ));
+        pos = new THREE.Vector3(
+          clamp(Math.cos(a) * r, world.bounds.minX, world.bounds.maxX),
+          world.floorY + 0.6,
+          clamp(Math.sin(a) * r, world.bounds.minZ, world.bounds.maxZ),
+        );
       }
       spawnPickupAt(kind, pos);
     }
@@ -3358,7 +3525,9 @@ export function createGame(
     scene.add(mesh);
     grenades.push({
       pos: eye.clone(),
-      vel: fwdVec().multiplyScalar(15).add(new THREE.Vector3(0, 4, 0)),
+      vel: fwdVec()
+        .multiplyScalar(15)
+        .add(new THREE.Vector3(0, 4, 0)),
       fuse: 1.6,
       mesh,
     });
@@ -3598,7 +3767,8 @@ export function createGame(
     const hSpeed = Math.hypot(p.vel.x, p.vel.z);
     const moving = move.lengthSq() > 0 && p.onGround;
     netMoving = moving;
-    const sprinting = p.sprint && iz < 0 && p.onGround && !p.crouch && adsTarget === 0 && !mouseFire && hSpeed > PR * 0.9;
+    const sprinting =
+      p.sprint && iz < 0 && p.onGround && !p.crouch && adsTarget === 0 && !mouseFire && hSpeed > PR * 0.9;
     sprintAmt = damp(sprintAmt, sprinting ? 1 : 0, 8, dt);
     // Bob follows the distance walked, so it slows with you and eases out when
     // you stop instead of freezing mid-stride.
@@ -3711,7 +3881,8 @@ export function createGame(
       const ay = -sp.sight.y;
       const az = -sp.eyeRelief - sp.sight.z;
       const x = 0.19 + (ax - 0.19) * ads + sway.x + vbx + sprintAmt * 0.03 + act.x;
-      const y = -0.19 + (ay + 0.19) * ads - raise + sway.y - vby - landDip.value * 0.35 * hip - sprintAmt * 0.05 + act.y;
+      const y =
+        -0.19 + (ay + 0.19) * ads - raise + sway.y - vby - landDip.value * 0.35 * hip - sprintAmt * 0.05 + act.y;
       const z = -0.38 + (az + 0.38) * ads + act.z;
       const kickHold = 0.3 + 0.7 * hip;
       vm.position.set(x + vmKickSide.value * 0.01, y + vmKickRot.value * 0.04 * kickHold, z + vmKick.value);
@@ -3730,9 +3901,11 @@ export function createGame(
   /** 0 → 1 across [a, b] */
   const win = (p: number, a: number, b: number) => clamp((p - a) / (b - a), 0, 1);
   /** eased up over [a, b], held, eased back down over [c, d] */
-  const bump = (p: number, a: number, b: number, c: number, d: number) => smooth01(win(p, a, b)) * (1 - smooth01(win(p, c, d)));
+  const bump = (p: number, a: number, b: number, c: number, d: number) =>
+    smooth01(win(p, a, b)) * (1 - smooth01(win(p, c, d)));
   /** a fast linear out-and-back: up in `up` seconds, home in `down` */
-  const tri = (t: number, up: number, down: number) => (t < 0 ? 0 : t < up ? t / up : t < up + down ? 1 - (t - up) / down : 0);
+  const tri = (t: number, up: number, down: number) =>
+    t < 0 ? 0 : t < up ? t / up : t < up + down ? 1 - (t - up) / down : 0;
   const handTarget = new THREE.Vector3();
 
   /** carry the support hand toward a point in the gun's frame, by w (0..1) */
@@ -3982,7 +4155,14 @@ export function createGame(
       }
     }
     // body AABB
-    const c: Collider = { minX: e.pos.x - 0.5 * s, maxX: e.pos.x + 0.5 * s, minY: e.pos.y, maxY: e.pos.y + 1.85 * s, minZ: e.pos.z - 0.35 * s, maxZ: e.pos.z + 0.35 * s };
+    const c: Collider = {
+      minX: e.pos.x - 0.5 * s,
+      maxX: e.pos.x + 0.5 * s,
+      minY: e.pos.y,
+      maxY: e.pos.y + 1.85 * s,
+      minZ: e.pos.z - 0.35 * s,
+      maxZ: e.pos.z + 0.35 * s,
+    };
     const t = rayAABB(from, segDir, c, segLen);
     if (t >= 0) {
       damageEnemy(e, b.dmg, false, b.source);
@@ -4007,7 +4187,11 @@ export function createGame(
       }
     }
     const dir = target
-      ? target.pos.clone().add(new THREE.Vector3(0, 1.2, 0)).sub(b.pos).normalize()
+      ? target.pos
+          .clone()
+          .add(new THREE.Vector3(0, 1.2, 0))
+          .sub(b.pos)
+          .normalize()
       : b.vel.clone().normalize().negate();
     b.vel.copy(dir.multiplyScalar(60));
     b.friendly = true;
@@ -4378,7 +4562,8 @@ export function createGame(
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
     const code = e.code;
-    if (["Space", "Tab", "AltLeft", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code)) e.preventDefault();
+    if (["Space", "Tab", "AltLeft", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code))
+      e.preventDefault();
     // Online, while our player is down: only pausing (and the music toggle)
     // still answers — no reloading, throwing or weapon swaps from the grave.
     if (pvp.active && !player.alive && code !== "Escape" && code !== "KeyP" && code !== "KeyM") return;
@@ -4558,8 +4743,7 @@ export function createGame(
     // grants it, then some devices deliver no motion data at all, so the view
     // froze while the game kept running. OS-level acceleration belongs to the
     // player's system settings, exactly as on the reference site.
-    const request = canvas.requestPointerLock.bind(canvas) as () =>
-      Promise<void> | void;
+    const request = canvas.requestPointerLock.bind(canvas) as () => Promise<void> | void;
     try {
       const p = request();
       if (p && typeof p.catch === "function") p.catch(refuse);
@@ -4637,11 +4821,7 @@ export function createGame(
     // capture, not a second look system. Slow even at full depth.
     const rate = 1.0; // rad/s at the very edge
     const depth = (v: number, span: number) =>
-      v < margin
-        ? -(margin - v) / margin
-        : v > span - margin
-          ? (v - (span - margin)) / margin
-          : 0;
+      v < margin ? -(margin - v) / margin : v > span - margin ? (v - (span - margin)) / margin : 0;
     const ex = depth(cursorX, w);
     const ey = depth(cursorY, h);
     if (!ex && !ey) {

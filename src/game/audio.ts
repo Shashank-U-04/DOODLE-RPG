@@ -26,14 +26,7 @@ export class AudioFX {
     return this.ctx.state === "running";
   }
 
-  tone(
-    freq: number,
-    freqEnd: number,
-    dur: number,
-    gain = 0.15,
-    type: OscillatorType = "square",
-    delay = 0,
-  ) {
+  tone(freq: number, freqEnd: number, dur: number, gain = 0.15, type: OscillatorType = "square", delay = 0) {
     if (!this.ok() || !this.ctx || !this.master) return;
     const c = this.ctx;
     const t0 = c.currentTime + delay;
@@ -50,13 +43,7 @@ export class AudioFX {
     o.stop(t0 + dur + 0.03);
   }
 
-  noise(
-    dur: number,
-    gain = 0.2,
-    type: BiquadFilterType = "lowpass",
-    freq = 1200,
-    delay = 0,
-  ) {
+  noise(dur: number, gain = 0.2, type: BiquadFilterType = "lowpass", freq = 1200, delay = 0) {
     if (!this.ok() || !this.ctx || !this.master) return;
     const c = this.ctx;
     const t0 = c.currentTime + delay;

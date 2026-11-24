@@ -71,39 +71,43 @@ export default function Game() {
     let disposed = false;
     let lastFeed = 0;
 
-    const handle = createGame(host, {
-      onHud: (h) => setHud(h),
-      onMessage: (t, s) => {
-        setMessage({ t, s });
-        if (msgTimer.current) window.clearTimeout(msgTimer.current);
-        msgTimer.current = window.setTimeout(() => setMessage(null), 2600);
+    const handle = createGame(
+      host,
+      {
+        onHud: (h) => setHud(h),
+        onMessage: (t, s) => {
+          setMessage({ t, s });
+          if (msgTimer.current) window.clearTimeout(msgTimer.current);
+          msgTimer.current = window.setTimeout(() => setMessage(null), 2600);
+        },
+        onTip: (text, dur) => {
+          setTip(text);
+          if (tipTimer.current) window.clearTimeout(tipTimer.current);
+          tipTimer.current = window.setTimeout(() => setTip(null), Math.min(dur, 8) * 1000);
+        },
+        onKillFeed: (text, hot) => {
+          const id = ++feedId.current;
+          setFeed((f) => [...f.slice(-5), { id, text, hot }]);
+          lastFeed = id;
+          window.setTimeout(() => {
+            setFeed((f) => f.filter((x) => x.id !== lastFeed));
+          }, 3800);
+        },
+        onHitmarker: (kill) => {
+          setHitmarker((n) => n + 1);
+          void kill;
+        },
+        onBoss: (name, frac) => setBoss(name ? { name, frac } : null),
+        onGameOver: (stats) => {
+          setOverlay({ kind: "over", stats });
+          if (stats.best) setBest(stats.score);
+        },
+        onPause: (s) => setOverlay({ kind: "paused", wave: s.wave, score: s.score }),
+        onResume: () => setOverlay({ kind: "menu" }),
+        onAim: (a) => setAds(a),
       },
-      onTip: (text, dur) => {
-        setTip(text);
-        if (tipTimer.current) window.clearTimeout(tipTimer.current);
-        tipTimer.current = window.setTimeout(() => setTip(null), Math.min(dur, 8) * 1000);
-      },
-      onKillFeed: (text, hot) => {
-        const id = ++feedId.current;
-        setFeed((f) => [...f.slice(-5), { id, text, hot }]);
-        lastFeed = id;
-        window.setTimeout(() => {
-          setFeed((f) => f.filter((x) => x.id !== lastFeed));
-        }, 3800);
-      },
-      onHitmarker: (kill) => {
-        setHitmarker((n) => n + 1);
-        void kill;
-      },
-      onBoss: (name, frac) => setBoss(name ? { name, frac } : null),
-      onGameOver: (stats) => {
-        setOverlay({ kind: "over", stats });
-        if (stats.best) setBest(stats.score);
-      },
-      onPause: (s) => setOverlay({ kind: "paused", wave: s.wave, score: s.score }),
-      onResume: () => setOverlay({ kind: "menu" }),
-      onAim: (a) => setAds(a),
-    }, { map: match.map, grapple: match.grapple });
+      { map: match.map, grapple: match.grapple },
+    );
 
     if (disposed) {
       handle.dispose();
@@ -152,7 +156,10 @@ export default function Game() {
 
       {/* HUD */}
       <div className="dd-hud" style={{ visibility: overlay.kind === "menu" && hud.wave === 0 ? "hidden" : "visible" }}>
-        <div className={`dd-crosshair ${hud.weapon === "KATANA" ? "katana" : ""} ${ads ? "ads" : ""}`} style={{ display: overlay.kind === "menu" && hud.wave > 0 ? undefined : "none" }}>
+        <div
+          className={`dd-crosshair ${hud.weapon === "KATANA" ? "katana" : ""} ${ads ? "ads" : ""}`}
+          style={{ display: overlay.kind === "menu" && hud.wave > 0 ? undefined : "none" }}
+        >
           <i className="ch-t" />
           <i className="ch-b" />
           <i className="ch-l" />
@@ -162,7 +169,9 @@ export default function Game() {
 
         {/* aiming down sights: every weapon shows a reticle while scoped */}
         {overlay.kind === "menu" && hud.wave > 0 && (
-          <div className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
+          <div
+            className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}
+          >
             <i className="a-ring" />
             <i className="a-t" />
             <i className="a-b" />
@@ -188,7 +197,9 @@ export default function Game() {
         </div>
 
         <div className="dd-hud-tr">
-          <div className="wave">WAVE <b>{hud.wave}</b></div>
+          <div className="wave">
+            WAVE <b>{hud.wave}</b>
+          </div>
           <div className="modifier">{hud.modifier}</div>
           <div className="left">
             <b>{hud.left}</b> enemies left
@@ -230,9 +241,7 @@ export default function Game() {
           </div>
         )}
 
-        {tip && live && (
-          <div className="dd-tip" dangerouslySetInnerHTML={{ __html: tip }} />
-        )}
+        {tip && live && <div className="dd-tip" dangerouslySetInnerHTML={{ __html: tip }} />}
 
         <div className="dd-hud-bl">
           <div className="health">
@@ -252,7 +261,10 @@ export default function Game() {
             <div className="dd-focusmeter">
               <span>KATANA</span>
               <div className="bar">
-                <div className={`fill ${hud.focusOn ? "ready" : ""}`} style={{ width: `${hud.focusOn ? 100 : hud.focus * 100}%` }} />
+                <div
+                  className={`fill ${hud.focusOn ? "ready" : ""}`}
+                  style={{ width: `${hud.focusOn ? 100 : hud.focus * 100}%` }}
+                />
               </div>
             </div>
           )}
@@ -282,7 +294,9 @@ export default function Game() {
         <div className="dd-screen">
           <div className="panel">
             <h1>PAUSED</h1>
-            <h2>wave {overlay.wave} · score {overlay.score}</h2>
+            <h2>
+              wave {overlay.wave} · score {overlay.score}
+            </h2>
             <div className="mainbtns">
               <button type="button" className="start" onClick={resume}>
                 RESUME<i>back into the wave</i>
@@ -303,8 +317,8 @@ export default function Game() {
           <div className="panel">
             <h1>ERASED</h1>
             <div className="stats">
-              you survived <b>{overlay.stats.wave}</b> wave{overlay.stats.wave === 1 ? "" : "s"} · <b>{overlay.stats.kills}</b> kills · score{" "}
-              <b>{overlay.stats.score}</b>
+              you survived <b>{overlay.stats.wave}</b> wave{overlay.stats.wave === 1 ? "" : "s"} ·{" "}
+              <b>{overlay.stats.kills}</b> kills · score <b>{overlay.stats.score}</b>
               {overlay.stats.best ? " · NEW BEST" : ` · best ${best}`}
             </div>
             <div className="mainbtns">
@@ -318,7 +332,6 @@ export default function Game() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
