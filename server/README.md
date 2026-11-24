@@ -1,7 +1,7 @@
 # Doodle Shooter — multiplayer server
 
 A [Colyseus](https://colyseus.io) 0.18 server for Doodle Shooter's online
-matches (history: [`../docs/colyseus-migration.md`](../docs/colyseus-migration.md)). It owns the
+matches. It owns the
 lobby: roster, player limit, ready flags, match rules, the decision to start,
 and reconnection — and, in the arena, every player's body (position, facing,
 movement state) within server-enforced limits, and all combat: clients send
@@ -70,8 +70,7 @@ server settings; the root `tsc -b` type-checks that code.
 
 Do **not** set `E2E_FIXTURES`, `COLYSEUS_CLOUD`, `NODE_APP_INSTANCE`,
 `REDIS_URI` or `COLYSEUS_LATENCY` on a deployed server: `@colyseus/tools` and
-Colyseus read them and change how the server listens or behaves (see
-[`../docs/preview-deployment.md`](../docs/preview-deployment.md)).
+Colyseus read them and change how the server listens or behaves.
 
 No secrets are required. `@colyseus/tools` reads an optional `.env` or
 `.env.<NODE_ENV>` file; both are git-ignored.
@@ -81,8 +80,7 @@ No secrets are required. `@colyseus/tools` reads an optional `.env` or
 The server is one long-lived Node.js process that holds a WebSocket per
 player. It **cannot run on Vercel** (serverless functions do not keep
 WebSockets open); the frontend stays on Vercel and points at it with
-`VITE_COLYSEUS_URL`. Step-by-step instructions for a Preview test are in
-[`../docs/preview-deployment.md`](../docs/preview-deployment.md).
+`VITE_COLYSEUS_URL`.
 
 **What the host must provide**
 

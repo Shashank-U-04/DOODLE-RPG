@@ -194,7 +194,7 @@ function writeSeat(storage: SeatStorage | null, seat: Seat) {
  * page unloaded (reload, tab restore) inside the server's hold window.
  *
  * The lobby cannot rely on the URL for this: it takes a guest's `?room=` off
- * the URL once it has read it (and Convex Auth strips an old `?code=` link's),
+ * the URL once it has read it (an old `?code=` link's too),
  * so the room code is gone by the time the page is reloaded.
  */
 export function resumableSeat(storage: SeatStorage | null, now: number): { code: string; isHost: boolean } | null {

@@ -1,5 +1,5 @@
 # Render Blueprint for the Colyseus match server only (server/). The frontend
-# stays on Vercel; nothing here deploys it. See docs/preview-deployment.md.
+# stays on Vercel; nothing here deploys it. See server/README.md.
 #
 # Creating a Blueprint from this file is a manual step in the Render dashboard
 # (New → Blueprint, pick this repo and branch). Render then asks for every
