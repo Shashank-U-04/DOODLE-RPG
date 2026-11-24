@@ -39,8 +39,7 @@ Not measured yet:
 - Combat load (enemies, effects, other players).
 - Input-to-photon latency.
 - Network smoothness. Remote-player interpolation needs its own harness with
-  simulated latency and jitter before it is changed (see
-  `colyseus-migration.md`).
+  simulated latency and jitter before it is changed.
 
 ## Baseline — 2026-10-24
 

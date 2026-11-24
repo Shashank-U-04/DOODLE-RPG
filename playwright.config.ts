@@ -6,9 +6,9 @@
 // - a production build of the frontend (the same path a Vercel Preview takes:
 //   `vite build` with VITE_COLYSEUS_URL baked in), served
 //   by `vite preview` on E2E_WEB_PORT from its own output folder;
-// - no Convex or editor-bridge configuration at all (the Convex variables are
-//   forced empty), so the build proves the game starts without them
-//   (e2e/startup.spec.ts). Every spec also aborts requests that leave 127.0.0.1.
+// - no other backend or editor-bridge configuration, so the build proves the
+//   game starts on its own (e2e/startup.spec.ts). Every spec also aborts
+//   requests that leave 127.0.0.1.
 //
 // Setup: `bun install`, `npm ci` in server/, then `bunx playwright install chromium`.
 // Run: `bun run test:e2e`.
@@ -70,9 +70,6 @@ export default defineConfig({
       timeout: 180_000,
       env: {
         VITE_COLYSEUS_URL: E2E_SERVER,
-        // empty even if the shell running the tests has them set
-        VITE_CONVEX_URL: "",
-        VITE_CONVEX_SITE_URL: "",
       },
     },
   ],

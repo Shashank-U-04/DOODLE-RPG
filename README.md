@@ -82,7 +82,7 @@ server/                 # the Colyseus match server (deployed on Render)
 public/characters/      # fighter models, card pictures, credits
 public/weapons/         # the sniper model
 e2e/                    # Playwright smoke tests against the real build and server
-docs/                   # migration notes, runbooks, performance baseline
+docs/                   # performance baseline (how to measure frame times)
 ```
 
 ## Getting started
