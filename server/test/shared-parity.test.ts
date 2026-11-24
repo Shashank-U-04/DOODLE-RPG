@@ -27,10 +27,7 @@ function sources(dir: string): string[] {
 
 describe("shared rules", () => {
   it("every map id has one selector entry, and every entry is a map id", () => {
-    assert.deepStrictEqual(
-      MAPS.map((m) => m.id).sort(),
-      [...rules.MAP_IDS].sort(),
-    );
+    assert.deepStrictEqual(MAPS.map((m) => m.id).sort(), [...rules.MAP_IDS].sort());
     assert.ok(rules.isMapId(rules.DEFAULT_MAP));
     assert.strictEqual(frontendIsMapId, rules.isMapId);
   });
@@ -43,16 +40,15 @@ describe("shared rules", () => {
     assert.strictEqual(WEAPONS, weapons.WEAPONS);
     assert.strictEqual(PVP, weapons.PVP);
     assert.strictEqual(KATANA_MELEE, weapons.KATANA_MELEE);
-    assert.deepStrictEqual(Object.keys(PVP.weapons).sort(), WEAPONS.map((w) => w.name).sort(), "a PVP entry per weapon");
+    assert.deepStrictEqual(
+      Object.keys(PVP.weapons).sort(),
+      WEAPONS.map((w) => w.name).sort(),
+      "a PVP entry per weapon",
+    );
   });
 
   it("no frontend file redeclares a shared rule", () => {
-    const names = [
-      ...Object.keys(rules).filter((k) => /^[A-Z][A-Z0-9_]+$/.test(k)),
-      "WEAPONS",
-      "PVP",
-      "KATANA_MELEE",
-    ];
+    const names = [...Object.keys(rules).filter((k) => /^[A-Z][A-Z0-9_]+$/.test(k)), "WEAPONS", "PVP", "KATANA_MELEE"];
     const declared = new RegExp(`\\b(?:const|let|var)\\s+(${names.join("|")})\\s*[:=]`);
     const offenders = sources(frontendRoot)
       .map((path) => ({ path, match: readFileSync(path, "utf8").match(declared) }))

@@ -12,16 +12,16 @@ fighter your friends see. Best score, settings and your fighter are saved in the
 
 ## The game
 
-| System | How it works |
-| --- | --- |
-| **Waves** | Clear every enemy to advance. Every 5th wave brings a boss with a health bar and a checkpoint. |
-| **Score & combo** | Kills build a combo meter that decays quickly; airborne kills pay +33%. |
-| **Weapons** | `1–5` / wheel: **AK-47 · M1887 · AWM · katana · Desert Eagle**, each a modelled gun with its own action and reload. |
-| **Katana** | A three-cut combo; landed slashes fill the Focus meter, and a full meter makes `F` a dash-and-strike. |
-| **Grenades** | `G` throws an M67. Finite per run; ammo packs carry more. |
-| **Movement** | `WASD`, `Space` (double jump), `Shift` sprint, `C`/`Ctrl` crouch, `X` dash. |
-| **Grapple** | `Q`/`E`: tap to throw, hold to reel in, tap again or `Space` to let go. |
-| **Look** | Pointer lock with adjustable sensitivity and optional inverted Y (title screen). |
+| System            | How it works                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Waves**         | Clear every enemy to advance. Every 5th wave brings a boss with a health bar and a checkpoint.                      |
+| **Score & combo** | Kills build a combo meter that decays quickly; airborne kills pay +33%.                                             |
+| **Weapons**       | `1–5` / wheel: **AK-47 · M1887 · AWM · katana · Desert Eagle**, each a modelled gun with its own action and reload. |
+| **Katana**        | A three-cut combo; landed slashes fill the Focus meter, and a full meter makes `F` a dash-and-strike.               |
+| **Grenades**      | `G` throws an M67. Finite per run; ammo packs carry more.                                                           |
+| **Movement**      | `WASD`, `Space` (double jump), `Shift` sprint, `C`/`Ctrl` crouch, `X` dash.                                         |
+| **Grapple**       | `Q`/`E`: tap to throw, hold to reel in, tap again or `Space` to let go.                                             |
+| **Look**          | Pointer lock with adjustable sensitivity and optional inverted Y (title screen).                                    |
 
 ### Maps
 
@@ -111,10 +111,10 @@ the Playwright smoke tests.
 
 ## Environment
 
-| Variable | Where | Purpose |
-| --- | --- | --- |
+| Variable            | Where             | Purpose                                                                                                       |
+| ------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------- |
 | `VITE_COLYSEUS_URL` | Frontend (Vercel) | The match server's URL. Development builds default to `http://localhost:2567`; production builds must set it. |
-| `ALLOWED_ORIGINS` | Server (Render) | Exact browser origins allowed to use the match server. See [`server/README.md`](server/README.md). |
+| `ALLOWED_ORIGINS`   | Server (Render)   | Exact browser origins allowed to use the match server. See [`server/README.md`](server/README.md).            |
 
 Vite inlines `VITE_*` values at build time: after changing one in Vercel, redeploy.
 
@@ -127,32 +127,33 @@ Vite inlines `VITE_*` values at build time: after changing one in Vercel, redepl
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `bun run dev` | Vite dev server |
-| `bun run build` | Typecheck + production build to `dist/` |
-| `bun run preview` | Serve the production build locally |
-| `bun run lint` | ESLint |
+| Script             | What it does                                             |
+| ------------------ | -------------------------------------------------------- |
+| `bun run dev`      | Vite dev server                                          |
+| `bun run build`    | Typecheck + production build to `dist/`                  |
+| `bun run preview`  | Serve the production build locally                       |
+| `bun run lint`     | ESLint                                                   |
+| `bun run format`   | Prettier (CI runs `format:check`)                        |
 | `bun run test:e2e` | Playwright smoke tests (starts its own server and build) |
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| `WASD` | Move |
-| Mouse | Look |
+| Key           | Action                                         |
+| ------------- | ---------------------------------------------- |
+| `WASD`        | Move                                           |
+| Mouse         | Look                                           |
 | `LMB` / `RMB` | Fire / aim down sights (block with the katana) |
-| `Space` | Jump · again in the air = double jump |
-| `Shift` | Sprint |
-| `C` / `Ctrl` | Crouch |
-| `X` | Dash |
-| `Q` / `E` | Grapple |
-| `F` | Katana slash |
-| `R` | Reload |
-| `G` | Grenade |
-| `1–5` / wheel | Weapon slots |
-| `M` | Music |
-| `P` / `Esc` | Pause |
+| `Space`       | Jump · again in the air = double jump          |
+| `Shift`       | Sprint                                         |
+| `C` / `Ctrl`  | Crouch                                         |
+| `X`           | Dash                                           |
+| `Q` / `E`     | Grapple                                        |
+| `F`           | Katana slash                                   |
+| `R`           | Reload                                         |
+| `G`           | Grenade                                        |
+| `1–5` / wheel | Weapon slots                                   |
+| `M`           | Music                                          |
+| `P` / `Esc`   | Pause                                          |
 
 ## License
 

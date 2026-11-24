@@ -39,7 +39,10 @@ export const GUNS: Record<string, Gun> = Object.fromEntries(
     const pvp = PVP.weapons[w.name];
     if (!pvp) throw new Error(`no PVP damage for ${w.name}`);
     const { name, magSize, interval, pellets, spread, adsSpread, reloadTime } = w;
-    return [name, { name, magSize, interval, pellets, spread, adsSpread, reloadTime, damage: pvp.damage, headMul: pvp.headMul }];
+    return [
+      name,
+      { name, magSize, interval, pellets, spread, adsSpread, reloadTime, damage: pvp.damage, headMul: pvp.headMul },
+    ];
   }),
 );
 

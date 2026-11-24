@@ -67,9 +67,15 @@ export type RigStyle = {
  * ------------------------------------------------------------------ */
 
 type Tf = {
-  x?: number; y?: number; z?: number;
-  rx?: number; ry?: number; rz?: number;
-  sx?: number; sy?: number; sz?: number;
+  x?: number;
+  y?: number;
+  z?: number;
+  rx?: number;
+  ry?: number;
+  rz?: number;
+  sx?: number;
+  sy?: number;
+  sz?: number;
 };
 type Buckets = Map<string, { ink: InkId; fill: boolean; geos: THREE.BufferGeometry[] }>;
 
@@ -165,7 +171,15 @@ function buildHeadGear(b: Buckets, style: RigStyle, s: number) {
     tp(b, 0.121 * s, 0.024 * s, { y: 0.19 * s, rx: Math.PI / 2 }, INK.ORANGE, true);
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * Math.PI * 2;
-      cn(b, 0.035 * s, 0.2 * s, { x: Math.cos(a) * 0.115 * s, y: 0.3 * s, z: Math.sin(a) * 0.115 * s }, INK.ORANGE, true, 4);
+      cn(
+        b,
+        0.035 * s,
+        0.2 * s,
+        { x: Math.cos(a) * 0.115 * s, y: 0.3 * s, z: Math.sin(a) * 0.115 * s },
+        INK.ORANGE,
+        true,
+        4,
+      );
     }
   } else if (hat === "boonie") {
     cy(b, 0.135 * s, 0.128 * s, 0.1 * s, { y: 0.2 * s }, accent, true, 12);
@@ -200,7 +214,15 @@ function buildTorsoKit(b: Buckets, style: RigStyle, bw: number, bulky: number) {
     // coat tails and collar
     bx(b, 0.3 * bw, 0.62, 0.09, { y: 0.16, z: 0.14 * bw, rx: 0.06 }, accent, false);
     for (const side of [-1, 1]) {
-      bx(b, 0.14 * bw, 0.66, 0.1, { x: side * 0.13 * bw, y: 0.14, z: -0.12 * bw, rx: -0.05, rz: side * 0.05 }, accent, false);
+      bx(
+        b,
+        0.14 * bw,
+        0.66,
+        0.1,
+        { x: side * 0.13 * bw, y: 0.14, z: -0.12 * bw, rx: -0.05, rz: side * 0.05 },
+        accent,
+        false,
+      );
     }
     tp(b, 0.1 * bw, 0.03, { y: 0.58, rx: 1.5, sz: 0.7 }, accent, false);
   }
@@ -324,7 +346,15 @@ function buildHumanoid(style: RigStyle): Rig {
     for (const side of [-1, 1]) {
       tp(f, 0.026 * s, 0.007 * s, { x: side * 0.052 * s, y: 0.142 * s, z: 0.104 * s }, INK.BLACK, false);
       sp(f, 0.018 * s, { x: side * 0.053 * s, y: 0.14 * s, z: 0.107 * s }, INK.BLACK, true, 6);
-      bx(f, 0.064 * s, 0.017 * s, 0.022 * s, { x: side * 0.056 * s, y: 0.172 * s, z: 0.099 * s, rz: side * (style.smile ? -0.3 : 0.2) }, INK.BLACK, true);
+      bx(
+        f,
+        0.064 * s,
+        0.017 * s,
+        0.022 * s,
+        { x: side * 0.056 * s, y: 0.172 * s, z: 0.099 * s, rz: side * (style.smile ? -0.3 : 0.2) },
+        INK.BLACK,
+        true,
+      );
     }
     if (style.smile) {
       tp(f, 0.04 * s, 0.009 * s, { y: 0.045 * s, z: 0.102 * s, rz: Math.PI }, INK.BLACK, true, Math.PI * 0.95);
@@ -425,12 +455,19 @@ function buildHumanoid(style: RigStyle): Rig {
   return {
     root,
     parts: {
-      hips, torso, head,
-      armL: L.arm, armR: R.arm,
-      foreL: L.fore, foreR: R.fore,
-      legL: LL.leg, legR: RL.leg,
-      shinL: LL.shin, shinR: RL.shin,
-      gun, shield,
+      hips,
+      torso,
+      head,
+      armL: L.arm,
+      armR: R.arm,
+      foreL: L.fore,
+      foreR: R.fore,
+      legL: LL.leg,
+      legR: RL.leg,
+      shinL: LL.shin,
+      shinR: RL.shin,
+      gun,
+      shield,
     },
     headWorldY: (hipY + HEAD_Y + 0.1 * hs) * style.scale,
     hitHeads: [head],
@@ -480,7 +517,8 @@ export function makeMummyRig(style: RigStyle): Rig {
     bx(b, 0.08, 0.26, 0.025, { x: 0.15, y: -0.09, z: -0.1, rz: -0.2, rx: -0.1 }, wrap, true);
     flush(hips, b);
     const k: Buckets = new Map();
-    for (let i = 0; i < 3; i++) tp(k, 0.158 * bw, 0.018, { y: 0.12 - i * 0.09, rx: Math.PI / 2, sz: 0.84, ry: i * 0.5 }, band, true);
+    for (let i = 0; i < 3; i++)
+      tp(k, 0.158 * bw, 0.018, { y: 0.12 - i * 0.09, rx: Math.PI / 2, sz: 0.84, ry: i * 0.5 }, band, true);
     bx(k, 0.07, 0.07, 0.03, { y: 0.1, z: 0.135 }, rot, true);
     flush(hips, k);
   }
@@ -498,7 +536,14 @@ export function makeMummyRig(style: RigStyle): Rig {
     const k: Buckets = new Map();
     for (let i = 0; i < 9; i++) {
       const y = 0.06 + i * 0.062;
-      tp(k, (0.157 + Math.sin(i * 1.7) * 0.012) * bw, 0.019, { y, rx: Math.PI / 2, sz: 0.74, rz: i * 0.31, ry: 0.12 * i }, i % 3 === 0 ? band : wrap, true);
+      tp(
+        k,
+        (0.157 + Math.sin(i * 1.7) * 0.012) * bw,
+        0.019,
+        { y, rx: Math.PI / 2, sz: 0.74, rz: i * 0.31, ry: 0.12 * i },
+        i % 3 === 0 ? band : wrap,
+        true,
+      );
     }
     // exposed dark chest gap and a turquoise scarab amulet
     bx(k, 0.19, 0.16, 0.035, { y: 0.4, z: 0.135 }, INK.BLACK, true);
@@ -520,7 +565,14 @@ export function makeMummyRig(style: RigStyle): Rig {
     flush(head, b);
     const k: Buckets = new Map();
     for (let i = 0; i < 7; i++) {
-      tp(k, (0.126 + Math.sin(i * 2.3) * 0.007), 0.016, { y: 0.03 + i * 0.028, rx: Math.PI / 2, sz: 0.96, rz: i * 0.4, ry: i * 0.7 }, i % 2 ? band : wrap, true);
+      tp(
+        k,
+        0.126 + Math.sin(i * 2.3) * 0.007,
+        0.016,
+        { y: 0.03 + i * 0.028, rx: Math.PI / 2, sz: 0.96, rz: i * 0.4, ry: i * 0.7 },
+        i % 2 ? band : wrap,
+        true,
+      );
     }
     // the eye gap: a dark slot, two gold points, and a strip of jaw wrap
     bx(k, 0.17, 0.052, 0.06, { y: 0.135, z: 0.098, rx: -0.08 }, INK.BLACK, true);
@@ -542,7 +594,15 @@ export function makeMummyRig(style: RigStyle): Rig {
       cy(b, 0.07, 0.062, UP_ARM + 0.02, { y: -UP_ARM * 0.5 }, wrap);
       flush(arm, b);
       const k: Buckets = new Map();
-      for (let i = 0; i < 4; i++) tp(k, 0.073, 0.016, { y: -0.03 - i * 0.06, rx: Math.PI / 2, rz: side * (0.2 + i * 0.1) }, i % 2 ? band : wrap, true);
+      for (let i = 0; i < 4; i++)
+        tp(
+          k,
+          0.073,
+          0.016,
+          { y: -0.03 - i * 0.06, rx: Math.PI / 2, rz: side * (0.2 + i * 0.1) },
+          i % 2 ? band : wrap,
+          true,
+        );
       flush(arm, k);
     }
     const fore = new THREE.Group();
@@ -553,7 +613,8 @@ export function makeMummyRig(style: RigStyle): Rig {
       cy(b, 0.058, 0.05, FOREARM, { y: -FOREARM * 0.5 }, wrap);
       flush(fore, b);
       const k: Buckets = new Map();
-      for (let i = 0; i < 4; i++) tp(k, 0.06, 0.014, { y: -0.03 - i * 0.055, rx: Math.PI / 2, rz: side * 0.3 }, i % 2 ? wrap : band, true);
+      for (let i = 0; i < 4; i++)
+        tp(k, 0.06, 0.014, { y: -0.03 - i * 0.055, rx: Math.PI / 2, rz: side * 0.3 }, i % 2 ? wrap : band, true);
       // wrapped fist with a few fingers showing
       sp(k, 0.065, { y: -FOREARM - 0.03, sy: 0.9 }, wrap, true, 8);
       bx(k, 0.09, 0.025, 0.03, { y: -FOREARM - 0.09, z: 0.03 }, rot, true);
@@ -574,7 +635,8 @@ export function makeMummyRig(style: RigStyle): Rig {
       cy(b, 0.09, 0.08, thighL, { y: -thighL * 0.5 - 0.02 }, wrap);
       flush(leg, b);
       const k: Buckets = new Map();
-      for (let i = 0; i < 4; i++) tp(k, 0.092, 0.016, { y: -0.08 - i * 0.1, rx: Math.PI / 2, rz: side * 0.15 }, i % 2 ? band : wrap, true);
+      for (let i = 0; i < 4; i++)
+        tp(k, 0.092, 0.016, { y: -0.08 - i * 0.1, rx: Math.PI / 2, rz: side * 0.15 }, i % 2 ? band : wrap, true);
       flush(leg, k);
     }
     const shin = new THREE.Group();
@@ -585,7 +647,8 @@ export function makeMummyRig(style: RigStyle): Rig {
       cy(b, 0.072, 0.058, shinL, { y: -shinL * 0.5 }, wrap);
       flush(shin, b);
       const k: Buckets = new Map();
-      for (let i = 0; i < 4; i++) tp(k, 0.074, 0.015, { y: -0.06 - i * 0.09, rx: Math.PI / 2, rz: side * 0.1 }, i % 2 ? wrap : band, true);
+      for (let i = 0; i < 4; i++)
+        tp(k, 0.074, 0.015, { y: -0.06 - i * 0.09, rx: Math.PI / 2, rz: side * 0.1 }, i % 2 ? wrap : band, true);
       // bare, blackened foot and trailing bandage
       bx(k, 0.11, 0.09, 0.24, { y: -shinL - 0.045, z: 0.045 }, rot, true);
       bx(k, 0.09, 0.02, 0.3, { y: -shinL - 0.09, z: 0.05 }, INK.BLACK, true);
@@ -604,12 +667,19 @@ export function makeMummyRig(style: RigStyle): Rig {
   return {
     root,
     parts: {
-      hips, torso, head,
-      armL: L.arm, armR: R.arm,
-      foreL: L.fore, foreR: R.fore,
-      legL: LL.leg, legR: RL.leg,
-      shinL: LL.shin, shinR: RL.shin,
-      gun, shield: null,
+      hips,
+      torso,
+      head,
+      armL: L.arm,
+      armR: R.arm,
+      foreL: L.fore,
+      foreR: R.fore,
+      legL: LL.leg,
+      legR: RL.leg,
+      shinL: LL.shin,
+      shinR: RL.shin,
+      gun,
+      shield: null,
     },
     headWorldY: (hipY + HEAD_Y + 0.1) * s,
     hitHeads: [head],
@@ -657,10 +727,29 @@ export function makeBlobRig(style: RigStyle, bossKind?: string): Rig {
       for (let i = 0; i < 10; i++) {
         const a = (i / 10) * Math.PI * 2;
         const r = 0.44 + Math.sin(i * 2.1) * 0.06;
-        cn(k, 0.115, 0.46, { x: Math.cos(a) * r, y: 0.34 + Math.sin(a * 2.3) * 0.22, z: Math.sin(a) * r, rx: Math.PI / 2, ry: 0, rz: 0.4 }, ink, true, 5);
+        cn(
+          k,
+          0.115,
+          0.46,
+          {
+            x: Math.cos(a) * r,
+            y: 0.34 + Math.sin(a * 2.3) * 0.22,
+            z: Math.sin(a) * r,
+            rx: Math.PI / 2,
+            ry: 0,
+            rz: 0.4,
+          },
+          ink,
+          true,
+          5,
+        );
       }
       // drips
-      for (const [x, z, s] of [[-0.4, 0.3, 1], [0.44, -0.24, 0.8], [0.1, 0.46, 0.9]] as const) {
+      for (const [x, z, s] of [
+        [-0.4, 0.3, 1],
+        [0.44, -0.24, 0.8],
+        [0.1, 0.46, 0.9],
+      ] as const) {
         cy(k, 0.03 * s, 0.09 * s, 0.26 * s, { x, y: 0.02, z }, ink, true, 6);
         sp(k, 0.09 * s, { x, y: -0.12 * s, z }, ink, true, 8);
       }
@@ -682,7 +771,11 @@ export function makeBlobRig(style: RigStyle, bossKind?: string): Rig {
       cy(k, 0.1, 0.13, 0.16, { y: 0.78 }, accent, true, 10);
       cy(k, 0.035, 0.035, 0.3, { y: 0.95, x: 0.02, rz: 0.25 }, accent, true, 8);
       sp(k, 0.075, { y: 1.12, x: 0.09 }, INK.ORANGE, true, 8);
-      for (const [x, z] of [[-0.26, 0.24], [0.28, -0.2], [0.02, -0.4]] as const) {
+      for (const [x, z] of [
+        [-0.26, 0.24],
+        [0.28, -0.2],
+        [0.02, -0.4],
+      ] as const) {
         sp(k, 0.07, { x, y: 0.12, z }, accent, true, 8);
       }
       flush(torso, k);
@@ -710,7 +803,12 @@ export function makeBlobRig(style: RigStyle, bossKind?: string): Rig {
   const armR = mkLimb(torso, 0.44, 0.42, 0.28, 0.045);
   const legL = mkLimb(hips, -0.18, -0.02, 0.42, 0.05);
   const legR = mkLimb(hips, 0.18, -0.02, 0.42, 0.05);
-  for (const [g, kind] of [[armL, "hand"], [armR, "hand"], [legL, "foot"], [legR, "foot"]] as const) {
+  for (const [g, kind] of [
+    [armL, "hand"],
+    [armR, "hand"],
+    [legL, "foot"],
+    [legR, "foot"],
+  ] as const) {
     const b: Buckets = new Map();
     if (kind === "hand") sp(b, 0.085, { y: -0.3, sy: 0.9 }, INK.BLACK, true, 8);
     else {
@@ -726,10 +824,19 @@ export function makeBlobRig(style: RigStyle, bossKind?: string): Rig {
   return {
     root,
     parts: {
-      hips, torso, head,
-      armL, armR, foreL: armL, foreR: armR,
-      legL, legR, shinL: legL, shinR: legR,
-      gun, shield: null,
+      hips,
+      torso,
+      head,
+      armL,
+      armR,
+      foreL: armL,
+      foreR: armR,
+      legL,
+      legR,
+      shinL: legL,
+      shinR: legR,
+      gun,
+      shield: null,
     },
     headWorldY: (0.56 + 0.36) * style.scale,
     hitHeads: [torso],
@@ -798,7 +905,16 @@ export function makeWaspRig(style: RigStyle): Rig {
     const b: Buckets = new Map();
     sp(b, 0.34, { x: side * 0.34, y: 0.06, z: -0.1, sx: 1.1, sy: 0.06, sz: 0.55 }, ink, false, 10);
     for (let n = 0; n < 3; n++) {
-      cy(b, 0.012, 0.008, 0.5, { x: side * 0.34, y: 0.07, z: -0.28 + n * 0.12, rz: Math.PI / 2, ry: 0.5 * side }, black, false, 5);
+      cy(
+        b,
+        0.012,
+        0.008,
+        0.5,
+        { x: side * 0.34, y: 0.07, z: -0.28 + n * 0.12, rz: Math.PI / 2, ry: 0.5 * side },
+        black,
+        false,
+        5,
+      );
     }
     flush(g, b);
     wings.push(g);
@@ -810,10 +926,19 @@ export function makeWaspRig(style: RigStyle): Rig {
   return {
     root,
     parts: {
-      hips, torso, head,
-      armL: torso, armR: torso, foreL: torso, foreR: torso,
-      legL: hips, legR: hips, shinL: hips, shinR: hips,
-      gun, shield: null,
+      hips,
+      torso,
+      head,
+      armL: torso,
+      armR: torso,
+      foreL: torso,
+      foreR: torso,
+      legL: hips,
+      legR: hips,
+      shinL: hips,
+      shinR: hips,
+      gun,
+      shield: null,
     },
     headWorldY: (0.5 + 0.06) * style.scale,
     hitHeads: [torso],

@@ -101,7 +101,10 @@ describe("movement volumes against the real maps", () => {
       assert.ok(isStandable(p.x, p.y, p.z, 0.42, CI, d.colliders), `${p.toArray()} is open ground`);
       assert.ok(inside(box, p.x, p.y, p.z), `${p.toArray()} is inside the server's envelope`);
     }
-    assert.ok(order[0].distanceTo(start) < 15, `the first player starts by the solo start, not at ${order[0].toArray()}`);
+    assert.ok(
+      order[0].distanceTo(start) < 15,
+      `the first player starts by the solo start, not at ${order[0].toArray()}`,
+    );
     // a full room of four: nobody starts on top of anybody else, nobody across the whole map from everyone
     const four = order.slice(0, 4);
     for (let i = 0; i < four.length; i++) {

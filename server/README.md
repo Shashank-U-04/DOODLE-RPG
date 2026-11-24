@@ -34,15 +34,15 @@ then open `/online` in two browsers.
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm start` | Development server with reload |
-| `npm run typecheck` | `tsc --noEmit` over `src` and `test` |
-| `npm run lint` | ESLint |
-| `npm test` | Mocha: unit tests, multi-client integration tests against a real server, and the frontend's lobby adapter (`src/game/colyseus.ts`) driven against it |
-| `npm run build` | Compile to `build/` |
-| `npm run serve` | Run the compiled server (`node build/index.js`) |
-| `npm run check` | typecheck, lint, test and build, in that order |
+| Command             | What it does                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm start`         | Development server with reload                                                                                                                       |
+| `npm run typecheck` | `tsc --noEmit` over `src` and `test`                                                                                                                 |
+| `npm run lint`      | ESLint                                                                                                                                               |
+| `npm test`          | Mocha: unit tests, multi-client integration tests against a real server, and the frontend's lobby adapter (`src/game/colyseus.ts`) driven against it |
+| `npm run build`     | Compile to `build/`                                                                                                                                  |
+| `npm run serve`     | Run the compiled server (`node build/index.js`)                                                                                                      |
+| `npm run check`     | typecheck, lint, test and build, in that order                                                                                                       |
 
 `test/shutdown.test.ts` starts the real server in a child process and stops it
 with SIGTERM. Windows cannot deliver a catchable SIGTERM to a child, so there
@@ -57,16 +57,16 @@ server settings; the root `tsc -b` type-checks that code.
 
 ## Environment variables
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `PORT` | `2567` | HTTP/WebSocket port |
-| `NODE_ENV` | — | `production` hides `/monitor`, drops the development origins, and loads `.env.production` if present |
-| `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to use the server, exact `scheme://host[:port]` (e.g. `https://your-app.vercel.app`). No wildcards; invalid entries are logged and ignored |
-| `MAX_ROOMS` | `100` | Live rooms this process holds; a create beyond it is refused (HTTP 429) |
-| `ROOM_CREATES_PER_MINUTE` | `60` | Room creates per minute for the whole process (burst: one minute's worth) |
-| `ROOM_CREATES_PER_IP_PER_MINUTE` | `6` | Room creates per minute per client address. Defence in depth only: the address comes from the first `X-Real-IP`/`X-Forwarded-For` entry, which a client can forge unless the host's proxy overwrites it |
-| `METRICS_INTERVAL_S` | `60` | Seconds per metrics line (see [Metrics](#metrics)); `0` turns it off |
-| `E2E_FIXTURES` | — | `1` mounts the browser smoke tests' fixture route (`src/e2e.ts`). Ignored when `NODE_ENV=production`. **Never set it on a deployed server** |
+| Variable                         | Default | Purpose                                                                                                                                                                                                 |
+| -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                           | `2567`  | HTTP/WebSocket port                                                                                                                                                                                     |
+| `NODE_ENV`                       | —       | `production` hides `/monitor`, drops the development origins, and loads `.env.production` if present                                                                                                    |
+| `ALLOWED_ORIGINS`                | —       | Comma-separated browser origins allowed to use the server, exact `scheme://host[:port]` (e.g. `https://your-app.vercel.app`). No wildcards; invalid entries are logged and ignored                      |
+| `MAX_ROOMS`                      | `100`   | Live rooms this process holds; a create beyond it is refused (HTTP 429)                                                                                                                                 |
+| `ROOM_CREATES_PER_MINUTE`        | `60`    | Room creates per minute for the whole process (burst: one minute's worth)                                                                                                                               |
+| `ROOM_CREATES_PER_IP_PER_MINUTE` | `6`     | Room creates per minute per client address. Defence in depth only: the address comes from the first `X-Real-IP`/`X-Forwarded-For` entry, which a client can forge unless the host's proxy overwrites it |
+| `METRICS_INTERVAL_S`             | `60`    | Seconds per metrics line (see [Metrics](#metrics)); `0` turns it off                                                                                                                                    |
+| `E2E_FIXTURES`                   | —       | `1` mounts the browser smoke tests' fixture route (`src/e2e.ts`). Ignored when `NODE_ENV=production`. **Never set it on a deployed server**                                                             |
 
 Do **not** set `E2E_FIXTURES`, `COLYSEUS_CLOUD`, `NODE_APP_INSTANCE`,
 `REDIS_URI` or `COLYSEUS_LATENCY` on a deployed server: `@colyseus/tools` and
@@ -177,7 +177,7 @@ first-come, so anyone can create a project whose URL matches a pattern built
 from your project's name. `test/origins.test.ts` checks that look-alikes and
 patterns are refused.
 
-An Origin header is what a *browser* reports. It keeps other websites from
+An Origin header is what a _browser_ reports. It keeps other websites from
 using the server through their visitors' browsers; it does not authenticate
 anyone, because any other client can send any Origin, or none. Requests with no
 Origin are allowed for that reason.
@@ -206,18 +206,18 @@ default 4).
 
 **Messages**
 
-| Type | Payload | Who | Rule |
-|---|---|---|---|
-| `ready` | `{ ready: boolean }` | guests | lobby only; the host is always ready |
-| `config` | `{ map?, grapple? }` | host | lobby only; unknown maps rejected |
-| `start` | — | host | send with `room.request("start")`; answers `{ ok: true }` or `{ ok: false, reason }` |
-| `move` | `{ x, y, z, yaw, pitch, moving, firing?, alive, weapon, epoch }` | everyone | playing only; see Movement (`alive` is ignored: the server decides it) |
-| `fire` | `{ shot, weapon, origin, dir, ads, air, lag }` | everyone | see Combat |
-| `slash`, `dash` | `{ shot, origin, dir, lag }` | everyone | katana; see Combat |
-| `throw` | `{ shot, origin, dir }` | everyone | grenade; see Combat |
-| `reload` | `{ weapon }` | everyone | starts a reload of that gun |
-| `hazard` | `{ damage }` | everyone | a spike trap the client stood on; see Combat |
-| `rematch` | — | host | resets health, scores and the winner; bumps `round` |
+| Type            | Payload                                                          | Who      | Rule                                                                                 |
+| --------------- | ---------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `ready`         | `{ ready: boolean }`                                             | guests   | lobby only; the host is always ready                                                 |
+| `config`        | `{ map?, grapple? }`                                             | host     | lobby only; unknown maps rejected                                                    |
+| `start`         | —                                                                | host     | send with `room.request("start")`; answers `{ ok: true }` or `{ ok: false, reason }` |
+| `move`          | `{ x, y, z, yaw, pitch, moving, firing?, alive, weapon, epoch }` | everyone | playing only; see Movement (`alive` is ignored: the server decides it)               |
+| `fire`          | `{ shot, weapon, origin, dir, ads, air, lag }`                   | everyone | see Combat                                                                           |
+| `slash`, `dash` | `{ shot, origin, dir, lag }`                                     | everyone | katana; see Combat                                                                   |
+| `throw`         | `{ shot, origin, dir }`                                          | everyone | grenade; see Combat                                                                  |
+| `reload`        | `{ weapon }`                                                     | everyone | starts a reload of that gun                                                          |
+| `hazard`        | `{ damage }`                                                     | everyone | a spike trap the client stood on; see Combat                                         |
+| `rematch`       | —                                                                | host     | resets health, scores and the winner; bumps `round`                                  |
 
 `start` is refused with `not-host`, `not-in-lobby`, `no-guests` (nobody to play),
 `guest-reconnecting` (a guest's seat is held for a reconnection) or
@@ -347,11 +347,11 @@ is `""` for no credit).
 
 - **Leaving on purpose** (`room.leave()`) frees the seat at once.
 - **Server-initiated closes are lost on Render.** Traces on 2026-10-24 showed
-  that any close the *server* starts never reaches the client through the
+  that any close the _server_ starts never reaches the client through the
   Render deployment (its edge is fronted by Cloudflare). This covers the close
   after a consented leave (4000), a validation kick (4002) and, by the same
   path, a shutdown close. The client sees nothing, then an abnormal 1006 about
-  20 s later. A close the *client* starts completes in one round trip. The same
+  20 s later. A close the _client_ starts completes in one round trip. The same
   build, run locally under the same Node version, closes cleanly every time.
   So the game client leaves with `leaveRoom()` (`src/game/colyseus.ts`): it
   sends LEAVE (the server handles it first, as a consented leave), then closes
@@ -384,6 +384,7 @@ is `""` for no credit).
 
   A validation kick still reaches a hosted client as a late 1006; only a broken
   or hostile client gets one.
+
 - **Dropping** (reload, closed tab, lost network) holds the seat for
   `RECONNECT_SECONDS` (30, in `src/rules.ts`); the roster shows it with
   `connected: false`. Only `client.reconnect(room.reconnectionToken)` can take it
@@ -404,7 +405,7 @@ scale out you would need Colyseus' Redis presence and driver.
 
 **Who can get in.** A room's code is its only lock. Matchmaking exposes only
 `create`, `joinById` and `reconnect` (`app.config.ts`); Colyseus' default `join`
-and `joinOrCreate`, which seat the caller in *any* open room, are switched
+and `joinOrCreate`, which seat the caller in _any_ open room, are switched
 off, and every room is private as well. Before 2026-10-24 both were open, so
 anyone who could reach the server could join a stranger's match without its
 code (`test/access.test.ts`).
@@ -421,9 +422,22 @@ While anything is happening, the server logs one JSON line per
 `METRICS_INTERVAL_S` (`src/metrics.ts`), for example:
 
 ```json
-{"event":"metrics","windowS":60,"rooms":3,"players":9,"ticks":3600,"tickP50Ms":0.08,
- "tickP95Ms":0.31,"tickP99Ms":0.6,"tickMaxMs":2.4,"createsRefused":0,"roomsCreated":2,
- "roomsDisposed":1,"rssMb":81,"heapUsedMb":30}
+{
+  "event": "metrics",
+  "windowS": 60,
+  "rooms": 3,
+  "players": 9,
+  "ticks": 3600,
+  "tickP50Ms": 0.08,
+  "tickP95Ms": 0.31,
+  "tickP99Ms": 0.6,
+  "tickMaxMs": 2.4,
+  "createsRefused": 0,
+  "roomsCreated": 2,
+  "roomsDisposed": 1,
+  "rssMb": 81,
+  "heapUsedMb": 30
+}
 ```
 
 - `tick*Ms` is the room simulation tick (regeneration, grenade fuses, late

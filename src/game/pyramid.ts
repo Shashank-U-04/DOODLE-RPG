@@ -63,7 +63,14 @@ class Site {
 
   /** one collider box: centre x/z, bottom y, size */
   collide(cx: number, y: number, cz: number, w: number, h: number, d: number) {
-    this.colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minY: y, maxY: y + h, minZ: cz - d / 2, maxZ: cz + d / 2 });
+    this.colliders.push({
+      minX: cx - w / 2,
+      maxX: cx + w / 2,
+      minY: y,
+      maxY: y + h,
+      minZ: cz - d / 2,
+      maxZ: cz + d / 2,
+    });
   }
 
   /** a box whose bottom face sits at height `y` */
@@ -79,20 +86,58 @@ class Site {
 
   /** a floor/roof plate between two corners with its top at `yTop` */
   slab(x1: number, z1: number, x2: number, z2: number, yTop: number, thick: number, ink: InkId, collide = true) {
-    this.box((x1 + x2) / 2, yTop - thick, (z1 + z2) / 2, Math.abs(x2 - x1), thick, Math.abs(z2 - z1), ink, false, collide);
+    this.box(
+      (x1 + x2) / 2,
+      yTop - thick,
+      (z1 + z2) / 2,
+      Math.abs(x2 - x1),
+      thick,
+      Math.abs(z2 - z1),
+      ink,
+      false,
+      collide,
+    );
   }
 
   /** wall along X at a constant z, minus door holes ([a, b, y0, y1] along the run) */
-  wallX(x0: number, x1: number, z: number, y0: number, h: number, t: number, holes: [number, number, number?, number?][] = [], ink: InkId = INK.STONE) {
+  wallX(
+    x0: number,
+    x1: number,
+    z: number,
+    y0: number,
+    h: number,
+    t: number,
+    holes: [number, number, number?, number?][] = [],
+    ink: InkId = INK.STONE,
+  ) {
     this.wallRun("x", x0, x1, z, y0, h, t, holes, ink);
   }
 
   /** wall along Z at a constant x */
-  wallZ(z0: number, z1: number, x: number, y0: number, h: number, t: number, holes: [number, number, number?, number?][] = [], ink: InkId = INK.STONE) {
+  wallZ(
+    z0: number,
+    z1: number,
+    x: number,
+    y0: number,
+    h: number,
+    t: number,
+    holes: [number, number, number?, number?][] = [],
+    ink: InkId = INK.STONE,
+  ) {
     this.wallRun("z", z0, z1, x, y0, h, t, holes, ink);
   }
 
-  private wallRun(axis: "x" | "z", a0: number, a1: number, fixed: number, y0: number, h: number, t: number, holes: [number, number, number?, number?][], ink: InkId) {
+  private wallRun(
+    axis: "x" | "z",
+    a0: number,
+    a1: number,
+    fixed: number,
+    y0: number,
+    h: number,
+    t: number,
+    holes: [number, number, number?, number?][],
+    ink: InkId,
+  ) {
     // split the run at every hole edge, then cut each slice into solid spans
     const cuts = new Set<number>([a0, a1]);
     for (const hl of holes) {
@@ -124,7 +169,17 @@ class Site {
   }
 
   /** a straight flight; each step is a solid box from `y0` up to its tread */
-  stairs(x: number, y0: number, z: number, dir: "+x" | "-x" | "+z" | "-z", steps: number, width: number, rise: number, run: number, ink: InkId = INK.OCHRE) {
+  stairs(
+    x: number,
+    y0: number,
+    z: number,
+    dir: "+x" | "-x" | "+z" | "-z",
+    steps: number,
+    width: number,
+    rise: number,
+    run: number,
+    ink: InkId = INK.OCHRE,
+  ) {
     const dx = dir === "+x" ? 1 : dir === "-x" ? -1 : 0;
     const dz = dir === "+z" ? 1 : dir === "-z" ? -1 : 0;
     for (let i = 0; i < steps; i++) {
@@ -140,7 +195,18 @@ class Site {
     if (collide) this.collide(x, y, z, r * 1.64, h, r * 1.64);
   }
 
-  taper(x: number, y: number, z: number, rBottom: number, rTop: number, h: number, ink: InkId, seg = 4, fill = false, collide = true) {
+  taper(
+    x: number,
+    y: number,
+    z: number,
+    rBottom: number,
+    rTop: number,
+    h: number,
+    ink: InkId,
+    seg = 4,
+    fill = false,
+    collide = true,
+  ) {
     const geo = new THREE.CylinderGeometry(rTop, rBottom, Math.max(0.01, h), seg);
     geo.translate(x, y + h / 2, z);
     this.addGeo(geo, ink, fill);
@@ -200,7 +266,8 @@ class Site {
     const border = 0.16;
     const panel = face * 0.025;
     const mark = face * 0.06;
-    if (along === "x") this.box(x, y, z + panel, width + border * 2, height + border * 2, 0.05, INK.OCHRE, false, false);
+    if (along === "x")
+      this.box(x, y, z + panel, width + border * 2, height + border * 2, 0.05, INK.OCHRE, false, false);
     else this.box(x + panel, y, z, 0.05, height + border * 2, width + border * 2, INK.OCHRE, false, false);
     for (let r = 0; r < rows; r++) {
       for (let i = 0; i < cols; i++) {
@@ -213,10 +280,12 @@ class Site {
         const ink = f > 0.72 ? INK.TURQ : INK.STONE;
         if (along === "x") {
           this.box(x + along0, gy - gh / 2, z + mark, gw, gh, 0.04, ink, false, false);
-          if (f > 0.4) this.box(x + along0, gy + gh * 0.35, z + mark, cell * 0.55, 0.035, 0.035, INK.GOLD, false, false);
+          if (f > 0.4)
+            this.box(x + along0, gy + gh * 0.35, z + mark, cell * 0.55, 0.035, 0.035, INK.GOLD, false, false);
         } else {
           this.box(x + mark, gy - gh / 2, z + along0, 0.04, gh, gw, ink, false, false);
-          if (f > 0.4) this.box(x + mark, gy + gh * 0.35, z + along0, 0.035, 0.035, cell * 0.55, INK.GOLD, false, false);
+          if (f > 0.4)
+            this.box(x + mark, gy + gh * 0.35, z + along0, 0.035, 0.035, cell * 0.55, INK.GOLD, false, false);
         }
       }
     }
@@ -288,9 +357,19 @@ function sphinx(b: Site, x: number, z: number, yaw = Math.PI) {
   const s = Math.sin(yaw);
   const wx = (lx: number, lz: number) => x + lx * c + lz * s;
   const wz = (lx: number, lz: number) => z - lx * s + lz * c;
-  const part = (lx: number, y: number, lz: number, w: number, h: number, d: number, ink: InkId, fill = false, solid = false) =>
-    b.box(wx(lx, lz), y, wz(lx, lz), w, h, d, ink, fill, solid);
-  const ball = (lx: number, y: number, lz: number, r: number, ink: InkId, squash = 1) => b.sphere(wx(lx, lz), y, wz(lx, lz), r, ink, false, squash, 10);
+  const part = (
+    lx: number,
+    y: number,
+    lz: number,
+    w: number,
+    h: number,
+    d: number,
+    ink: InkId,
+    fill = false,
+    solid = false,
+  ) => b.box(wx(lx, lz), y, wz(lx, lz), w, h, d, ink, fill, solid);
+  const ball = (lx: number, y: number, lz: number, r: number, ink: InkId, squash = 1) =>
+    b.sphere(wx(lx, lz), y, wz(lx, lz), r, ink, false, squash, 10);
 
   // stepped plinth
   part(0, 0, 0, 15.5, 0.5, 12.6, INK.STONE, false, true);
@@ -349,7 +428,11 @@ function obelisk(b: Site, x: number, z: number) {
   shaftGeo.rotateY(Math.PI / 4);
   shaftGeo.translate(x, 0.87 + shaft / 2, z);
   b.addGeo(shaftGeo, INK.SAND);
-  for (const [by, f] of [[2.5, 0.79], [4.9, 0.72], [7.2, 0.65]] as const) {
+  for (const [by, f] of [
+    [2.5, 0.79],
+    [4.9, 0.72],
+    [7.2, 0.65],
+  ] as const) {
     const band = new THREE.CylinderGeometry((f + 0.02) * Math.SQRT2, (f + 0.045) * Math.SQRT2, 0.17, 4);
     band.rotateY(Math.PI / 4);
     band.translate(x, by, z);
@@ -369,7 +452,17 @@ function obelisk(b: Site, x: number, z: number) {
 }
 
 /** One continuous palm frond: a tapered, folded ribbon swept along a curve. */
-function palmFrond(b: Site, cx: number, cy: number, cz: number, angle: number, len: number, lift: number, droop: number, ink: InkId) {
+function palmFrond(
+  b: Site,
+  cx: number,
+  cy: number,
+  cz: number,
+  angle: number,
+  len: number,
+  lift: number,
+  droop: number,
+  ink: InkId,
+) {
   const segs = 8;
   const dirX = Math.cos(angle);
   const dirZ = Math.sin(angle);
@@ -385,7 +478,20 @@ function palmFrond(b: Site, cx: number, cy: number, cz: number, angle: number, l
     const py = cy + lift * len * Math.sin(Math.PI * Math.min(1, t * 0.78)) - droop * len * t * t;
     const w = (0.24 + 0.2 * Math.sin(Math.PI * t)) * (1 - 0.52 * t);
     const th = 0.035 * (1 - 0.45 * t);
-    pos.push(px - sideX * w, py, pz - sideZ * w, px, py + th, pz, px + sideX * w, py, pz + sideZ * w, px, py - th * 0.65, pz);
+    pos.push(
+      px - sideX * w,
+      py,
+      pz - sideZ * w,
+      px,
+      py + th,
+      pz,
+      px + sideX * w,
+      py,
+      pz + sideZ * w,
+      px,
+      py - th * 0.65,
+      pz,
+    );
   }
   for (let k = 0; k < segs; k++) {
     const a = k * 4;
@@ -458,10 +564,20 @@ function palm(b: Site, x: number, z: number, h = 5.4) {
     const droop = 0.48 + hash01(i * 5.3, x, 4.2) * 0.28;
     palmFrond(b, crownX, crownY, crownZ, a, len, lift, droop, i % 7 === 4 ? INK.OCHRE : INK.GREEN);
   }
-  for (let i = 0; i < 2; i++) palmFrond(b, crownX, crownY - 0.12, crownZ, 0.8 + i * 2.6 + seed * 0.7, 1.8 + i * 0.35, 0.05, 1.05, INK.OCHRE);
+  for (let i = 0; i < 2; i++)
+    palmFrond(b, crownX, crownY - 0.12, crownZ, 0.8 + i * 2.6 + seed * 0.7, 1.8 + i * 0.35, 0.05, 1.05, INK.OCHRE);
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    b.sphere(crownX + Math.cos(a) * 0.3, h - 0.32 - (i % 2) * 0.12, crownZ + Math.sin(a) * 0.3, 0.12, INK.GOLD, false, 0.9, 6);
+    b.sphere(
+      crownX + Math.cos(a) * 0.3,
+      h - 0.32 - (i % 2) * 0.12,
+      crownZ + Math.sin(a) * 0.3,
+      0.12,
+      INK.GOLD,
+      false,
+      0.9,
+      6,
+    );
   }
   b.collide(x, 0, z, 0.62, h, 0.62);
 }
@@ -475,12 +591,23 @@ function cactus(b: Site, x: number, z: number) {
 
 function crate(b: Site, x: number, z: number, s = 1) {
   b.box(x, 0, z, 1.2 * s, 1.05 * s, 1.2 * s, INK.OCHRE);
-  for (const [y, w] of [[0.08, 1.32], [0.52, 1.27], [0.96, 1.24]] as const) b.box(x, y * s, z, w * s, 0.11 * s, w * s, INK.STONE, false, false);
+  for (const [y, w] of [
+    [0.08, 1.32],
+    [0.52, 1.27],
+    [0.96, 1.24],
+  ] as const)
+    b.box(x, y * s, z, w * s, 0.11 * s, w * s, INK.STONE, false, false);
   b.box(x, 1.05 * s, z, 0.16 * s, 0.06 * s, 1.26 * s, INK.SAND, false, false);
 }
 
 function tent(b: Site, x: number, z: number, ink: InkId) {
-  for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]] as const) b.box(x + dx, 0, z + dz, 0.12, 2.5, 0.12, INK.OCHRE, false, true);
+  for (const [dx, dz] of [
+    [-1.6, -1.6],
+    [1.6, -1.6],
+    [-1.6, 1.6],
+    [1.6, 1.6],
+  ] as const)
+    b.box(x + dx, 0, z + dz, 0.12, 2.5, 0.12, INK.OCHRE, false, true);
   b.taper(x, 2.4, z, 2.5, 0.06, 1.5, ink, 4, false, false);
   b.box(x, 1.4, z, 3.8, 0.12, 3.8, ink, true, false);
   b.box(x + 0.6, 0, z + 0.3, 1.2, 0.9, 1.0, INK.OCHRE);
@@ -504,7 +631,16 @@ function treasurePile(b: Site, x: number, z: number, n = 5) {
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
     const r = 0.35 + (i % 3) * 0.22;
-    b.sphere(x + Math.cos(a) * r, 0.12, z + Math.sin(a) * r, 0.22 + (i % 2) * 0.1, i % 3 === 0 ? INK.TURQ : INK.GOLD, true, 0.55, 6);
+    b.sphere(
+      x + Math.cos(a) * r,
+      0.12,
+      z + Math.sin(a) * r,
+      0.22 + (i % 2) * 0.1,
+      i % 3 === 0 ? INK.TURQ : INK.GOLD,
+      true,
+      0.55,
+      6,
+    );
   }
   b.sphere(x, 0.16, z, 0.42, INK.GOLD, true, 0.4, 7);
 }
@@ -542,7 +678,10 @@ function ruin(b: Site, x: number, z: number) {
   b.box(x, 0.32, z, 5.6, 0.16, 5.6, INK.OCHRE, false, false);
   b.wallX(x - 2.6, x + 2.6, z - 2.6, 0.32, 2.4, 0.5, [[x - 0.9, x + 1.4, 0, 1.8]], INK.SAND);
   b.wallZ(z - 2.6, z + 1.1, x - 2.6, 0.32, 1.6, 0.5, [], INK.SAND);
-  for (const [px, pz, ph] of [[x + 1.9, z + 1.9, 2.6], [x - 1.8, z + 1.7, 1.5]] as const) {
+  for (const [px, pz, ph] of [
+    [x + 1.9, z + 1.9, 2.6],
+    [x - 1.8, z + 1.7, 1.5],
+  ] as const) {
     b.cyl(px, 0.32, pz, 0.42, ph, INK.SAND, false, true, 9);
     b.box(px, 0.32 + ph, pz, 1.0, 0.24, 1.0, INK.OCHRE, false, false);
     b.box(px, 0.32, pz, 1.1, 0.22, 1.1, INK.OCHRE, false, false);
@@ -564,8 +703,13 @@ function market(b: Site, x: number, z: number) {
   b.box(x - 4.4, 0, z + 1.2, 1.4, 1.4, 1.4, INK.ORANGE);
   b.box(x - 3.1, 0, z + 1.6, 1.0, 1.0, 1.0, INK.SAND);
   b.box(x + 1.1, 0.02, z + 0.2, 3.4, 0.035, 2.3, INK.TURQ, false, false);
-  for (let i = 0; i < 4; i++) b.box(x + 1.1, 0.025, z - 0.7 + i * 0.6, 3.2, 0.045, 0.14, i % 2 ? INK.GOLD : INK.RED, false, false);
-  for (const [jx, jz, s] of [[x - 2.4, z + 1.9, 1], [x - 1.8, z + 2.5, 0.8], [x - 3.0, z + 2.3, 0.85]] as const) {
+  for (let i = 0; i < 4; i++)
+    b.box(x + 1.1, 0.025, z - 0.7 + i * 0.6, 3.2, 0.045, 0.14, i % 2 ? INK.GOLD : INK.RED, false, false);
+  for (const [jx, jz, s] of [
+    [x - 2.4, z + 1.9, 1],
+    [x - 1.8, z + 2.5, 0.8],
+    [x - 3.0, z + 2.3, 0.85],
+  ] as const) {
     b.cyl(jx, 0, jz, 0.3 * s, 0.6 * s, INK.OCHRE, false, false, 8);
     b.sphere(jx, 0.64 * s, jz, 0.29 * s, INK.OCHRE, false, 1.4, 8);
   }
@@ -586,7 +730,13 @@ function camp(b: Site, x: number, z: number) {
   b.box(x - 2.2, 0, z + 1.2, 2.2, 0.72, 1.1, INK.OCHRE);
   b.box(x - 2.2, 0.72, z + 1.2, 2.4, 0.08, 1.25, INK.SAND, false, false);
   b.box(x + 2.5, 1.4, z + 4.9, 3.4, 0.12, 2.0, INK.RED, false, false);
-  for (const [px, pz] of [[x + 1.0, z + 5.9], [x + 4.0, z + 5.9], [x + 1.0, z + 4.0], [x + 4.0, z + 4.0]] as const) b.box(px, 0, pz, 0.12, 1.46, 0.12, INK.OCHRE, false, true);
+  for (const [px, pz] of [
+    [x + 1.0, z + 5.9],
+    [x + 4.0, z + 5.9],
+    [x + 1.0, z + 4.0],
+    [x + 4.0, z + 4.0],
+  ] as const)
+    b.box(px, 0, pz, 0.12, 1.46, 0.12, INK.OCHRE, false, true);
   rubble(b, x + 0.6, z - 2.2, 5, 1.8);
 }
 
@@ -632,7 +782,17 @@ type Face = { axis: "x" | "z"; sign: 1 | -1; plane: number; center: number; half
  * a few pale and dark blocks, so the monument never reads as the sand around
  * it. `blocked` keeps a doorway clear. Decoration only.
  */
-function dressMasonry(b: Site, face: Face, y: number, h: number, seed: number, blockW: number, rows: number, erosion: number, blocked?: (a0: number, a1: number, y1: number) => boolean) {
+function dressMasonry(
+  b: Site,
+  face: Face,
+  y: number,
+  h: number,
+  seed: number,
+  blockW: number,
+  rows: number,
+  erosion: number,
+  blocked?: (a0: number, a1: number, y1: number) => boolean,
+) {
   const a0 = face.center - face.half + 0.58;
   const a1 = face.center + face.half - 0.58;
   if (a1 - a0 < 1.2) return;
@@ -658,7 +818,16 @@ function dressMasonry(b: Site, face: Face, y: number, h: number, seed: number, b
       if (!fallen && (!blocked || !blocked(a, bb, by + bh))) {
         const worn = g > 0.86 ? 0.1 + f * 0.22 : 0;
         const depth = 0.05 + hash01(seed + 9.1, i, a) * 0.055;
-        const ink: InkId = hInk < 0.52 ? INK.OCHRE : hInk < 0.78 ? INK.SAND : hInk < 0.88 ? INK.GOLD : hInk < 0.97 ? INK.STONE : INK.ORANGE;
+        const ink: InkId =
+          hInk < 0.52
+            ? INK.OCHRE
+            : hInk < 0.78
+              ? INK.SAND
+              : hInk < 0.88
+                ? INK.GOLD
+                : hInk < 0.97
+                  ? INK.STONE
+                  : INK.ORANGE;
         const top = Math.max(by + 0.18, by + bh - worn);
         const at = face.plane + face.sign * (0.005 + depth / 2);
         if (face.axis === "x") b.box(mid, by, at, bb - a - gap, top - by, depth, ink, false, false);
@@ -681,12 +850,31 @@ function dressMasonry(b: Site, face: Face, y: number, h: number, seed: number, b
  * A carved portal around a doorway on a north (`sign` -1) or south (+1) face:
  * jambs, lintel, a winged sun disc on the tier above and a threshold stone.
  */
-function doorFrame(b: Site, cx: number, plane: number, upperPlane: number, doorW: number, doorH: number, s: number, sign: 1 | -1) {
+function doorFrame(
+  b: Site,
+  cx: number,
+  plane: number,
+  upperPlane: number,
+  doorW: number,
+  doorH: number,
+  s: number,
+  sign: 1 | -1,
+) {
   const jw = 0.55 * s;
   const out = (k: number) => plane + sign * k;
   for (const side of [-1, 1] as const) {
     b.box(cx + side * (doorW / 2 + jw / 2 - 0.02), 0, out(0.22), jw, doorH, 0.6 * s, INK.STONE, false, false);
-    b.box(cx + side * (doorW / 2 + jw + 0.2 * s), 0, out(0.1), 0.42 * s, doorH - 0.6 * s, 0.26 * s, INK.OCHRE, false, false);
+    b.box(
+      cx + side * (doorW / 2 + jw + 0.2 * s),
+      0,
+      out(0.1),
+      0.42 * s,
+      doorH - 0.6 * s,
+      0.26 * s,
+      INK.OCHRE,
+      false,
+      false,
+    );
   }
   b.box(cx, doorH + 0.02, out(0.24), doorW + jw * 2, 0.3 * s, 0.62 * s, INK.STONE, false, false);
   b.box(cx, doorH + 0.32 * s, out(0.24), doorW + jw * 2.2, 0.1 * s, 0.6 * s, INK.OCHRE, false, false);
@@ -716,7 +904,18 @@ type DoorSide = "north" | "south";
  * corbelled hall. `doors` cuts an open doorway into the ground tier of the
  * north and/or south face.
  */
-function pyramid(b: Site, cx: number, cz: number, baseHalf: number, tiers: number, tierH: number, thick: number, doorW: number, doorH: number, doors: DoorSide[]) {
+function pyramid(
+  b: Site,
+  cx: number,
+  cz: number,
+  baseHalf: number,
+  tiers: number,
+  tierH: number,
+  thick: number,
+  doorW: number,
+  doorH: number,
+  doors: DoorSide[],
+) {
   const step = (baseHalf - thick) / Math.max(1, tiers - 1);
   const blockW = Math.max(2.4, Math.min(4.2, baseHalf * 0.26));
   const rows = baseHalf > 14 ? 2 : 1;
@@ -747,7 +946,10 @@ function pyramid(b: Site, cx: number, cz: number, baseHalf: number, tiers: numbe
     ];
     for (const face of faces) {
       const doorFace = i === 0 && face.axis === "x" && has(face.sign === 1 ? "south" : "north");
-      const blocked = doorFace ? (a0: number, a1: number, y1: number) => y1 < doorH + 0.35 && a1 > cx - doorW / 2 - 0.6 && a0 < cx + doorW / 2 + 0.6 : undefined;
+      const blocked = doorFace
+        ? (a0: number, a1: number, y1: number) =>
+            y1 < doorH + 0.35 && a1 > cx - doorW / 2 - 0.6 && a0 < cx + doorW / 2 + 0.6
+        : undefined;
       dressMasonry(b, face, y, tierH, i * 3.7 + face.plane * 0.11 + face.sign, blockW, rows, erosion, blocked);
     }
   }
@@ -915,7 +1117,13 @@ export function buildPyramid(scene: THREE.Scene): PyramidMap {
     b.box(t, 0, -62, 15, 8.5 + (i % 3) * 2.6, 6, INK.SAND);
     b.box(t, 0, 62, 15, 10 + ((i + 2) % 3) * 2.1, 6, INK.OCHRE);
   }
-  for (const [x, z, r, h] of [[-50, 52, 3.2, 5], [50, 50, 4, 6.5], [52, -50, 3.6, 5.5], [-50, -52, 4.5, 7]] as const) b.taper(x, 0, z, r, r * 0.55, h, INK.OCHRE, 6);
+  for (const [x, z, r, h] of [
+    [-50, 52, 3.2, 5],
+    [50, 50, 4, 6.5],
+    [52, -50, 3.6, 5.5],
+    [-50, -52, 4.5, 7],
+  ] as const)
+    b.taper(x, 0, z, r, r * 0.55, h, INK.OCHRE, 6);
 
   // --- the horizon: sister pyramids and ridges, silhouette only ---
   farPyramid(b, -92, -118, 30, 8, 5.4);
@@ -935,7 +1143,14 @@ export function buildPyramid(scene: THREE.Scene): PyramidMap {
   b.box(0, 0, 20.7, 9.2, 0.17, 1.1, INK.OCHRE);
   b.box(0, 0, -20.7, 9.2, 0.17, 1.1, INK.OCHRE);
   // the hall: a ring of columns around a sealed sarcophagus
-  for (const [x, z] of [[-6.4, -6.4], [6.4, -6.4], [-6.4, 6.4], [6.4, 6.4], [-9.4, 0], [9.4, 0]] as const) {
+  for (const [x, z] of [
+    [-6.4, -6.4],
+    [6.4, -6.4],
+    [-6.4, 6.4],
+    [6.4, 6.4],
+    [-9.4, 0],
+    [9.4, 0],
+  ] as const) {
     b.cyl(x, 0, z, 0.85, 7.4, INK.SAND, false, true, 10);
     b.ring(x, 5.4, z, 0.9, 0.13, INK.GOLD);
     b.box(x, 7.2, z, 2.3, 0.4, 2.3, INK.OCHRE);
@@ -951,7 +1166,13 @@ export function buildPyramid(scene: THREE.Scene): PyramidMap {
   }
   b.glyphs(inner, 0.7, 0, "z", 12, 1.8, 2, -1);
   b.glyphs(-inner, 0.7, 0, "z", 12, 1.8, 2, 1);
-  for (const [x, z] of [[-2.6, 13.6], [2.6, 13.6], [-2.6, -13.6], [2.6, -13.6]] as const) torch(b, x, 0, z, flames);
+  for (const [x, z] of [
+    [-2.6, 13.6],
+    [2.6, 13.6],
+    [-2.6, -13.6],
+    [2.6, -13.6],
+  ] as const)
+    torch(b, x, 0, z, flames);
   anubis(b, -4.2, 12.4, 0.72);
   anubis(b, 4.2, 12.4, 0.72);
   // Stairs up the east and west faces: one flight from the sand onto the
@@ -1054,8 +1275,23 @@ export function buildPyramid(scene: THREE.Scene): PyramidMap {
   well(b, 30, 48);
   b.disc(-28, 0.03, 46, 4.6, INK.TURQ, false, 22);
   b.ring(-28, 0.06, 46, 4.6, 0.32, INK.SAND, false);
-  for (const [x, z] of [[-33.5, 43], [-28, 51], [-22.5, 43.5], [-32.5, 49.5], [-23.5, 50]] as const) palm(b, x, z, 4.6 + (Math.abs(x) % 3) * 0.3);
-  for (const [x, z] of [[-12, 30], [12, 24], [-22, 22], [44, 12], [-44, -18], [25, -12]] as const) palm(b, x, z, 5 - (Math.abs(x) % 2) * 0.4);
+  for (const [x, z] of [
+    [-33.5, 43],
+    [-28, 51],
+    [-22.5, 43.5],
+    [-32.5, 49.5],
+    [-23.5, 50],
+  ] as const)
+    palm(b, x, z, 4.6 + (Math.abs(x) % 3) * 0.3);
+  for (const [x, z] of [
+    [-12, 30],
+    [12, 24],
+    [-22, 22],
+    [44, 12],
+    [-44, -18],
+    [25, -12],
+  ] as const)
+    palm(b, x, z, 5 - (Math.abs(x) % 2) * 0.4);
   cactus(b, 46, 26);
   cactus(b, -46, 8);
   cactus(b, 24, -48);
@@ -1079,8 +1315,22 @@ export function buildPyramid(scene: THREE.Scene): PyramidMap {
 
   // --- spawn pads: open sand all round, clear of every structure ---
   for (const [x, z] of [
-    [-10, 40], [10, 46], [-26, 4], [28, -2], [0, -26], [-44, -2], [46, 4], [-30, -14],
-    [20, -52], [-20, -52], [38, 18], [-50, 6], [44, -40], [-14, 26], [16, 22], [0, 56],
+    [-10, 40],
+    [10, 46],
+    [-26, 4],
+    [28, -2],
+    [0, -26],
+    [-44, -2],
+    [46, 4],
+    [-30, -14],
+    [20, -52],
+    [-20, -52],
+    [38, 18],
+    [-50, 6],
+    [44, -40],
+    [-14, 26],
+    [16, 22],
+    [0, 56],
   ] as const) {
     b.spawns.push(new THREE.Vector3(x, 0.2, z));
   }

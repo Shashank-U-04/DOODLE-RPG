@@ -11,7 +11,9 @@ import { inkForColor, makeSoftInkMaterial } from "./world";
 type RGB = [number, number, number];
 
 /** pixels of a texture image, downsampled (a 256² read is plenty for face colours) */
-function readPixels(image: CanvasImageSource & { width: number; height: number }): { data: Uint8ClampedArray; w: number; h: number } | null {
+function readPixels(
+  image: CanvasImageSource & { width: number; height: number },
+): { data: Uint8ClampedArray; w: number; h: number } | null {
   const w = Math.max(1, Math.min(256, image.width));
   const h = Math.max(1, Math.min(256, image.height));
   const canvas = document.createElement("canvas");
@@ -100,8 +102,8 @@ function faceColours(geo: THREE.BufferGeometry, mat: THREE.Material): RGB[] {
         u += uv.getX(f * 3 + k);
         v += uv.getY(f * 3 + k);
       }
-      u = ((u / 3) % 1 + 1) % 1;
-      v = ((v / 3) % 1 + 1) % 1;
+      u = (((u / 3) % 1) + 1) % 1;
+      v = (((v / 3) % 1) + 1) % 1;
       const x = Math.min(px.w - 1, Math.floor(u * px.w));
       const y = Math.min(px.h - 1, Math.floor((map!.flipY ? 1 - v : v) * px.h));
       const i = (y * px.w + x) * 4;

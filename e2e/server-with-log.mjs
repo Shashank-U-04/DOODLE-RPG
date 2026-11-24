@@ -12,7 +12,10 @@ if (!logPath) throw new Error("E2E_SERVER_LOG is not set");
 mkdirSync(dirname(logPath), { recursive: true });
 const log = createWriteStream(logPath, { flags: "a" });
 
-const child = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
+const child = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
+  stdio: ["ignore", "pipe", "pipe"],
+  env: process.env,
+});
 
 /** Copy a stream to `out` as is, and to the log a whole line at a time, time-stamped. */
 function tee(from, out, tag) {
@@ -30,5 +33,7 @@ tee(child.stderr, process.stderr, "err");
 
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.kill(signal));
 child.on("exit", (code, signal) => {
-  log.end(`${new Date().toISOString()} --- server exited (code ${code}, signal ${signal})\n`, () => process.exit(code ?? 1));
+  log.end(`${new Date().toISOString()} --- server exited (code ${code}, signal ${signal})\n`, () =>
+    process.exit(code ?? 1),
+  );
 });

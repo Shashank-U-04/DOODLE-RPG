@@ -18,12 +18,19 @@ describe("rules", () => {
     assert.deepStrictEqual([...MAP_IDS], ["district", "pyramid"]);
     assert.ok(MAP_IDS.every(isMapId));
     assert.ok(isMapId(DEFAULT_MAP));
-    for (const bad of ["", "District", "moon", "valley", "sanctuary", "tomb", null, undefined, 3, {}]) assert.strictEqual(isMapId(bad), false, String(bad));
+    for (const bad of ["", "District", "moon", "valley", "sanctuary", "tomb", null, undefined, 3, {}])
+      assert.strictEqual(isMapId(bad), false, String(bad));
   });
 
   it("draws codes from the unambiguous alphabet", () => {
-    assert.strictEqual(drawRoomCode(() => 0), "AAAA");
-    assert.strictEqual(drawRoomCode(() => 0.9999), "9999");
+    assert.strictEqual(
+      drawRoomCode(() => 0),
+      "AAAA",
+    );
+    assert.strictEqual(
+      drawRoomCode(() => 0.9999),
+      "9999",
+    );
     for (let i = 0; i < 200; i++) assert.match(drawRoomCode(), /^[A-HJ-NP-Z2-9]{4}$/);
   });
 

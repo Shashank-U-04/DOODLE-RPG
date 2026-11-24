@@ -29,12 +29,7 @@ import {
 import { ColyseusSession, resumableSeat, warmColyseus } from "@/game/colyseus";
 import { matchWinner, type MatchSession, type NetPlayer, type SignalState } from "@/game/transport";
 import { KILLS_TO_WIN, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
-import {
-  isValidRoomCode,
-  LEGACY_ROOM_PARAM,
-  normalizeRoomCode,
-  ROOM_PARAM,
-} from "@/game/room";
+import { isValidRoomCode, LEGACY_ROOM_PARAM, normalizeRoomCode, ROOM_PARAM } from "@/game/room";
 import { weaponLabel } from "@/game/arsenal";
 import DotField from "@/components/DotField";
 import { lookLabel, savedLookCode } from "@/game/look";
@@ -295,12 +290,7 @@ export default function Online() {
               <div className="dd-netform">
                 <label>
                   your name
-                  <input
-                    value={name}
-                    maxLength={16}
-                    placeholder="doodler"
-                    onChange={(e) => remember(e.target.value)}
-                  />
+                  <input value={name} maxLength={16} placeholder="doodler" onChange={(e) => remember(e.target.value)} />
                 </label>
               </div>
 
@@ -327,7 +317,9 @@ export default function Online() {
                   grappling hook enabled <span className="k">(this match only · Q / E)</span>
                 </label>
                 <div className="controls-note">
-                  {match.grapple ? "the hook is part of this match" : "off for this match — nobody can equip or fire it"}
+                  {match.grapple
+                    ? "the hook is part of this match"
+                    : "off for this match — nobody can equip or fire it"}
                 </div>
               </div>
 
@@ -350,12 +342,11 @@ export default function Online() {
                     <b>2</b> the other types it in and joins the room
                   </div>
                   <div>
-                    <b>3</b> everyone readies up, the host starts it — free for all, first to{" "}
-                    <b>{KILLS_TO_WIN}</b> kills
+                    <b>3</b> everyone readies up, the host starts it — free for all, first to <b>{KILLS_TO_WIN}</b>{" "}
+                    kills
                   </div>
                   <div>
-                    <b>note</b>{" "}
-                    the lobby runs on the match server
+                    <b>note</b> the lobby runs on the match server
                   </div>
                 </div>
               </div>
@@ -430,11 +421,7 @@ export default function Online() {
                   <h2>send it to your friend, then start</h2>
                 </>
               )}
-              {!hosting && (
-                <h2>
-                  {session.joined ? "you're in the room" : "connecting to the match server…"}
-                </h2>
-              )}
+              {!hosting && <h2>{session.joined ? "you're in the room" : "connecting to the match server…"}</h2>}
 
               {/* the host sets the battlefield and the rule; guests read them */}
               {hosting ? (
@@ -484,9 +471,7 @@ export default function Online() {
                       {p.isMe ? " (you)" : ""}
                       {p.isHost ? " · host" : ""}
                       {p.isHost || p.ready ? " · ready" : " · waiting"}
-                      {lookLabel(p.look) && (
-                        <span className="lk-as"> · as {lookLabel(p.look)}</span>
-                      )}
+                      {lookLabel(p.look) && <span className="lk-as"> · as {lookLabel(p.look)}</span>}
                     </span>
                   </div>
                 ))}
@@ -529,7 +514,11 @@ export default function Online() {
                       onClick={() => session.setReady(!me?.ready)}
                     >
                       {!session.joined ? "JOINING…" : me?.ready ? "READY — TAP TO UNREADY" : "I'M READY"}
-                      <i>{session.joined ? "the host starts when everyone is ready" : "waiting for the host to confirm this seat"}</i>
+                      <i>
+                        {session.joined
+                          ? "the host starts when everyone is ready"
+                          : "waiting for the host to confirm this seat"}
+                      </i>
                     </button>
                     <button type="button" className="start" disabled>
                       WAITING FOR HOST<i>the room starts when they do</i>
@@ -775,7 +764,9 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
         </div>
 
         {live && (
-          <div className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}>
+          <div
+            className={`dd-aim ${ads ? "on" : ""} ${hud.weapon === "KATANA" ? "katana" : ""} ${hud.weapon === "SNIPER" ? "scope" : ""}`}
+          >
             <i className="a-ring" />
             <i className="a-t" />
             <i className="a-b" />

@@ -47,13 +47,27 @@ export const CHARACTER_LIST: CharacterDef[] = [
   { id: "business", name: "BOSS", blurb: "closes deals, and doors", file: "business.glb", hand: "Wrist.R" },
   { id: "cubeguy", name: "CUBE GUY", blurb: "every angle is a right angle", file: "cubeguy.glb", hand: "Fist.R" },
   { id: "skeleton", name: "SKELETON", blurb: "no skin in the game", file: "skeleton.glb", hand: "Index1.R" },
-  { id: "punkgirl", name: "PUNK GIRL", blurb: "spikes, studs and a short fuse", file: "punkgirl.glb", hand: "Wrist.R", rig: "auto" },
+  {
+    id: "punkgirl",
+    name: "PUNK GIRL",
+    blurb: "spikes, studs and a short fuse",
+    file: "punkgirl.glb",
+    hand: "Wrist.R",
+    rig: "auto",
+  },
   { id: "hyper", name: "HYPER", blurb: "pure speed, no details", file: "hyper.glb", hand: "Wrist.R", rig: "auto" },
   { id: "banana", name: "BANANA", blurb: "cool, ripe, dangerous", file: "banana.glb", hand: "Wrist.R", rig: "auto" },
   { id: "warrior", name: "WARRIOR", blurb: "old school, new gun", file: "warrior.glb", hand: "Wrist.R", rig: "auto" },
   { id: "warrior2", name: "GLADIATOR", blurb: "the arena is home", file: "warrior2.glb", hand: "Wrist.R", rig: "auto" },
   { id: "o", name: "O", blurb: "bullseye on the head, still undefeated", file: "o.glb", hand: "Wrist.R", rig: "auto" },
-  { id: "alien", name: "ALIEN", blurb: "came in peace, brought a rifle", file: "alien.glb", hand: "Wrist.R", rig: "auto" },
+  {
+    id: "alien",
+    name: "ALIEN",
+    blurb: "came in peace, brought a rifle",
+    file: "alien.glb",
+    hand: "Wrist.R",
+    rig: "auto",
+  },
 ];
 
 export const FALLBACK_CHARACTER = 0;
@@ -87,17 +101,29 @@ function pickClip(clips: Map<string, THREE.AnimationClip>, names: string[]): THR
 }
 
 /** names of the hand-held props some models ship with */
-const WEAPON_PROP = /weapon|sword|dagger|knife|axe|gun|pistol|rifle|revolver|shotgun|sniper|smg|launcher|cannon|shovel|shield|staff|spear|bow/i;
+const WEAPON_PROP =
+  /weapon|sword|dagger|knife|axe|gun|pistol|rifle|revolver|shotgun|sniper|smg|launcher|cannon|shovel|shield|staff|spear|bow/i;
 
 /** finger-base bones that mark the palm, by skeleton family */
 const PALM_BONES = ["Middle1.R", "MiddleHand.R", "Index1.R"];
 
 /** where the gun is calibrated: a pose that fires straight ahead, so the weapon lines up while shooting */
-const AIM_POSE = ["Idle_Gun_Shoot", "Gun_Shoot", "Idle_Shoot", "Idle_Gun_Pointing", "Idle_Gun", "Idle_Hold", "Idle", "Female_Idle", "Man_Idle"];
+const AIM_POSE = [
+  "Idle_Gun_Shoot",
+  "Gun_Shoot",
+  "Idle_Shoot",
+  "Idle_Gun_Pointing",
+  "Idle_Gun",
+  "Idle_Hold",
+  "Idle",
+  "Female_Idle",
+  "Man_Idle",
+];
 
 /** the donor for auto-rigged characters: a fresh, untouched copy of the SWAT (rest pose, all clips) */
 let donor: Promise<Donor> | null = null;
-const loadDonor = () => (donor ??= loader.loadAsync("/characters/swat.glb").then((g) => ({ scene: g.scene, clips: g.animations })));
+const loadDonor = () =>
+  (donor ??= loader.loadAsync("/characters/swat.glb").then((g) => ({ scene: g.scene, clips: g.animations })));
 
 async function build(def: CharacterDef): Promise<Template | null> {
   const gltf = await loader.loadAsync(`/characters/${def.file}`);
@@ -118,7 +144,8 @@ async function build(def: CharacterDef): Promise<Template | null> {
       if (o !== hand && (o as THREE.Mesh).isMesh) props.push(o);
     });
     scene.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh && WEAPON_PROP.test(o.name)) props.push(o);
+      if ((o as THREE.Mesh).isMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh && WEAPON_PROP.test(o.name))
+        props.push(o);
     });
     for (const p of new Set(props)) p.removeFromParent();
   }
@@ -126,7 +153,9 @@ async function build(def: CharacterDef): Promise<Template | null> {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     // auto-rigged meshes come out already inked
-    const inked = (Array.isArray(m.material) ? m.material : [m.material]).every((x) => (x as THREE.ShaderMaterial).isShaderMaterial);
+    const inked = (Array.isArray(m.material) ? m.material : [m.material]).every(
+      (x) => (x as THREE.ShaderMaterial).isShaderMaterial,
+    );
     if (!inked) paintMesh(m);
     m.frustumCulled = false;
     m.castShadow = m.receiveShadow = false;
@@ -153,13 +182,19 @@ async function build(def: CharacterDef): Promise<Template | null> {
     const pos = new THREE.Vector3().setFromMatrixPosition(handInRoot);
     // The trigger goes in the palm, not at the wrist joint: part-way from the
     // hand bone towards the base of the middle finger (where the model has one).
-    const finger = PALM_BONES.map((n) => scene.getObjectByName(boneName(n))).find((b) => b && b !== hand && hand.getObjectById(b.id));
+    const finger = PALM_BONES.map((n) => scene.getObjectByName(boneName(n))).find(
+      (b) => b && b !== hand && hand.getObjectById(b.id),
+    );
     if (finger) {
       const f = new THREE.Vector3().setFromMatrixPosition(rootInv.clone().multiply(finger.matrixWorld));
       pos.lerp(f, 0.6);
     }
     // weapon frame = model frame (identity rotation, pointing ahead), unit scale in model units
-    const want = new THREE.Matrix4().compose(pos, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1).divideScalar(scale));
+    const want = new THREE.Matrix4().compose(
+      pos,
+      new THREE.Quaternion(),
+      new THREE.Vector3(1, 1, 1).divideScalar(scale),
+    );
     grip.copy(handInRoot.invert().multiply(want));
     mixer.stopAllAction();
     mixer.uncacheRoot(scene);
@@ -299,10 +334,19 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
   return {
     root,
     parts: {
-      hips: g(), torso: g(), head: head as THREE.Group,
-      armL: g(), armR: g(), foreL: g(), foreR: g(),
-      legL: g(), legR: g(), shinL: g(), shinR: g(),
-      gun, shield: null,
+      hips: g(),
+      torso: g(),
+      head: head as THREE.Group,
+      armL: g(),
+      armR: g(),
+      foreL: g(),
+      foreR: g(),
+      legL: g(),
+      legR: g(),
+      shinL: g(),
+      shinR: g(),
+      gun,
+      shield: null,
     },
     headWorldY: 1.65,
     hitHeads: [head],

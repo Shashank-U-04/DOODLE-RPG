@@ -31,7 +31,9 @@ export const test = base.extend<{ connectionDiagnostics: void }>({
       if (testInfo.status === testInfo.expectedStatus) return;
       let server = "(no server log)";
       try {
-        server = readFileSync(E2E_SERVER_LOG).subarray(from).toString("utf8") || "(the server printed nothing during this test)";
+        server =
+          readFileSync(E2E_SERVER_LOG).subarray(from).toString("utf8") ||
+          "(the server printed nothing during this test)";
       } catch {
         // keep the placeholder
       }

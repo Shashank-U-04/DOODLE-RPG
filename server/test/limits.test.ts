@@ -1,6 +1,12 @@
 import assert from "assert";
 
-import { DEFAULT_ROOM_LIMITS, isCreateRequest, readRoomLimits, RoomCreationLimiter, TokenBucket } from "../src/limits.js";
+import {
+  DEFAULT_ROOM_LIMITS,
+  isCreateRequest,
+  readRoomLimits,
+  RoomCreationLimiter,
+  TokenBucket,
+} from "../src/limits.js";
 
 describe("room-creation limits", () => {
   it("reads positive integers from the environment and reports the rest", () => {
@@ -29,7 +35,10 @@ describe("room-creation limits", () => {
 
   it("one address gets its budget, a second address its own", () => {
     let now = 0;
-    const limiter = new RoomCreationLimiter({ maxRooms: 100, createsPerMinute: 100, createsPerIpPerMinute: 2 }, () => now);
+    const limiter = new RoomCreationLimiter(
+      { maxRooms: 100, createsPerMinute: 100, createsPerIpPerMinute: 2 },
+      () => now,
+    );
     assert.strictEqual(limiter.tryCreate("1.1.1.1", 0), null);
     assert.strictEqual(limiter.tryCreate("1.1.1.1", 1), null);
     assert.strictEqual(limiter.tryCreate("1.1.1.1", 2), "too-fast");
@@ -56,7 +65,10 @@ describe("room-creation limits", () => {
 
   it("a refusal by the global budget does not spend the address's budget", () => {
     let now = 0;
-    const limiter = new RoomCreationLimiter({ maxRooms: 100, createsPerMinute: 1, createsPerIpPerMinute: 1 }, () => now);
+    const limiter = new RoomCreationLimiter(
+      { maxRooms: 100, createsPerMinute: 1, createsPerIpPerMinute: 1 },
+      () => now,
+    );
     assert.strictEqual(limiter.tryCreate("1.1.1.1", 0), null);
     assert.strictEqual(limiter.tryCreate("2.2.2.2", 1), "server-busy");
     now = 60_000;
@@ -64,7 +76,10 @@ describe("room-creation limits", () => {
   });
 
   it("callers without an address share one budget", () => {
-    const limiter = new RoomCreationLimiter({ maxRooms: 100, createsPerMinute: 100, createsPerIpPerMinute: 1 }, () => 0);
+    const limiter = new RoomCreationLimiter(
+      { maxRooms: 100, createsPerMinute: 100, createsPerIpPerMinute: 1 },
+      () => 0,
+    );
     assert.strictEqual(limiter.tryCreate(undefined, 0), null);
     assert.strictEqual(limiter.tryCreate(undefined, 1), "too-fast");
   });

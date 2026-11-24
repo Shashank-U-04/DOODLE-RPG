@@ -38,6 +38,8 @@ jobs:
         run: npx tsc -b
       - name: Lint
         run: npm run lint
+      - name: Formatting
+        run: npm run format:check
       - name: Production build
         run: npm run build
       - name: Initial-load bundle size

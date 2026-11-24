@@ -24,7 +24,11 @@ export const RESTART_PROBE_EVERY_MS = 2000;
 export const RESTART_VERDICT_WAIT_MS = 5000;
 
 /** Ask `url`'s /health whether `known` is still the process serving it. */
-export async function probeServerInstance(url: string, known: string, timeoutMs = PROBE_TIMEOUT_MS): Promise<InstanceProbe> {
+export async function probeServerInstance(
+  url: string,
+  known: string,
+  timeoutMs = PROBE_TIMEOUT_MS,
+): Promise<InstanceProbe> {
   // Not AbortSignal.timeout(): Safari before 16 lacks it, and the call would throw
   // on every probe, so no restart could ever be recognised there.
   const abort = new AbortController();

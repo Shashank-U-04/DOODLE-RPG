@@ -32,7 +32,9 @@ const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/scrip
   .map((m) => m[1].trim())
   .filter(Boolean)
   .map((body, i) => ({ name: `(inline script ${i + 1})`, ...sizes(Buffer.from(body)) }));
-const external = tags(/<(?:script|link)[^>]*(?:src|href)="https?:\/\/[^"]+"[^>]*>/g).map((t) => attr(t, "src") ?? attr(t, "href"));
+const external = tags(/<(?:script|link)[^>]*(?:src|href)="https?:\/\/[^"]+"[^>]*>/g).map(
+  (t) => attr(t, "src") ?? attr(t, "href"),
+);
 
 const assetsDir = join(dist, "assets");
 const allJs = readdirSync(assetsDir)

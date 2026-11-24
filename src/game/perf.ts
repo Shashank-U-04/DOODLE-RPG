@@ -88,7 +88,13 @@ export class PerfProbe {
     if (!this.firstFrameMs) this.firstFrameMs = now;
     if (!this.started) this.started = now;
     const render = this.renderer.info.render;
-    if (this.last) this.samples.push({ frameMs: began - this.last, cpuMs: now - began, calls: render.calls, triangles: render.triangles });
+    if (this.last)
+      this.samples.push({
+        frameMs: began - this.last,
+        cpuMs: now - began,
+        calls: render.calls,
+        triangles: render.triangles,
+      });
     this.last = began;
   }
 

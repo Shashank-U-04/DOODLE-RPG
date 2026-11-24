@@ -68,7 +68,10 @@ describe("origins", () => {
       assert.strictEqual(isOriginAllowed(other, policy), false, other);
     }
     // patterns are not a feature: they are reported, never stored
-    const patterned = readOriginPolicy({ NODE_ENV: "production", ALLOWED_ORIGINS: "https://*.vercel.app,https://myapp-*.vercel.app" });
+    const patterned = readOriginPolicy({
+      NODE_ENV: "production",
+      ALLOWED_ORIGINS: "https://*.vercel.app,https://myapp-*.vercel.app",
+    });
     assert.strictEqual(patterned.allowed.size, 0);
     assert.deepStrictEqual(patterned.rejected, ["https://*.vercel.app", "https://myapp-*.vercel.app"]);
   });

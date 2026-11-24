@@ -69,8 +69,7 @@ export default function Landing() {
               <div className="colhead">MOUSE + KEYBOARD</div>
               {KEYBOARD.map(([key, rest]) => (
                 <div key={key}>
-                  <b>{key}</b>{" "}
-                  <span dangerouslySetInnerHTML={{ __html: rest }} />
+                  <b>{key}</b> <span dangerouslySetInnerHTML={{ __html: rest }} />
                 </div>
               ))}
             </div>

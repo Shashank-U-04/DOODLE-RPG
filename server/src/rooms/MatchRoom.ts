@@ -52,13 +52,21 @@ const moveMessage = z.object({
   alive: z.boolean(),
   weapon: z.string().max(16),
   /** the client's own body generation; a change asks for a teleport */
-  epoch: z.number().int().min(0).max(2 ** 31 - 1),
+  epoch: z
+    .number()
+    .int()
+    .min(0)
+    .max(2 ** 31 - 1),
 });
 type MoveMessage = z.infer<typeof moveMessage>;
 
 const vec = z.object({ x: coord, y: coord, z: coord });
 /** per-client counter, strictly increasing; a repeat is a duplicate and is dropped */
-const shotId = z.number().int().min(1).max(2 ** 31 - 1);
+const shotId = z
+  .number()
+  .int()
+  .min(1)
+  .max(2 ** 31 - 1);
 /** how old the bodies the client aimed at were, ms (clamped to MAX_REWIND_MS) */
 const lag = z.number().int().min(0).max(5000);
 const weaponName = z.string().max(16);
@@ -68,7 +76,15 @@ const weaponName = z.string().max(16);
  * wrong shape disconnects the sender, as for `move`; a well-formed intent the
  * rules refuse (too fast, dead, unknown weapon, …) is dropped silently.
  */
-const fireMessage = z.object({ shot: shotId, weapon: weaponName, origin: vec, dir: vec, ads: z.boolean(), air: z.boolean(), lag });
+const fireMessage = z.object({
+  shot: shotId,
+  weapon: weaponName,
+  origin: vec,
+  dir: vec,
+  ads: z.boolean(),
+  air: z.boolean(),
+  lag,
+});
 const meleeMessage = z.object({ shot: shotId, origin: vec, dir: vec, lag });
 const throwMessage = z.object({ shot: shotId, origin: vec, dir: vec });
 const reloadMessage = z.object({ weapon: weaponName });
@@ -324,7 +340,12 @@ export class MatchRoom extends Room<{ state: MatchState }> {
    * way; only its own token can bring it back, and the hold expires.
    */
   onDrop(client: Client, code?: number) {
-    logLifecycle("client-dropped", { room: this.roomId, session: client.sessionId, code: code ?? null, shuttingDown: this.shutdownStarted });
+    logLifecycle("client-dropped", {
+      room: this.roomId,
+      session: client.sessionId,
+      code: code ?? null,
+      shuttingDown: this.shutdownStarted,
+    });
     const player = this.state.players.get(client.sessionId);
     if (player) player.connected = false;
     this.allowReconnection(client, this.reconnectSeconds).catch(() => {
@@ -380,7 +401,11 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     if (this.shutdownStarted) return;
     this.shutdownStarted = true;
     this.broadcast(SERVER_CLOSING_MESSAGE, {});
-    logLifecycle("room-notice-sent", { room: this.roomId, seats: this.state.players.size, sockets: this.socketStates() });
+    logLifecycle("room-notice-sent", {
+      room: this.roomId,
+      seats: this.state.players.size,
+      sockets: this.socketStates(),
+    });
     this.closeTimer = setTimeout(() => {
       this.closeTimer = null;
       logLifecycle("room-closing-sockets", { room: this.roomId, sockets: this.socketStates() });

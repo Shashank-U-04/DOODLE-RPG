@@ -55,7 +55,10 @@ describe("room access", () => {
     it("refuses with 429 once an address has used its budget", async () => {
       roomLimiter.configure({ ...DEFAULT_ROOM_LIMITS, createsPerIpPerMinute: 2 });
       const created = [await matchmake("create", "match"), await matchmake("create", "match")];
-      assert.deepStrictEqual(created.map((r) => r.status), [200, 200]);
+      assert.deepStrictEqual(
+        created.map((r) => r.status),
+        [200, 200],
+      );
       const refused = await matchmake("create", "match");
       assert.strictEqual(refused.status, 429);
       assert.match(JSON.stringify(await refused.json()), /wait a minute/);

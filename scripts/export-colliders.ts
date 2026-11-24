@@ -88,13 +88,15 @@ if (isMain) {
   ];
   if (process.argv.includes("--check")) {
     const stale = files.filter((f) => readFileSync(f.url, "utf8").replace(/\r\n/g, "\n") !== f.text);
-    for (const f of stale) console.error(`server/src/maps/${f.name} is stale: run \`npx tsx scripts/export-colliders.ts\``);
+    for (const f of stale)
+      console.error(`server/src/maps/${f.name} is stale: run \`npx tsx scripts/export-colliders.ts\``);
     if (stale.length > 0) process.exit(1);
     console.log("colliders.json and arrivals.json are current");
   } else {
     for (const f of files) writeFileSync(f.url, f.text);
     const colliders = JSON.parse(files[0].text) as Record<string, ZoneColliders>;
-    for (const [id, z] of Object.entries(colliders)) console.log(`${id}: ${z.colliders.length} colliders, floor ${z.floorY}`);
+    for (const [id, z] of Object.entries(colliders))
+      console.log(`${id}: ${z.colliders.length} colliders, floor ${z.floorY}`);
     const arrivals = JSON.parse(files[1].text) as Record<string, ZoneArrivals>;
     for (const [id, points] of Object.entries(arrivals)) console.log(`${id}: ${points.length} arrival points`);
   }

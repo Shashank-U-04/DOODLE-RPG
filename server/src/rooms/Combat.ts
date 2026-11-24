@@ -255,10 +255,17 @@ export class Combat {
     const current = new Map(this.targets(id, zone, now).map((t) => [t.id, t]));
     const landed: { victim: string; head: boolean; point: Vec3; damage: number }[] = [];
     for (const t of rewound) {
-      const body = [t, current.get(t.id)].find((b) => b && meleeHits(m.origin, m.dir, up(b.feet, MELEE.chestY), MELEE.reach, MELEE.cosArc));
+      const body = [t, current.get(t.id)].find(
+        (b) => b && meleeHits(m.origin, m.dir, up(b.feet, MELEE.chestY), MELEE.reach, MELEE.cosArc),
+      );
       if (!body) continue;
       const head = meleeHits(m.origin, m.dir, up(body.feet, MELEE.headY), MELEE.reach, MELEE.headCos);
-      landed.push({ victim: t.id, head, point: up(body.feet, MELEE.chestY), damage: MELEE.damage * (head ? MELEE.headMul : 1) });
+      landed.push({
+        victim: t.id,
+        head,
+        point: up(body.feet, MELEE.chestY),
+        damage: MELEE.damage * (head ? MELEE.headMul : 1),
+      });
     }
     this.land(id, MELEE.name, landed);
     // katanaSlash(): a landed slash charges the meter per body; a miss empties it.
@@ -291,7 +298,9 @@ export class Combat {
     a.chain += 1;
     a.slowmoUntil = 0;
     this.stats.accepted++;
-    this.land(id, MELEE.name, [{ victim: best.id, head: false, point: up(best.feet, MELEE.chestY), damage: FOCUS.damage }]);
+    this.land(id, MELEE.name, [
+      { victim: best.id, head: false, point: up(best.feet, MELEE.chestY), damage: FOCUS.damage },
+    ]);
     addFocus(a, MELEE.focusGain, now);
     return true;
   }
@@ -305,7 +314,11 @@ export class Combat {
     a.lastShot = m.shot;
     this.stats.accepted++;
     const { bounds } = zoneAt(this.map, { x: p.x, y: p.y, z: p.z });
-    this.grenades.push({ owner: id, at: grenadeLanding(m.origin, m.dir, bounds), explodeAt: now + GRENADE.fuse * 1000 });
+    this.grenades.push({
+      owner: id,
+      at: grenadeLanding(m.origin, m.dir, bounds),
+      explodeAt: now + GRENADE.fuse * 1000,
+    });
   }
 
   reload(id: string, weapon: string) {
@@ -324,7 +337,11 @@ export class Combat {
   /* ------------------------------- resolution ------------------------------- */
 
   /** Apply one attack's landed hits in order, one event per victim. */
-  private land(attacker: string, weapon: string, hits: { victim: string; head: boolean; point: Vec3; damage: number }[]) {
+  private land(
+    attacker: string,
+    weapon: string,
+    hits: { victim: string; head: boolean; point: Vec3; damage: number }[],
+  ) {
     const byVictim = new Map<string, HitEvent>();
     for (const h of hits) {
       const v = this.state.players.get(h.victim);
@@ -373,7 +390,17 @@ export class Combat {
     if (kill) this.eliminate(v, attacker, weapon, now);
     if (!quiet) {
       this.stats.hits++;
-      this.emit("hit", { attacker, victim: v.id, weapon, damage: before - v.hp, head: false, kill, x: v.x, y: v.y + 1, z: v.z });
+      this.emit("hit", {
+        attacker,
+        victim: v.id,
+        weapon,
+        damage: before - v.hp,
+        head: false,
+        kill,
+        x: v.x,
+        y: v.y + 1,
+        z: v.z,
+      });
       this.announceFallen();
     }
     return kill;

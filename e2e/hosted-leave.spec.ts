@@ -68,7 +68,9 @@ async function loseServerCloses(context: BrowserContext) {
     upstream.addEventListener("open", () => {
       for (const m of pending.splice(0)) upstream.send(m);
     });
-    upstream.addEventListener("message", (e) => ws.send(typeof e.data === "string" ? e.data : Buffer.from(e.data as ArrayBuffer)));
+    upstream.addEventListener("message", (e) =>
+      ws.send(typeof e.data === "string" ? e.data : Buffer.from(e.data as ArrayBuffer)),
+    );
     // the hosting path's fault: the server's close never reaches the page (no listener for it)
     ws.onMessage((m) => (upstream.readyState === WebSocket.OPEN ? upstream.send(m) : pending.push(m)));
     ws.onClose((code, reason) => {
@@ -87,7 +89,9 @@ function watchReconnects(page: Page): string[] {
   return seen;
 }
 
-test("leaving a match closes at once and never reconnects, even when the server's close is lost", async ({ browser }) => {
+test("leaving a match closes at once and never reconnects, even when the server's close is lost", async ({
+  browser,
+}) => {
   const offHost: string[] = [];
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
@@ -109,7 +113,9 @@ test("leaving a match closes at once and never reconnects, even when the server'
   // mouse and pauses; the PAUSED panel has its own LEAVE MATCH.
   await guest.keyboard.press("Escape");
   await expect(overlay(guest).locator("h1")).toHaveText("PAUSED");
-  await overlay(guest).getByRole("button", { name: /LEAVE MATCH/ }).click();
+  await overlay(guest)
+    .getByRole("button", { name: /LEAVE MATCH/ })
+    .click();
 
   await expect
     .poll(async () => (await sockets()).closes.map((c) => c.code), { message: "the room socket closed", timeout: 2000 })

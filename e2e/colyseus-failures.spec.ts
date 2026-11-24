@@ -41,7 +41,9 @@ test("a server restart mid-match stops both arenas and says why", async ({ brows
   await host.waitForTimeout(5000);
   await expect(overlay(host).locator("h1")).toHaveText("CONNECTION LOST");
 
-  await overlay(guest).getByRole("button", { name: /LEAVE MATCH/ }).click();
+  await overlay(guest)
+    .getByRole("button", { name: /LEAVE MATCH/ })
+    .click();
   await expect(guest.locator(".dd-exit")).toHaveCount(0);
   await expect(guest.getByRole("button", { name: /JOIN/ }).first()).toBeVisible();
   await hostContext.close();
