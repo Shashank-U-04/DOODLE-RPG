@@ -444,11 +444,13 @@ describe("server-authoritative combat", () => {
         players: [a, b],
         body,
       } = await match([A, B]);
-      // the PeerJS transport's "I hit them" message, and a "death" claim
+      // the PeerJS transport's "I hit them" message, and a "death" claim: the
+      // room has no handler for either, and Colyseus drops a client that sends
+      // a message type with no handler
       sendUnchecked(a.room, "hit", { victim: b.id, dmg: 999, epoch: 1, origin: eyeOf(A) });
       sendUnchecked(a.room, "death", { killer: a.id });
-      fire(a, "RIFLE", { x: 30, y: 1, z: 38 }); // a marker that the room processed what came before
-      await eventually(() => server.combat.stats.accepted === 1, "marker processed");
+      await eventually(() => !body(a).connected, "the sender is dropped");
+      assert.strictEqual(server.combat.stats.accepted, 0);
       assert.strictEqual(body(b).hp, HEALTH.max);
       assert.strictEqual(body(a).kills, 0);
     });
