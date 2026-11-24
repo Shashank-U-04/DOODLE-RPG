@@ -17,11 +17,6 @@ export const CI = 1.75; // stand height
 export const JN = 1.05; // crouch height
 export const EYE = 1.6;
 export const BASE_FOV = 82;
-export const SENS = 0.0022; // × sensitivity %
-export const GRAV = 22;
-export const KATANA_STREAK = 3;
-export const FOCUS_DUR = 2.6;
-export const FOCUS_MAX = 2;
 
 export type EnemyKind = "grunt" | "rusher" | "bomber" | "sniper" | "flyer" | "heavy" | "shield" | "boss" | "eraser" | "inkblot" | "mummy";
 
@@ -113,12 +108,4 @@ export const MODIFIERS = [
   { name: "CAFFEINATED · they move fast", speed: 1.35, dmg: 0.85, extra: 0 },
   { name: "HEAVY INK · they hit harder", speed: 0.9, dmg: 1.4, extra: 0 },
   { name: "SWARM · more of them, thinner", speed: 1.15, dmg: 0.9, extra: 3 },
-];
-
-export const TIPS = [
-  "hold <b>Q</b>/<b>E</b> to reel in · tap again to let go",
-  "block with the <b>KATANA</b> — some bullets go back",
-  "kills in the air are worth more · stay off the floor",
-  "<b>G</b> lobs a grenade · pickups give you more",
-  "press <b>Space</b> again in the air for a double jump",
 ];

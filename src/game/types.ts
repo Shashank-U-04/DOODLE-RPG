@@ -92,54 +92,6 @@ export type NetPlayerState = {
 export type NetShotOrigin = { x: number; y: number; z: number };
 
 /**
- * Should an arriving transform replace the one we already hold for a player?
- *
- * Two rules, both about what a star relay actually delivers:
- *
- *  - **older epoch = stale.** A body that has been teleported (respawn,
- *    rematch, focus dash) carries a higher generation. Packets stamped before
- *    that teleport are still in flight and would drag the fresh body back to
- *    where it died — the "respawned into the death spot" bug, seen from the
- *    other end of the wire.
- *  - **older sequence within one epoch = out of order.** Four players relayed
- *    through one host arrive interleaved; applying them in arrival order makes
- *    an avatar hop backwards a packet's worth, which reads as bad hitreg.
- *
- * It lives here, next to the state it guards, so both the transport and any
- * test can ask the same question.
- */
-export function shouldApplyState(prev: NetPlayerState | undefined, next: NetPlayerState): boolean {
-  if (!next || !Number.isFinite(next.x) || !Number.isFinite(next.y) || !Number.isFinite(next.z) || !Number.isFinite(next.hp)) {
-    return false;
-  }
-  if (!prev) return true;
-  const pe = prev.epoch ?? 0;
-  const ne = next.epoch ?? 0;
-  if (ne < pe) return false;
-  if (ne === pe && (next.seq ?? 0) <= (prev.seq ?? 0)) return false;
-  return true;
-}
-
-/**
- * One shot that the shooter watched land on another player.
- *
- * A struct rather than a parameter list on purpose: this crosses three files
- * (engine → page → net → victim) and every field matters, so the compiler should
- * be the thing that stops a caller from swapping the damage and the epoch.
- */
-export type NetHitReport = {
-  /** the player who took it */
-  victim: string;
-  /** what they should lose — the shooter's read of their own weapon */
-  dmg: number;
-  head: boolean;
-  /** the generation of *their* body the shot was aimed at */
-  epoch: number;
-  /** where we fired from: the victim checks the path against the world */
-  origin: NetShotOrigin;
-};
-
-/**
  * Server-authoritative combat (the Colyseus transport): what the engine sends
  * instead of deciding hits itself. Positions and directions are world space;
  * `dir` is the unscattered aim (the server rolls the spread).
@@ -177,8 +129,6 @@ export type EngineCallbacks = {
   onResume: () => void;
   onAim: (ads: boolean) => void;
   // ---- online only: none of these fire during a solo run ----
-  /** Our own shot landed on a remote player. */
-  onNetHit?: (hit: NetHitReport) => void;
   /** we were erased; killerId names the remote that did it (null = self/void) */
   onNetDeath?: (killerId: string | null) => void;
   /** server combat only: we attacked; the server decides what it did */
@@ -196,28 +146,17 @@ export interface GameHandle {
   setMusic(on: boolean): void;
   dispose(): void;
   // ---- online play: every one of these is a no-op in a solo run ----
-  /** Turn the arena into a free-for-all deathmatch: no waves, no enemies. */
+  /**
+   * Turn the arena into a free-for-all deathmatch: no waves, no enemies. The
+   * match server owns hits, damage and health: attacks become onNetCombat
+   * intents, and nothing local (our own grenade, a trap, a chest) changes our
+   * health. Tracers, muzzle flashes and sounds are still drawn at once.
+   */
   setPvp(on: boolean): void;
   /** Our own transform + vitals, for the net layer to broadcast. */
   netState(): NetPlayerState;
   /** Authoritative list of remote players to draw (positions are smoothed). */
   setRemotePlayers(players: NetRemotePlayer[]): void;
-  /**
-   * A remote player's shot landed on us.
-   *
-   * We are the authority on our own body, so this does not blindly apply the
-   * damage: the shot is validated against where we were `rewindMs` ago (their
-   * half round trip) and against the world between the two points. `origin` is
-   * where the shooter fired from; without it the geometric checks are skipped.
-   */
-  takeNetHit(dmg: number, killerId: string, rewindMs?: number, origin?: NetShotOrigin): void;
-  /**
-   * Our measured half round trip to the host, in ms, from the net layer. The
-   * engine leads moving targets by this much when a shot is fired, and rewinds
-   * its own body by the same when one arrives — two ends of the same fix for
-   * "my bullets go where they were, not where they are".
-   */
-  setNetLatency(ms: number): void;
   /**
    * Back into the fight after a death (full health).
    * `preferIndex` pins the spawn to a numbered pad — the match uses it to hand
@@ -227,13 +166,6 @@ export interface GameHandle {
   netRespawn(preferIndex?: number): void;
   /** True while our own player is still standing. */
   isAlive(): boolean;
-  // ---- server-authoritative combat (Colyseus): inert unless switched on ----
-  /**
-   * Hand hits, damage and health to the server: attacks become onNetCombat
-   * intents, and nothing local (our own grenade, a trap, a chest) changes our
-   * health. Tracers, muzzle flashes and sounds are still drawn at once.
-   */
-  setServerCombat(on: boolean): void;
   /** The server says one of our attacks landed. */
   showNetHit(hit: NetShotLanded): void;
   /** The server took `dmg` off us (`killerId` null: our own doing): the hurt feedback only; health follows syncNetHealth. */

@@ -4,7 +4,7 @@
 // under Node.
 
 import type { MatchConfig } from "./maps";
-import type { NetCombatIntent, NetPlayerState, NetShotLanded, NetShotOrigin } from "./types";
+import type { NetCombatIntent, NetPlayerState, NetShotLanded } from "./types";
 
 /** the connection's state, as the lobby shows it */
 export type SignalState = "idle" | "connecting" | "open" | "retrying" | "lost" | "closed";
@@ -32,18 +32,8 @@ export type NetPlayer = {
 export type NetHandlers = {
   /** a remote player's transform arrived — hand it straight to the engine */
   onRemoteState?: (id: string, state: NetPlayerState) => void;
-  /**
-   * Someone's shot landed on us. `epoch` is the generation of our body the
-   * shooter aimed at (so a hit that predates our respawn can be dropped) and
-   * `origin` is where the shot came from (so its path can be checked).
-   */
-  onHitMe?: (dmg: number, killerId: string, epoch: number, origin: NetShotOrigin) => void;
-  onDeath?: (victimId: string, killerId: string) => void;
-  onRespawn?: (id: string, epoch: number) => void;
   /** the host restarted the match: clear the scoreboard and drop the overlay */
   onRematch?: () => void;
-  /** our measured half round trip changed — feed it to the engine's aim model */
-  onLatency?: (ms: number) => void;
   /** the host said go; adopt `config` if it is present (it is authoritative) */
   onStart?: (config?: MatchConfig) => void;
   /** the host's match rules changed, or arrived for the first time */
@@ -123,8 +113,6 @@ export interface MatchSession {
   readonly me: string;
   /** the room has confirmed our seat */
   readonly joined: boolean;
-  /** half the measured round trip, for the engine's aim model */
-  readonly rewindMs: number;
   connect(): void;
   close(): void;
   resume(): void;
@@ -138,15 +126,10 @@ export interface MatchSession {
   rematch(): void;
   setStateProvider(fn: (() => NetPlayerState) | null): void;
   startTicking(): void;
-  reportHit(victim: string, dmg: number, victimEpoch: number, origin: NetShotOrigin): void;
-  reportDeath(killer: string): void;
-  reportRespawn(epoch: number): void;
   /** log-safe connection details for a console warning */
   diagnostics(): unknown;
-  /** true when the server decides hits and health (the engine then sends intents) */
-  readonly serverCombat?: boolean;
-  /** server combat: hand an attack to the server */
-  reportCombat?(intent: NetCombatIntent): void;
-  /** server combat: the winner the server declared ("" while undecided) */
-  readonly winnerId?: string;
+  /** hand an attack to the server, which decides what it did */
+  reportCombat(intent: NetCombatIntent): void;
+  /** the winner the server declared ("" while undecided) */
+  readonly winnerId: string;
 }

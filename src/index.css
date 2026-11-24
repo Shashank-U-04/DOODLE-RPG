@@ -1,122 +1,24 @@
-/* DO NOT CHANGE */
 @import "tailwindcss";
-@custom-variant dark (&:is(.dark *));
 
-/* DO NOT CHANGE */
+/* The few theme colours the pages use as Tailwind classes (bg-background,
+   text-foreground, text-muted-foreground, border-border, outline-ring). */
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar);
-  --color-sidebar-primary-foreground: var(--sidebar-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* CHANGE VALUES FOR THEME — Studio: gallery-clean, warm off-whites, muted neutrals */
+/* warm off-whites, muted neutrals */
 :root {
-  --radius: 0.25rem;
   --background: oklch(0.976 0.005 83);
   --foreground: oklch(0.28 0.012 70);
-  --card: oklch(0.994 0.003 85);
-  --card-foreground: oklch(0.28 0.012 70);
-  --popover: oklch(0.994 0.003 85);
-  --popover-foreground: oklch(0.28 0.012 70);
-  --primary: oklch(0.305 0.014 70);
-  --primary-foreground: oklch(0.981 0.004 85);
-  --secondary: oklch(0.949 0.007 85);
-  --secondary-foreground: oklch(0.33 0.013 70);
   --muted: oklch(0.949 0.007 85);
   --muted-foreground: oklch(0.505 0.013 75);
-  --accent: oklch(0.941 0.009 85);
-  --accent-foreground: oklch(0.3 0.013 70);
-  --destructive: oklch(0.577 0.195 25.5);
   --border: oklch(0.898 0.009 82);
-  --input: oklch(0.898 0.009 82);
   --ring: oklch(0.305 0.014 70);
-  --chart-1: oklch(0.38 0.08 265);
-  --chart-2: oklch(0.55 0.18 25);
-  --chart-3: oklch(0.3 0.02 75);
-  --chart-4: oklch(0.72 0.13 70);
-  --chart-5: oklch(0.66 0.15 350);
-  --sidebar: oklch(0.985 0.004 85);
-  --sidebar-foreground: oklch(0.28 0.012 70);
-  --sidebar-primary: oklch(0.305 0.014 70);
-  --sidebar-primary-foreground: oklch(0.981 0.004 85);
-  --sidebar-accent: oklch(0.949 0.007 85);
-  --sidebar-accent-foreground: oklch(0.33 0.013 70);
-  --sidebar-border: oklch(0.898 0.009 82);
-  --sidebar-ring: oklch(0.305 0.014 70);
-
-  /* Studio ink palette (game/HUD accents) */
-  --ink: oklch(0.28 0.045 266);
-  --ink-soft: oklch(0.45 0.05 265);
-  --ink-strong: oklch(0.24 0.05 266);
-  --studio-crimson: oklch(0.56 0.17 27);
-  --studio-ochre: oklch(0.72 0.13 72);
-  --studio-line: oklch(0.898 0.009 82);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -133,73 +35,6 @@
   }
   html {
     scroll-behavior: smooth;
-  }
-}
-
-/* ===================== Studio presentation utilities ===================== */
-
-@layer utilities {
-  .font-studio-display {
-    font-family: "Space Grotesk", "Archivo", ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.02em;
-  }
-  .font-studio-sans {
-    font-family: "Space Grotesk", "Archivo", ui-sans-serif, system-ui, sans-serif;
-  }
-  .font-sketch {
-    font-family: "Caveat", "Patrick Hand", ui-rounded, cursive;
-  }
-  .font-sketch-hand {
-    font-family: "Patrick Hand", "Caveat", ui-rounded, cursive;
-  }
-  .text-ink {
-    color: var(--ink);
-  }
-  .text-ink-soft {
-    color: var(--ink-soft);
-  }
-  .bg-ink {
-    background-color: var(--ink);
-  }
-  .text-crimson {
-    color: var(--studio-crimson);
-  }
-  .text-ochre {
-    color: var(--studio-ochre);
-  }
-
-  /* thin double museum frame */
-  .studio-frame {
-    position: relative;
-    border: 1px solid var(--border);
-  }
-  .studio-frame::after {
-    content: "";
-    position: absolute;
-    inset: 5px;
-    border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
-    pointer-events: none;
-  }
-
-  .studio-grain {
-    position: relative;
-  }
-  .studio-grain::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.05;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
-  }
-
-  .paper {
-    background-color: var(--card);
-    background-image: repeating-linear-gradient(
-      0deg,
-      color-mix(in oklab, var(--foreground) 4%, transparent) 0 1px,
-      transparent 1px 28px
-    );
   }
 }
 
@@ -553,7 +388,6 @@
   .dd-msg .t { font-size: 56px; }
 }
 
-.dd-stage-wrap { position: fixed; inset: 0; z-index: 0; background: #f6f3e6; }
 .dd-exit {
   position: absolute;
   top: 10px;
@@ -574,30 +408,6 @@
 }
 .dd-exit:hover { background: #fff; }
 
-/* Studio wrapper for the game stage */
-.dd-stage-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: var(--background);
-  padding: clamp(10px, 2vmin, 22px);
-}
-.dd-stage-frame {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  border: 1px solid var(--border);
-  background: var(--card);
-  overflow: hidden;
-}
-.dd-stage-frame::after {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
-  pointer-events: none;
-  z-index: 30;
-}
 
 @media (max-width: 640px) {
   .dd-screen .panel {
@@ -751,21 +561,6 @@
   flex: 0 0 11px;
   border: 2px solid currentColor;
   border-radius: 50%;
-}
-
-.dd-hud .focusmeter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #8a6d1f;
-}
-.dd-hud .focusmeter .bar {
-  width: 110px;
-  height: 8px;
-}
-.dd-hud .focusmeter .fill.ready {
-  background: #e08c14;
 }
 
 .dd-exit {
@@ -922,10 +717,7 @@
 .dd-locker .lk-blurb { font-size: clamp(14px, 2vh, 18px); opacity: 0.8; margin-bottom: 4px; text-align: center; }
 .dd-locker .lk-right { min-width: 0; }
 .dd-locker .colhead { font-size: clamp(17px, 2.7vh, 23px); }
-.dd-locker .lk-chars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
-.dd-locker .lk-chars button,
 .dd-locker .lk-chips button,
-.dd-locker .lk-tabs button,
 .dd-locker .lk-items button {
   font: inherit;
   color: #1a30c0;
@@ -935,13 +727,8 @@
   cursor: pointer;
   line-height: 1.1;
 }
-.dd-locker .lk-chars button { font-size: clamp(14px, 2.1vh, 18px); padding: 3px 4px; }
-.dd-locker .lk-chars button.on,
-.dd-locker .lk-chips button.on,
-.dd-locker .lk-tabs button.on { color: #f6f3e6; background: #1a30c0; }
+.dd-locker .lk-chips button.on { color: #f6f3e6; background: #1a30c0; }
 .dd-locker button:hover { filter: brightness(1.12); }
-.dd-locker .lk-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid #1a30c0; padding-bottom: 6px; }
-.dd-locker .lk-tabs button { font-size: clamp(14px, 2.1vh, 18px); padding: 2px 10px; }
 .dd-locker .lk-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; padding-top: 8px; }
 .dd-locker .lk-items button { padding: 4px 4px 3px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; }
 .dd-locker .lk-items button.on { border-color: #d02030; box-shadow: 0 0 0 2px #d02030; color: #d02030; }

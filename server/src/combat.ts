@@ -167,8 +167,6 @@ export function zoneAt(map: MapId, p: Vec3): { id: ZoneId; bounds: Box } {
   return { id: MAP_ZONES[map][best], bounds: boxes[best] };
 }
 
-export const zoneFloor = (id: ZoneId) => ZONES[id].floorY;
-
 /** engine.ts rayAABB(): distance along `dir` to the box, or −1. */
 export function rayAABB(o: Vec3, d: Vec3, c: Collider, maxDist: number): number {
   let tmin = 0;

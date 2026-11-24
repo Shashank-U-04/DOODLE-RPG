@@ -19,14 +19,11 @@ import {
   isStandable,
   meleeHits,
   pickSafeSpawn,
-  poseAt,
   resolveMove,
-  segmentHitsBody,
   shared,
   spreadSpawns,
   type Collider,
   type InkId,
-  type PoseSample,
 } from "./world";
 import { buildDistrict, DISTRICT_START, SAFE_SPAWNS, type District } from "./district";
 import { buildPyramid, type Mood, type PyramidMap } from "./pyramid";
@@ -41,7 +38,7 @@ import { damp, smooth01, Spring } from "./feel";
 import { buildGunSpec, type GunSpec } from "./guns";
 import { makeAmmoPack, makeGrenade, makeMedkit } from "./props";
 import { ED, PR, QR, VR, XN, XN_AIR, CI, JN, BASE_FOV, DR, NR, FR, OR_, type EnemyKind, type EnemyDef } from "./enemies-data";
-import type { EngineCallbacks, GameHandle, HudState, NetPlayerState, NetRemotePlayer, NetShotOrigin } from "./types";
+import type { EngineCallbacks, GameHandle, HudState, NetPlayerState, NetRemotePlayer } from "./types";
 
 THREE.ColorManagement.enabled = false;
 
@@ -539,8 +536,7 @@ export function createGame(
    * feedback waits for its confirmation (showNetHit); nothing local changes
    * our health. Off for solo play.
    */
-  let serverCombat = false;
-  const netAuthority = () => pvp.active && serverCombat;
+  const netAuthority = () => pvp.active;
   const intent = (i: NetCombatIntent) => cb.onNetCombat?.(i);
   const vec = (v: THREE.Vector3) => ({ x: v.x, y: v.y, z: v.z });
   let blocking = false;
@@ -1127,12 +1123,8 @@ export function createGame(
       dir.z += rand(-spread, spread);
       dir.normalize();
       const wallT = raycastWorld(eye, dir, 160);
-      // Online, the shot is settled *here*, not when a tracer finally arrives:
-      // the body we test is the one the packet drew, led by our half round trip
-      // so it is standing where its owner will have moved to. The victim then
-      // re-checks the hit against where they really were. A travelling
-      // projectile could only ever re-decide this too late, which is why hit
-      // registration used to feel imprecise exactly when the lobby got busy.
+      // Online, the tracer stops on the first body the packets drew in its
+      // path; whether it hurt them is the server's call (showNetHit).
       const rem = pvp.active ? raycastRemote(eye, dir, wallT) : null;
       const hitPoint = eye.clone().addScaledVector(dir, rem ? rem.dist : wallT);
       spawnBullet(
@@ -1146,19 +1138,7 @@ export function createGame(
         rem ? rem.dist : undefined,
         muzzleAt,
       );
-      if (rem && netAuthority()) {
-        // the tracer stops on them; whether it hurt them is the server's call
-      } else if (rem) {
-        spawnShards(hitPoint, INK.RED, rem.head ? 5 : 3, 2.5);
-        cb.onHitmarker(false, rem.head);
-        cb.onNetHit?.({
-          victim: rem.id,
-          dmg: def.damage * (rem.head ? def.headMul : 1),
-          head: rem.head,
-          epoch: rem.epoch,
-          origin: { x: eye.x, y: eye.y, z: eye.z },
-        });
-      } else if (wallT < 160) {
+      if (!rem && wallT < 160) {
         spawnShards(hitPoint, INK.BLACK, 2, 2);
       }
     }
@@ -1231,25 +1211,8 @@ export function createGame(
     for (const a of pvp.remotes.values()) {
       if (!a.state.alive) continue;
       const chest = a.pos.clone().add(new THREE.Vector3(0, 1.05, 0));
-      if (!meleeHits(eye, fwd, chest, KATANA_MELEE.reach, KATANA_MELEE.cosArc)) continue;
-      hitAny = true;
-      const head = a.pos.clone().add(new THREE.Vector3(0, 1.62, 0));
-      const headHit = meleeHits(eye, fwd, head, KATANA_MELEE.reach, 0.9);
       // The server settles it, and charges the meter when it confirms (showNetHit).
-      if (netAuthority()) continue;
-      spawnShards(chest, INK.RED, headHit ? 7 : 4, 3);
-      cb.onHitmarker(false, headHit);
-      cb.onNetHit?.({
-        victim: a.id,
-        dmg: KATANA_MELEE.damage * (headHit ? KATANA_MELEE.headMul : 1),
-        head: headHit,
-        epoch: a.state.epoch ?? 0,
-        origin: { x: eye.x, y: eye.y, z: eye.z },
-      });
-      // The victim is the authority on their own health, so the slash is charged
-      // on the *connection*: the same rule a bullet hit uses, and the only one
-      // that works when the target is another player instead of a rig.
-      addFocus(KATANA_MELEE.focusGain);
+      if (meleeHits(eye, fwd, chest, KATANA_MELEE.reach, KATANA_MELEE.cosArc)) hitAny = true;
     }
     if (!hitAny) focusCharge = 0;
     pushHud();
@@ -1323,19 +1286,8 @@ export function createGame(
     if (target) {
       damageEnemy(target, 9999, false, "focus");
       cb.onTip("<b>EXECUTED</b>", 1.2);
-    } else if (victim && netAuthority()) {
-      intent({ kind: "dash", origin: vec(eye), dir: vec(fwd) });
-      cb.onTip("<b>SLASHED</b>", 1.2);
     } else if (victim) {
-      cb.onHitmarker(false, false);
-      cb.onNetHit?.({
-        victim: victim.id,
-        dmg: 95,
-        head: false,
-        epoch: victim.state.epoch ?? 0,
-        origin: { x: eye.x, y: eye.y, z: eye.z },
-      });
-      addFocus(KATANA_MELEE.focusGain);
+      intent({ kind: "dash", origin: vec(eye), dir: vec(fwd) });
       cb.onTip("<b>SLASHED</b>", 1.2);
     }
   }
@@ -1625,8 +1577,6 @@ export function createGame(
     if (pd < radius * 0.8) {
       damagePlayer(dmg * Math.sqrt(Math.max(0, 1 - pd / (radius * 0.8))));
     }
-    // online: a grenade hurts everyone standing in it, not just us
-    blastRemotes(pos, radius * 0.8, dmg);
   }
 
   /* ------------------------------------------------------------------ *
@@ -1662,10 +1612,6 @@ export function createGame(
     walk: number;
     /** stride size, eased between standing and running so the legs never snap */
     walkAmt: number;
-    /** speed estimated from packet deltas, for leading a shot */
-    vel: THREE.Vector3;
-    /** when their last transform landed, for that estimate */
-    lastT: number;
   };
 
   const pvp = {
@@ -1680,18 +1626,12 @@ export function createGame(
     epoch: 0,
     /** packet counter inside one epoch — peers drop anything that goes back */
     seq: 0,
-    /** half our round trip to the host, ms: how far to lead a body we shoot at */
-    leadMs: 0,
-    /** our own recent poses, so a shot that arrives late can be checked fairly */
-    history: [] as PoseSample[],
-    historyT: 0,
   };
 
   /** Mark the next position as a teleport rather than movement. */
   function markTeleport() {
     pvp.epoch += 1;
     pvp.seq = 0;
-    pvp.history.length = 0;
   }
 
   function dropRemote(a: RemoteActor) {
@@ -1732,7 +1672,6 @@ export function createGame(
 
   function syncRemotePlayers(list: NetRemotePlayer[]) {
     const keep = new Set<string>();
-    const now = performance.now();
     for (const p of list) {
       keep.add(p.id);
       let a = pvp.remotes.get(p.id);
@@ -1758,8 +1697,6 @@ export function createGame(
           swingT: 0,
           walk: 0,
           walkAmt: 0,
-          vel: new THREE.Vector3(),
-          lastT: now,
         };
         pvp.remotes.set(p.id, a);
       }
@@ -1771,14 +1708,12 @@ export function createGame(
       // spot the player died on is the bug this whole path exists to prevent.
       const wasAlive = a.state.alive;
       const jumped = (p.state.epoch ?? 0) !== (a.state.epoch ?? 0) || (!wasAlive && p.state.alive);
-      const prev = a.target.clone();
       a.state = p.state;
       a.target.set(p.state.x, p.state.y, p.state.z);
       a.targetYaw = p.state.yaw;
       if (jumped) {
         a.pos.copy(a.target);
         a.yaw = a.targetYaw;
-        a.vel.set(0, 0, 0);
         a.fireT = 0;
         a.walk = 0;
         a.walkAmt = 0;
@@ -1800,16 +1735,6 @@ export function createGame(
         scene.add(rebuilt.root);
         a.rig = rebuilt;
       }
-
-      // Their speed, straight from packet deltas: half a round trip of lead is
-      // the whole difference between hitting a runner and hitting their shadow.
-      const dt = a.lastT > 0 ? (now - a.lastT) / 1000 : 0;
-      if (dt > 0.004 && dt < 0.5) {
-        const v = a.target.clone().sub(prev).divideScalar(dt);
-        // A respawn-sized jump is not velocity; it must not launch the body.
-        if (v.lengthSq() < 3600) a.vel.lerp(v, 0.35);
-      }
-      a.lastT = now;
     }
     for (const [id, a] of [...pvp.remotes]) {
       if (keep.has(id)) continue;
@@ -1903,38 +1828,25 @@ export function createGame(
         }
       }
     }
-  }  /**
-   * Where a shot meets another player, decided at the moment it is fired.
-   *
-   * This replaces waiting for a bullet to arrive. A tracer needs a frame or two
-   * of travel in which the target keeps moving, and at four players the bodies
-   * on screen are already 50–100 ms behind their owners, so a projectile could
-   * only ever "register" a hit that was aimed at the past. Testing the ray here
-   * — against the body the packet drew, led by half a round trip for how fast
-   * they are moving — and then letting the victim confirm it against where they
-   * actually were is the only version both ends can agree on.
+  }
+
+  /**
+   * How far a shot travels before it meets another player's drawn body, so the
+   * tracer can stop there. Whether it hurt them is the match server's call.
    *
    * Returns the nearest remote in the line of fire, or null.
    */
-  function raycastRemote(
-    origin: THREE.Vector3,
-    dir: THREE.Vector3,
-    maxDist: number,
-  ): { id: string; epoch: number; dist: number; head: boolean; point: THREE.Vector3 } | null {
+  function raycastRemote(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): { dist: number } | null {
     if (!pvp.active) return null;
-    // Lead the body by our half round trip: they will have moved by the time the
-    // hit reaches them, and that gap is the whole of "my shots miss when I aim
-    // right at them".
-    const lead = pvp.leadMs / 1000;
-    let best: { id: string; epoch: number; dist: number; head: boolean; point: THREE.Vector3 } | null = null;
+    let best: { dist: number } | null = null;
     for (const a of pvp.remotes.values()) {
       if (!a.state.alive) continue;
-      const body = a.pos.clone().addScaledVector(a.vel, lead);
+      const body = a.pos;
       const headC = body.clone().add(new THREE.Vector3(0, 1.52, 0));
       const toH = headC.clone().sub(origin);
       const projH = toH.dot(dir);
       if (projH > 0 && projH < maxDist && origin.clone().addScaledVector(dir, projH).distanceTo(headC) < 0.34) {
-        if (!best || projH < best.dist) best = { id: a.id, epoch: a.state.epoch ?? 0, dist: projH, head: true, point: headC.clone() };
+        if (!best || projH < best.dist) best = { dist: projH };
         continue;
       }
       const c: Collider = {
@@ -1943,28 +1855,9 @@ export function createGame(
         minZ: body.z - 0.42, maxZ: body.z + 0.42,
       };
       const t = rayAABB(origin, dir, c, maxDist);
-      if (t >= 0 && (!best || t < best.dist)) {
-        best = { id: a.id, epoch: a.state.epoch ?? 0, dist: t, head: false, point: origin.clone().addScaledVector(dir, t) };
-      }
+      if (t >= 0 && (!best || t < best.dist)) best = { dist: t };
     }
     return best;
-  }
-
-  /** blasts (grenades) reach the other players as well as us */
-  function blastRemotes(pos: THREE.Vector3, radius: number, dmg: number) {
-    if (!pvp.active) return;
-    for (const a of pvp.remotes.values()) {
-      if (!a.state.alive) continue;
-      const d = a.pos.distanceTo(pos);
-      if (d >= radius) continue;
-      cb.onNetHit?.({
-        victim: a.id,
-        dmg: dmg * Math.sqrt(Math.max(0, 1 - d / radius)) * 1.5,
-        head: false,
-        epoch: a.state.epoch ?? 0,
-        origin: { x: pos.x, y: pos.y, z: pos.z },
-      });
-    }
   }
 
   // keep bodies from stacking up on top of each other (a cheap version of the
@@ -4346,17 +4239,6 @@ export function createGame(
       markTeleport();
     }
     pyramid?.update(t);
-    // Our own recent poses, sampled a few times a second. This is the victim's
-    // half of hit validation: "where was I when that shot was fired" cannot be
-    // answered from the current frame, and a rewind window needs real history.
-    if (pvp.active) {
-      const nowMs = performance.now();
-      if (nowMs - pvp.historyT >= 50) {
-        pvp.historyT = nowMs;
-        pvp.history.push({ t: nowMs, x: player.pos.x, y: player.pos.y, z: player.pos.z, alive: player.alive });
-        if (pvp.history.length > 24) pvp.history.shift();
-      }
-    }
     for (const e of enemies) updateEnemy(e, dt);
     separateEnemies(dt);
     // cull fully-dead
@@ -4882,6 +4764,10 @@ export function createGame(
     },
     setPvp(on: boolean) {
       pvp.active = on;
+      // The match server plays to its own health (PVP.health), not the solo 120;
+      // the bar has to measure the same thing the server does.
+      player.maxHp = on ? PVP.health : 120;
+      player.hp = Math.min(player.hp, player.maxHp);
       if (!on) {
         for (const a of pvp.remotes.values()) dropRemote(a);
         pvp.remotes.clear();
@@ -4905,49 +4791,6 @@ export function createGame(
     },
     setRemotePlayers(list: NetRemotePlayer[]) {
       syncRemotePlayers(list);
-    },
-    setNetLatency(ms: number) {
-      pvp.leadMs = clamp(Number.isFinite(ms) ? ms : 0, 0, 250);
-    },
-    /**
-     * A remote's shot landed on us.
-     *
-     * The shooter decided *where* it landed; we decide whether it counts, which
-     * is the only split that works peer-to-peer. Validation is deliberately
-     * generous — the body they aimed at is the one our packets drew, half a
-     * round trip behind where we really are — but it is not blind: the shot has
-     * to line up with where we were when it was fired, and has to have a clear
-     * path to get here, so a hit reported through a building or after our
-     * death does not land.
-     */
-    takeNetHit(dmg: number, killerId: string, rewindMs?: number, origin?: NetShotOrigin) {
-      if (!pvp.active) return;
-      if (!player.alive || state !== "playing") return;
-      if (!Number.isFinite(dmg) || dmg <= 0 || dmg > 300) return;
-      const pose = origin ? poseAt(pvp.history, performance.now(), clamp(rewindMs ?? 0, 0, 300)) : null;
-      if (origin && pose) {
-        if (!pose.alive) return; // the shot belongs to the body before our respawn
-        const eye = new THREE.Vector3(origin.x, origin.y, origin.z);
-        const feet = new THREE.Vector3(pose.x, pose.y, pose.z);
-        const chest = feet.clone().add(new THREE.Vector3(0, 1.0, 0));
-        const seg = chest.clone().sub(eye);
-        const len = seg.length();
-        if (len > 170) return; // further than any weapon in the rack reaches
-        // Where we were, or where we are: two ends of one 50 ms window, both
-        // honest answers to "was I there", and the packet jitter between four
-        // players means the truth can be either. Accepting only one of them is
-        // how a hit that clearly connected gets thrown away.
-        const here = new THREE.Vector3(player.pos.x, player.pos.y, player.pos.z);
-        const hit =
-          segmentHitsBody(eye, chest, feet, 0.55, 1.9) ||
-          segmentHitsBody(eye, chest, here, 0.55, 1.9);
-        if (!hit) return;
-        const dir = seg.divideScalar(len);
-        // A wall in the way means the shot never had a line on us. The margin
-        // keeps an honest hit from being rejected by the corner we were hugging.
-        if (raycastWorld(eye, dir, len - 0.6) < len - 0.6) return;
-      }
-      damagePlayer(dmg, undefined, killerId);
     },
     /**
      * Back into the fight, at a pad that is provably clear.
@@ -5013,13 +4856,6 @@ export function createGame(
     },
     isAlive() {
       return player.alive;
-    },
-    setServerCombat(on: boolean) {
-      serverCombat = on;
-      // The match server plays to its own health (PVP.health), not the solo 120;
-      // the bar has to measure the same thing the server does.
-      player.maxHp = on ? PVP.health : 120;
-      player.hp = Math.min(player.hp, player.maxHp);
     },
     showNetHit(hit: NetShotLanded) {
       if (!pvp.active) return;

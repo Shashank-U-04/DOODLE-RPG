@@ -612,9 +612,6 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
     handle.setRemotePlayers([]);
     handle.start();
     handle.netRespawn(session.getPlayers().find((p) => p.isMe)?.ink ?? 0);
-    // Tell the room about the teleport. The epoch is what lets every peer snap
-    // to the fresh pad instead of easing a body across the district.
-    session.reportRespawn(handle.netState().epoch);
   }, [session]);
 
   useEffect(() => {
@@ -642,12 +639,9 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
         onPause: () => setPaused(true),
         onResume: () => setPaused(false),
         onAim: setAds,
-        // our rounds landed on someone: they are the authority on their own body
-        onNetHit: (hit) => session.reportHit(hit.victim, hit.dmg, hit.epoch, hit.origin),
-        // Colyseus: our attacks go to the server, which decides what they did
-        onNetCombat: (intent) => session.reportCombat?.(intent),
+        // our attacks go to the server, which decides what they did
+        onNetCombat: (intent) => session.reportCombat(intent),
         onNetDeath: (killerId) => {
-          session.reportDeath(killerId ?? session.me);
           // A client never applies its own death envelope, so the victim's page
           // has to record its own obituary here or its kill feed stays silent.
           {
@@ -667,7 +661,6 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             const h = gameRef.current;
             if (!h) return;
             h.netRespawn();
-            session.reportRespawn(h.netState().epoch);
             setDown(false);
           }, RESPAWN_MS);
         },
@@ -692,14 +685,12 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
     };
 
     handle.setPvp(true);
-    handle.setServerCombat(session.serverCombat === true);
     handle.setSensitivity(Number(localStorage.getItem("dd_sens") || 100));
     handle.setInvert(localStorage.getItem("dd_invert") === "1");
     handle.setMusic(localStorage.getItem("dd_music") !== "0");
     handle.start();
     // our ink doubles as our spawn pad, so nobody starts on top of anyone
     handle.netRespawn(session.getPlayers().find((p) => p.isMe)?.ink ?? 0);
-    session.reportRespawn(handle.netState().epoch);
 
     session.setStateProvider(() => handle.netState());
     session.startTicking();
@@ -717,16 +708,6 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
         pushRemotes();
       },
       onFeed: pushFeed,
-      // A hit from the net layer, validated here: the epoch says whether it
-      // belongs to the body we are in now (a shot that arrived after our
-      // respawn is not ours to take), and we hand back our own half round trip
-      // so the engine can rewind to where we were when it was fired.
-      onHitMe: (dmg, killer, epoch, origin) => {
-        const me = handle.netState();
-        if (epoch !== me.epoch) return;
-        handle.takeNetHit(dmg, killer, session.rewindMs, origin);
-      },
-      onLatency: (ms) => handle.setNetLatency(ms),
       // the server's verdicts
       onShotLanded: (hit) => handle.showNetHit(hit),
       onHurt: (dmg, killer) => handle.netDamage(dmg, killer),
@@ -775,7 +756,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   const iWon = winner?.isMe ?? false;
   // The match server hands the room to a guest when the host leaves for good,
   // and only the current host's rematch counts.
-  const canRematch = session.serverCombat ? Boolean(me?.isHost) : session.isHost;
+  const canRematch = Boolean(me?.isHost);
 
   return (
     <div className={`dd-root ${live ? "dd-live" : ""}`}>
