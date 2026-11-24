@@ -313,8 +313,6 @@ export class ColyseusSession implements MatchSession {
   name: string;
   me = "";
   phase: "connecting" | "lobby" | "playing" | "closed" = "connecting";
-  readonly rewindMs = 0;
-  readonly serverCombat = true;
 
   private readonly url: string | null;
   private readonly storage: SeatStorage | null;
@@ -982,12 +980,6 @@ export class ColyseusSession implements MatchSession {
     if (alive) this.killedBy = null;
     this.handlers.onHealth?.(hp, alive, this.killedBy);
   }
-
-  // The server keeps the score and decides deaths and respawns; these
-  // client-side reports (part of MatchSession) have nothing to do here.
-  reportHit() {}
-  reportDeath() {}
-  reportRespawn() {}
 
   /** Host only: the server resets the round for everyone (see onRematch in sync()). */
   rematch() {

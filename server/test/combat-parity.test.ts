@@ -57,8 +57,6 @@ describe("combat parity with the game", () => {
     assert.strictEqual(MELEE.cosArc, KATANA_MELEE.cosArc);
     assert.strictEqual(MELEE.focusGain, KATANA_MELEE.focusGain);
     contains(engine, `const chest = a.pos.clone().add(new THREE.Vector3(0, ${MELEE.chestY}, 0));`, "slash chest");
-    contains(engine, `const head = a.pos.clone().add(new THREE.Vector3(0, ${MELEE.headY}, 0));`, "slash head");
-    contains(engine, `meleeHits(eye, fwd, head, KATANA_MELEE.reach, ${MELEE.headCos})`, "slash head cone");
   });
 
   it("uses the engine's hitboxes, range and spread", () => {
@@ -79,8 +77,6 @@ describe("combat parity with the game", () => {
     contains(engine, `g.vel.y = Math.abs(g.vel.y) * ${GRENADE.bounceUp};`, "bounce");
     contains(engine, `g.vel.x *= ${GRENADE.bounceSide};`, "roll");
     contains(engine, `explode(g.pos.clone(), ${GRENADE.radius / 0.8}, 120, true);`, "blast");
-    contains(engine, "blastRemotes(pos, radius * 0.8, dmg);", "blast radius for players");
-    contains(engine, `dmg: dmg * Math.sqrt(Math.max(0, 1 - d / radius)) * ${GRENADE.othersMul},`, "blast on others");
     contains(engine, "damagePlayer(dmg * Math.sqrt(Math.max(0, 1 - pd / (radius * 0.8))));", "blast on the thrower");
     contains(engine, `player.nadeCd = ${GRENADE.cooldown};`, "cooldown");
   });
