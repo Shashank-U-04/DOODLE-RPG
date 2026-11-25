@@ -142,6 +142,19 @@ export type EngineCallbacks = {
   onNetCombat?: (intent: NetCombatIntent) => void;
 };
 
+/** Controls a touch player holds down. */
+export type TouchHold = { fire: boolean; aim: boolean; sprint: boolean; crouch: boolean; lean: -1 | 0 | 1 };
+/** Controls a touch player taps. */
+export type TouchAction =
+  | "jump"
+  | "reload"
+  | "grenade"
+  | "dash"
+  | "melee"
+  | "pause"
+  | "next-weapon"
+  | { weapon: number };
+
 export interface GameHandle {
   start(): void;
   pause(): void;
@@ -152,6 +165,23 @@ export interface GameHandle {
   setInvert(on: boolean): void;
   setMusic(on: boolean): void;
   dispose(): void;
+  // ---- touch play (src/components/TouchControls.tsx): virtual input merged with keys and mouse ----
+  /**
+   * Touch mode: the on-screen controls drive the player. Mouse events (which a
+   * browser also synthesises from taps) are ignored and the pointer is never
+   * captured.
+   */
+  setTouchMode(on: boolean): void;
+  /** The movement stick: x right, y forward, each -1..1 (a half push walks at half speed). */
+  touchMove(x: number, y: number): void;
+  /** Turn the view: `px` for a thumb drag (scaled by the touch sensitivity), `rad` for the gyroscope. */
+  touchLook(dx: number, dy: number, unit: "px" | "rad"): void;
+  /** Held controls: fire, aim (scope), sprint, crouch, lean (-1 left, 0, 1 right). */
+  touchHold(patch: Partial<TouchHold>): void;
+  /** One-shot controls. */
+  touchPress(action: TouchAction): void;
+  /** Thumb-drag look speed, percent (100 = default). */
+  setTouchSensitivity(v: number): void;
   // ---- online play: every one of these is a no-op in a solo run ----
   /**
    * Turn the arena into a free-for-all deathmatch: no waves, no enemies. The

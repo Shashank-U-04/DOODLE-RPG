@@ -220,7 +220,10 @@ export function createGame(
     stencil: false,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  // Phones have tiny, very dense screens and a fraction of a desktop GPU: the
+  // ink pass at their full density costs frames nobody can see.
+  const coarsePointer = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarsePointer ? 1 : 1.5));
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PAPER);
@@ -330,6 +333,22 @@ export function createGame(
   const mouseButtons = new Set<number>();
   let mouseFire = false;
   let mouseAim = false;
+  // Touch play (src/components/TouchControls.tsx): the on-screen controls'
+  // state, merged with the keys every frame. In touch mode the mouse handlers
+  // stand down: a browser also turns taps into mouse events.
+  let touchMode = false;
+  const touchStick = { x: 0, y: 0 };
+  let touchSprint = false;
+  let touchCrouch = false;
+  let touchLean: -1 | 0 | 1 = 0;
+  let touchSens = 100;
+  // Peek: lean the head out from cover (C / V, or the touch lean buttons). One
+  // eased value; the eye slides sideways up to LEAN_REACH but never into a wall,
+  // and the view tilts. Shots, grenades and sight lines start from the leaned
+  // eye (eyePos), so a peek really is a peek.
+  const LEAN_REACH = 0.42;
+  let leanAmt = 0;
+  let leanOff = 0;
   // Pointer capture is a nicety, never a requirement. Mouse look runs on plain
   // mouse movement (see onMouseMove), so a frame that refuses the capture costs
   // the player nothing, and the one rule that matters is that a menu, pause or
@@ -1113,7 +1132,12 @@ export function createGame(
   /* ---------- helpers ---------- */
   const DOWN = new THREE.Vector3(0, -1, 0);
   const tmpOffset = new THREE.Vector3();
-  const eyePos = () => new THREE.Vector3(player.pos.x, player.pos.y + (player.crouch ? JN * 0.94 : 1.6), player.pos.z);
+  const eyePos = () =>
+    new THREE.Vector3(
+      player.pos.x + Math.cos(player.yaw) * leanOff,
+      player.pos.y + (player.crouch ? JN * 0.94 : 1.6),
+      player.pos.z - Math.sin(player.yaw) * leanOff,
+    );
   const fwdVec = () =>
     new THREE.Vector3(
       -Math.sin(player.yaw) * Math.cos(player.pitch),
@@ -3432,10 +3456,13 @@ export function createGame(
       camera.rotation.y = p.yaw;
       camera.rotation.x = p.pitch;
       camera.rotation.z = 0;
+      leanAmt = 0;
+      leanOff = 0;
       return;
     }
-    p.crouch = keys.has("ControlLeft") || keys.has("KeyC");
-    p.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    // C and V are the peek keys; crouch is Z or Ctrl
+    p.crouch = keys.has("ControlLeft") || keys.has("ControlRight") || keys.has("KeyZ") || touchCrouch;
+    p.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight") || touchSprint;
     // Standing back up must respect headroom: expanding the body inside a
     // crawlspace jams the resolver. Stay crouched until there is room.
     const wantHeight = p.crouch ? JN : CI;
@@ -3465,10 +3492,15 @@ export function createGame(
     if (keys.has("KeyS") || keys.has("ArrowDown")) iz += 1;
     if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
     if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
+    // the touch stick is analog: a half push walks at (a little over) half speed
+    ix += touchStick.x;
+    iz -= touchStick.y;
+    const push = Math.min(1, Math.hypot(ix, iz));
     const move = new THREE.Vector3(ix, 0, iz);
     if (move.lengthSq() > 0) move.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), p.yaw);
 
     let speed = p.crouch ? VR : p.sprint && iz < 0 ? QR : PR;
+    if (push > 0) speed *= 0.35 + 0.65 * push;
     if (mouseAim) speed *= 0.8;
     if (p.dashT > 0) {
       speed *= 3.4;
@@ -3584,6 +3616,7 @@ export function createGame(
     if (swingT > 0) swingT = Math.max(0, swingT - dt);
     blocking = mouseAim && slots[curSlot].def.katana === true;
 
+    updateLean(dt);
     updateView(dt, move, ix, iz);
   }
 
@@ -3591,6 +3624,27 @@ export function createGame(
    * The first-person picture: camera bob, landing, roll, FOV and the gun in
    * your hands. Purely cosmetic: aim still comes from player.yaw/pitch.
    */
+  const leanFrom = new THREE.Vector3();
+  const leanDir = new THREE.Vector3();
+  /** ease the peek toward the held direction, and keep the head out of walls */
+  function updateLean(dt: number) {
+    const p = player;
+    const keyLean = (keys.has("KeyV") ? 1 : 0) - (keys.has("KeyC") ? 1 : 0);
+    const want = clamp(keyLean + touchLean, -1, 1);
+    leanAmt = damp(leanAmt, want, 12, dt);
+    if (Math.abs(leanAmt) < 1e-3 && want === 0) leanAmt = 0;
+    if (leanAmt === 0) {
+      leanOff = 0;
+      return;
+    }
+    const side = Math.sign(leanAmt);
+    leanFrom.set(p.pos.x, p.pos.y + eyeH, p.pos.z);
+    leanDir.set(Math.cos(p.yaw) * side, 0, -Math.sin(p.yaw) * side);
+    const room = raycastWorld(leanFrom, leanDir, LEAN_REACH + 0.3, 0) - 0.3;
+    const reach = clamp(room, 0, LEAN_REACH);
+    leanOff = clamp(leanAmt * LEAN_REACH, -reach, reach);
+  }
+
   function updateView(dt: number, move: THREE.Vector3, ix: number, iz: number) {
     const p = player;
     const def = slots[curSlot].def;
@@ -3637,11 +3691,13 @@ export function createGame(
     // the bob sways across the view, not along world X
     const rightX = Math.cos(p.yaw);
     const rightZ = -Math.sin(p.yaw);
-    camera.position.set(p.pos.x + rightX * bobX, p.pos.y + eyeH + bobY - landDip.value, p.pos.z + rightZ * bobX);
+    const side = bobX + leanOff;
+    camera.position.set(p.pos.x + rightX * side, p.pos.y + eyeH + bobY - landDip.value, p.pos.z + rightZ * side);
     camera.rotation.order = "YXZ";
     camera.rotation.y = p.yaw;
     camera.rotation.x = p.pitch + camPunch.value;
-    let roll = camRoll;
+    // a peek tilts the head toward the side it leans out of
+    let roll = camRoll - leanAmt * 0.12;
     if (shakeT > 0) {
       shakeT = Math.max(0, shakeT - dt);
       roll += rand(-1, 1) * 0.02 * shakeT * 4;
@@ -4430,6 +4486,10 @@ export function createGame(
       return;
     }
     keys.add(code);
+    keyAction(code);
+  };
+  /** what a key press does in play; the touch buttons run the same actions */
+  const keyAction = (code: string) => {
     switch (code) {
       case "Space":
         // settled in updatePlayer (jump buffer + coyote time)
@@ -4439,7 +4499,6 @@ export function createGame(
         startReload();
         break;
       case "KeyF":
-      case "KeyV":
         if (slots[curSlot].def.katana) tryFocusDash();
         else katanaSlash();
         break;
@@ -4481,6 +4540,7 @@ export function createGame(
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
 
   const onMouseDown = (e: MouseEvent) => {
+    if (touchMode) return;
     mouseButtons.add(e.button);
     if (state !== "playing") return;
     if (pvp.active && !player.alive) return;
@@ -4491,11 +4551,13 @@ export function createGame(
     if (e.button === 2) mouseAim = true;
   };
   const onMouseUp = (e: MouseEvent) => {
+    if (touchMode) return;
     mouseButtons.delete(e.button);
     if (e.button === 0) mouseFire = false;
     if (e.button === 2) mouseAim = false;
   };
   const onMouseMove = (e: MouseEvent) => {
+    if (touchMode) return;
     pointerInside = true;
     cursorX = e.clientX;
     cursorY = e.clientY;
@@ -4644,7 +4706,7 @@ export function createGame(
   const steerFromEdge = (dt: number) => {
     // Only ever a fallback: with the pointer captured — every real browser —
     // mouse deltas alone drive look, exactly like the reference.
-    if (isLocked() || !cursorSeen || !pointerInside) return;
+    if (touchMode || isLocked() || !cursorSeen || !pointerInside) return;
     // The mouse moved this beat, so the player is aiming: never auto-turn.
     // (Unrestricted frames report movement deltas; stripped-delta frames still
     // reach here on cursor motion, so also watch cursor-position deltas.)
@@ -4708,6 +4770,7 @@ export function createGame(
   // wherever it lands (canvas, HUD, tip). Escape and P are left alone: they
   // open the pause menu, which hands the mouse back.
   const onGesture = (e: Event) => {
+    if (touchMode) return;
     if (e.type === "keydown") {
       const code = (e as KeyboardEvent).code;
       if (code === "Escape" || code === "KeyP") return;
@@ -4908,6 +4971,56 @@ export function createGame(
     },
     setSensitivity(v: number) {
       sensitivity = v;
+    },
+    setTouchMode(on: boolean) {
+      touchMode = on;
+      if (on) releasePointer();
+    },
+    touchMove(x: number, y: number) {
+      touchStick.x = Number.isFinite(x) ? clamp(x, -1, 1) : 0;
+      touchStick.y = Number.isFinite(y) ? clamp(y, -1, 1) : 0;
+    },
+    touchLook(dx: number, dy: number, unit: "px" | "rad") {
+      if (state !== "playing" || (pvp.active && !player.alive)) return;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      // a thumb drag: 0.0045 rad per CSS pixel at 100%, slowed down the sights like the mouse
+      const s = unit === "px" ? ((0.0045 * touchSens) / 100) * lookScale : 1;
+      player.yaw -= dx * s;
+      player.pitch -= dy * s * (invertY ? -1 : 1);
+      player.pitch = clamp(player.pitch, -1.5, 1.5);
+    },
+    touchHold(patch) {
+      const live = state === "playing" && !(pvp.active && !player.alive);
+      if (patch.fire !== undefined) {
+        if (patch.fire && live && !mouseFire) {
+          mouseFire = true;
+          if (!slots[curSlot].def.auto) fireWeapon();
+        } else if (!patch.fire) mouseFire = false;
+      }
+      if (patch.aim !== undefined) mouseAim = patch.aim && live;
+      if (patch.sprint !== undefined) touchSprint = patch.sprint;
+      if (patch.crouch !== undefined) touchCrouch = patch.crouch;
+      if (patch.lean !== undefined) touchLean = patch.lean;
+    },
+    touchPress(action) {
+      if (action === "pause") {
+        if (state === "playing") handleRef.current.pause();
+        return;
+      }
+      if (state !== "playing" || (pvp.active && !player.alive)) return;
+      if (typeof action === "object") {
+        if (action.weapon >= 0 && action.weapon < slots.length) switchSlot(action.weapon);
+        return;
+      }
+      if (action === "next-weapon") {
+        switchSlot((curSlot + 1) % slots.length);
+        return;
+      }
+      const code = { jump: "Space", reload: "KeyR", grenade: "KeyG", dash: "KeyX", melee: "KeyF" }[action];
+      if (code) keyAction(code);
+    },
+    setTouchSensitivity(v: number) {
+      touchSens = Number.isFinite(v) ? clamp(v, 20, 400) : 100;
     },
     setInvert(on: boolean) {
       invertY = on;

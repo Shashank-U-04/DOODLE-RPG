@@ -31,6 +31,8 @@ import { KILLS_TO_WIN, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rule
 import { isValidRoomCode, LEGACY_ROOM_PARAM, normalizeRoomCode, ROOM_PARAM } from "@/game/room";
 import { weaponLabel } from "@/game/arsenal";
 import DotField from "@/components/DotField";
+import TouchControls from "@/components/TouchControls";
+import { buzz, wantsTouchControls } from "@/game/touch";
 import { lookLabel, savedLookCode } from "@/game/look";
 
 const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
@@ -513,6 +515,9 @@ export default function Online() {
 function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => void }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
+  // the same handle as state, for the touch controls (they mount once it exists)
+  const [handle, setHandle] = useState<GameHandle | null>(null);
+  const [touch] = useState(wantsTouchControls);
   const remotes = useRef(new Map<string, NetPlayerState>());
   const feedId = useRef(0);
   const msgTimer = useRef<number | null>(null);
@@ -585,7 +590,10 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
           tipTimer.current = window.setTimeout(() => setTip(null), Math.min(dur, 8) * 1000);
         },
         onKillFeed: pushFeed,
-        onHitmarker: () => setHitmarker((n) => n + 1),
+        onHitmarker: (kill) => {
+          setHitmarker((n) => n + 1);
+          if (touch) buzz(kill);
+        },
         onBoss: () => {},
         onGameOver: () => {},
         onPause: () => setPaused(true),
@@ -622,6 +630,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
       { map: config.map, look: savedLookCode() },
     );
     gameRef.current = handle;
+    setHandle(handle);
 
     /** rebuild the avatar list from the roster + the newest packets */
     const pushRemotes = () => {
@@ -681,6 +690,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
       session.setStateProvider(null);
       handle.dispose();
       gameRef.current = null;
+      setHandle(null);
       if (msgTimer.current) window.clearTimeout(msgTimer.current);
       if (tipTimer.current) window.clearTimeout(tipTimer.current);
       if (respawnTimer.current) window.clearTimeout(respawnTimer.current);
@@ -716,8 +726,9 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   const waitingOn = players.filter((p) => !p.isMe && !p.online);
 
   return (
-    <div className={`dd-root ${live ? "dd-live" : ""}`}>
+    <div className={`dd-root ${live ? "dd-live" : ""} ${touch ? "dd-touch" : ""}`}>
       <div ref={stageRef} className="dd-stage absolute inset-0" />
+      {touch && <TouchControls handle={handle} live={live} hud={hud} ads={ads} />}
 
       <div className="dd-hud">
         <div

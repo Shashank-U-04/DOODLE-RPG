@@ -6,6 +6,8 @@ import { savedLookCode } from "@/game/look";
 import type { GameHandle } from "@/game/types";
 import type { GameOverStats, HudState } from "@/game/types";
 import { weaponLabel } from "@/game/arsenal";
+import TouchControls from "@/components/TouchControls";
+import { buzz, wantsTouchControls } from "@/game/touch";
 
 const EMPTY_HUD: HudState = {
   score: 0,
@@ -38,6 +40,10 @@ export default function Game() {
   const navigate = useNavigate();
   const stageRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
+  // the same handle as state, for the touch controls (they mount once it exists)
+  const [handle, setHandle] = useState<GameHandle | null>(null);
+  // phones and tablets play with on-screen controls
+  const [touch] = useState(wantsTouchControls);
   const [hud, setHud] = useState<HudState>(EMPTY_HUD);
   const [overlay, setOverlay] = useState<Overlay>({ kind: "menu" });
   const [message, setMessage] = useState<{ t: string; s: string | null } | null>(null);
@@ -93,7 +99,7 @@ export default function Game() {
         },
         onHitmarker: (kill) => {
           setHitmarker((n) => n + 1);
-          void kill;
+          if (touch) buzz(kill);
         },
         onBoss: (name, frac) => setBoss(name ? { name, frac } : null),
         onGameOver: (stats) => {
@@ -112,6 +118,7 @@ export default function Game() {
       return;
     }
     gameRef.current = handle;
+    setHandle(handle);
     handle.setSensitivity(sens.current);
     handle.setInvert(invert.current);
     handle.setMusic(sound.current);
@@ -122,10 +129,11 @@ export default function Game() {
       disposed = true;
       handle.dispose();
       gameRef.current = null;
+      setHandle(null);
       if (msgTimer.current) window.clearTimeout(msgTimer.current);
       if (tipTimer.current) window.clearTimeout(tipTimer.current);
     };
-  }, [match]);
+  }, [match, touch]);
 
   // pause on tab-away handled by engine; Escape opens pause overlay through onPause
   // resume() hands control back immediately (and asks for the mouse; if the
@@ -149,8 +157,9 @@ export default function Game() {
   const hpFrac = Math.max(0, hud.hp / hud.maxHp);
 
   return (
-    <div className={`dd-root ${playing ? "dd-live" : ""}`}>
+    <div className={`dd-root ${playing ? "dd-live" : ""} ${touch ? "dd-touch" : ""}`}>
       <div ref={stageRef} className="dd-stage absolute inset-0" />
+      {touch && <TouchControls handle={handle} live={live} hud={hud} ads={ads} />}
 
       {/* HUD */}
       <div className="dd-hud" style={{ visibility: overlay.kind === "menu" && hud.wave === 0 ? "hidden" : "visible" }}>

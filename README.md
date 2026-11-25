@@ -21,7 +21,8 @@ fighter your friends see. Best score, settings and your fighter are saved in the
 | **Weapons**       | `1–5` / wheel: **AK-47 · M1887 · AWM · katana · Desert Eagle**, each a modelled gun with its own action and reload. |
 | **Katana**        | A three-cut combo; landed slashes fill the Focus meter, and a full meter makes `F` a dash-and-strike.               |
 | **Grenades**      | `G` throws an M67. Finite per run; ammo packs carry more.                                                           |
-| **Movement**      | `WASD`, `Space` (double jump), `Shift` sprint, `C`/`Ctrl` crouch, `X` dash.                                         |
+| **Movement**      | `WASD`, `Space` (double jump), `Shift` sprint, `Z`/`Ctrl` crouch, `X` dash, `C`/`V` peek left/right.                |
+| **Phones**        | On-screen controls in landscape: floating stick, drag to look, FIRE, SCOPE, PEEK, gyro aim, an editable layout.     |
 | **Look**          | Pointer lock with adjustable sensitivity and optional inverted Y (title screen).                                    |
 
 ### Maps
@@ -146,7 +147,8 @@ Vite inlines `VITE_*` values at build time: after changing one in Vercel, redepl
 | `LMB` / `RMB` | Fire / aim down sights (block with the katana) |
 | `Space`       | Jump · again in the air = double jump          |
 | `Shift`       | Sprint                                         |
-| `C` / `Ctrl`  | Crouch                                         |
+| `Z` / `Ctrl`  | Crouch                                         |
+| `C` / `V`     | Peek (lean) left / right                       |
 | `X`           | Dash                                           |
 | `F`           | Katana slash                                   |
 | `R`           | Reload                                         |
