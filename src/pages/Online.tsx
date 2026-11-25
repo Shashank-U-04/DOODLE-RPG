@@ -619,7 +619,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
       },
       // The match is built from the host's rules, not from whatever this
       // browser last had selected.
-      { map: config.map },
+      { map: config.map, look: savedLookCode() },
     );
     gameRef.current = handle;
 

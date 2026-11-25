@@ -126,6 +126,12 @@ export function inkForColor(r: number, g: number, b: number): InkId {
   return slot as InkId;
 }
 
+/** The sRGB colour (0-1) an ink prints in: a fixed ink or a claimed runtime slot. */
+export function inkRgb(ink: InkId): [number, number, number] {
+  const i = Math.max(0, Math.min(INK_SLOTS - 1, ink | 0)) * 4;
+  return [paletteData[i], paletteData[i + 1], paletteData[i + 2]];
+}
+
 // paper: (0.965, 0.955, 0.905) in the reference renderer
 export const PAPER_RGB: [number, number, number] = [0.965, 0.955, 0.905];
 export const PAPER = 0xf6f4e7;

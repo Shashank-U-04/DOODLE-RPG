@@ -15,6 +15,7 @@ import {
   PAPER,
   PAPER_RGB,
   makeInkMaterial,
+  inkRgb,
   depenetrate,
   isStandable,
   meleeHits,
@@ -30,7 +31,14 @@ import { buildPyramid, type Mood, type PyramidMap } from "./pyramid";
 import type { MapId } from "./maps";
 import { makeBlobRig, makeMummyRig, makeRig, makeWaspRig, type Rig } from "./rig";
 import { decodeLook } from "./look";
-import { characterReady, loadCharacter, makeCharacterRig, type CharacterAnim } from "./characters";
+import {
+  characterArmInks,
+  characterReady,
+  loadCharacter,
+  makeCharacterRig,
+  type ArmInks,
+  type CharacterAnim,
+} from "./characters";
 import type { NetCombatIntent, NetShotLanded } from "./types";
 import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
@@ -192,7 +200,15 @@ type Pickup = { kind: "ammo" | "health"; pos: THREE.Vector3; mesh: THREE.Group }
 // existing imports from the engine keep working.
 export type { MapId } from "./maps";
 
-export function createGame(container: HTMLElement, cb: EngineCallbacks, opts: { map?: MapId } = {}): GameHandle {
+export function createGame(
+  container: HTMLElement,
+  cb: EngineCallbacks,
+  opts: {
+    map?: MapId;
+    /** this player's look code (src/game/look.ts): the first-person arms wear its colours */
+    look?: string;
+  } = {},
+): GameHandle {
   /* ---------- renderer / scene / paper post ---------- */
   const canvas = document.createElement("canvas");
   canvas.className = "dd-canvas";
@@ -609,11 +625,50 @@ export function createGame(container: HTMLElement, cb: EngineCallbacks, opts: { 
    * "fist" frame where the held bar runs along +Y, the palm sits on the +X side
    * (mirrored for the left hand) and the fingers curl round the -Z side; the
    * fist is then stood up on a pistol grip or laid along a handguard.
+   *
+   * The hand and sleeve have materials of their own (not the shared gun inks),
+   * so the player's character can recolour them once its model has loaded:
+   * a SWAT gets black gloves and grey sleeves, a tank-top fighter bare arms.
    */
-  const matHand = gunMaterial(INK.SAND, false);
-  const matArm = gunMaterial(INK.BLUE, false);
+  const armMaterial = (ink: InkId) => {
+    const base = gunMaterial(ink, false);
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        ...base.uniforms,
+        uInk: { value: ink },
+        uShadeScale: { value: 0.85 },
+        uShadeBias: { value: GUN_SHADE[ink] ?? -0.1 },
+      },
+      vertexShader: base.vertexShader,
+      fragmentShader: base.fragmentShader,
+      side: base.side,
+    });
+  };
+  const matHand = armMaterial(INK.SAND);
+  const matArm = armMaterial(INK.BLUE);
   const matBand = makeInkMaterial(INK.BLACK, true);
   const matPad = makeInkMaterial(INK.STONE, true);
+  /** the glove's knuckle pads and the cuff where glove meets sleeve: only some outfits have them */
+  const handPads: THREE.Mesh[] = [];
+  const armCuffs: THREE.Mesh[] = [];
+  const lum = (ink: InkId) => {
+    const [r, g, b] = inkRgb(ink);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  /** dress the first-person arms in a character's colours */
+  const wearArms = (inks: ArmInks) => {
+    const dress = (m: THREE.ShaderMaterial, ink: InkId) => {
+      m.uniforms.uInk.value = ink;
+      // dark cloth shades darker still (as the gun inks do); light cloth and skin barely
+      m.uniforms.uShadeBias.value = -0.1 - 0.16 * Math.min(1, Math.max(0, (0.6 - lum(ink)) / 0.4));
+    };
+    dress(matHand, inks.hand);
+    dress(matArm, inks.sleeve);
+    // a pad on a dark glove, never on a bare hand; a cuff only where a sleeve ends
+    const gloved = lum(inks.hand) < 0.3;
+    for (const p of handPads) p.visible = gloved;
+    for (const c of armCuffs) c.visible = inks.sleeve !== inks.hand;
+  };
   type HandCfg = {
     /** "grip": round a pistol grip (bar upright, raked by tilt); "bar": along a handguard or handle */
     mode: "grip" | "bar";
@@ -668,6 +723,7 @@ export function createGame(container: HTMLElement, cb: EngineCallbacks, opts: { 
     palm.position.set(f * (rx + 0.012), -0.004, 0.006);
     fist.add(palm);
     const pad = new THREE.Mesh(new RoundedBoxGeometry(0.01, 0.07, 0.022, 2, 0.004), matPad);
+    handPads.push(pad);
     pad.position.set(f * (rx + 0.022), 0, -rz * 0.45);
     fist.add(pad);
     const ys = [0.028, 0.0095, -0.0095, -0.028];
@@ -737,6 +793,7 @@ export function createGame(container: HTMLElement, cb: EngineCallbacks, opts: { 
       matArm,
     );
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.0045, 6, 18), matBand);
+    armCuffs.push(cuff);
     cuff.rotation.x = Math.PI / 2;
     cuff.scale.set(1.18, 1, 1);
     cuff.position.y = 0.045;
@@ -815,6 +872,16 @@ export function createGame(container: HTMLElement, cb: EngineCallbacks, opts: { 
     return vg;
   };
   for (const w of WEAPONS) buildViewModel(w.kind);
+  // The arms start in the default doodle's blue sleeves and tan gloves (what
+  // other players see on anyone without a character) and change to the chosen
+  // character's colours as soon as its model is in. Solo loads it just for this.
+  {
+    const look = decodeLook(opts.look ?? "");
+    if (look)
+      void characterArmInks(look.char).then((inks) => {
+        if (inks && !disposed) wearArms(inks);
+      });
+  }
 
   // the shell carried to the M1887's loading gate during a reload
   const carriedShell = new THREE.Group();
