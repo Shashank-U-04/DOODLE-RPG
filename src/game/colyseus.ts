@@ -125,6 +125,7 @@ type RoomJSON = {
   maxPlayers?: number;
   hostId?: string;
   winnerId?: string;
+  winBy?: string;
   round?: number;
   players?: Record<string, PlayerJSON>;
 };
@@ -385,6 +386,8 @@ export class ColyseusSession implements MatchSession {
   private round: number | null = null;
   /** the server's winner ("" while undecided) */
   private winner = "";
+  /** how they won: "score", "walkover" (everyone else left), "" while undecided */
+  private winHow = "";
 
   constructor(code: string, name: string, isHost: boolean, config: MatchConfig, deps: ColyseusSessionDeps = {}) {
     this.code = code.toUpperCase();
@@ -420,6 +423,11 @@ export class ColyseusSession implements MatchSession {
   /** The server decides the match (first to 15); the arena shows its verdict. */
   get winnerId(): string {
     return this.winner;
+  }
+
+  /** "walkover" when the winner is simply the last player left in the match */
+  get winBy(): string {
+    return this.winHow;
   }
 
   /* ------------------------------- lifecycle ------------------------------- */
@@ -780,6 +788,7 @@ export class ColyseusSession implements MatchSession {
     }
 
     const players = Object.values(s.players ?? {});
+    const before = this.snapshot;
     this.snapshot = players
       .map(
         (p): NetPlayer => ({
@@ -817,10 +826,13 @@ export class ColyseusSession implements MatchSession {
     }
     this.round = round;
     this.winner = s.winnerId ?? "";
+    this.winHow = s.winBy ?? "";
+    if (this.phase === "playing") this.announceComings(before);
     this.syncHealth(players.find((p) => p.id === this.me));
     // Bodies change every patch; the roster, the score and the result rarely do. Re-render only for those.
     const key = JSON.stringify([
       this.winner,
+      this.winHow,
       this.snapshot.map((p) => [p.id, p.name, p.ink, p.look, p.isHost, p.ready, p.online, p.kills, p.deaths]),
     ]);
     if (key !== this.rosterKey) {
@@ -1014,6 +1026,21 @@ export class ColyseusSession implements MatchSession {
     const name = (id: string) => this.snapshot.find((p) => p.id === id)?.name ?? "SOMEONE";
     const text = e.killer ? `${name(e.killer)} ERASED ${name(e.victim)}` : `${name(e.victim)} ERASED THEMSELVES`;
     this.handlers.onFeed?.(text, e.killer === this.me);
+  }
+
+  /**
+   * Mid-match roster changes, as feed lines: a dropped player (their seat is
+   * held for the reconnection window), one who came back, one gone for good.
+   */
+  private announceComings(before: NetPlayer[]) {
+    const now = new Map(this.snapshot.map((p) => [p.id, p]));
+    for (const was of before) {
+      if (was.isMe) continue;
+      const is = now.get(was.id);
+      if (!is) this.handlers.onFeed?.(`${was.name} LEFT THE MATCH`, false);
+      else if (was.online && !is.online) this.handlers.onFeed?.(`${is.name} LOST CONNECTION`, false);
+      else if (!was.online && is.online) this.handlers.onFeed?.(`${is.name} IS BACK`, false);
+    }
   }
 
   /** Our health as the server has it; the arena corrects its own copy to match. */

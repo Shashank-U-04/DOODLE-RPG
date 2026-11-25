@@ -368,6 +368,7 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     this.state.players.delete(client.sessionId);
     this.motion.delete(client.sessionId);
     this.combat.forget(client.sessionId);
+    this.awardWalkover();
     if (client.sessionId !== this.state.hostId) return;
     // The roster lives on the server, so the room outlives its host: the
     // longest-standing connected guest takes over and is ready by definition.
@@ -378,6 +379,20 @@ export class MatchRoom extends Room<{ state: MatchState }> {
       next.isHost = true;
       next.ready = true;
     }
+  }
+
+  /**
+   * A match in progress with one player left in it is over: they win by
+   * walkover. A dropped player still holds a seat, so this only fires once a
+   * consented leave or an expired hold has removed everyone else; with three
+   * or more players the match goes on until then.
+   */
+  private awardWalkover() {
+    if (this.state.phase !== "playing" || this.state.winnerId || this.shutdownStarted) return;
+    if (this.state.players.size !== 1) return;
+    const [last] = this.state.players.values();
+    this.state.winnerId = last.id;
+    this.state.winBy = "walkover";
   }
 
   /** What each socket looked like at this moment, for the shutdown log. */

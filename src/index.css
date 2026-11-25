@@ -669,6 +669,14 @@
   margin-bottom: 2px;
 }
 
+/* "X lost connection · waiting…": the same ink line, up top, out of the tip's way */
+.dd-tip.dd-waiting {
+  top: 13%;
+  bottom: auto;
+  font-size: 22px;
+  color: #b8783d;
+}
+
 /* a tip belongs to live play: while any panel is up the tip layer is inert, so
    a stale line can never show through or beside a menu */
 .dd-root:has(.dd-screen) .dd-tip {

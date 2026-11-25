@@ -54,6 +54,20 @@ export function mountE2eFixtures(app: Application) {
   });
 
   /**
+   * POST /__e2e/rooms/:code/hold { seconds } — shorten how long a dropped
+   * player's seat is held, so a browser test can watch the hold run out
+   * without waiting the real 30 s. Applies to drops after the call.
+   */
+  app.post("/__e2e/rooms/:code/hold", express.json(), (req, res) => {
+    const room = matchMaker.getLocalRoomById(String(req.params.code).toUpperCase()) as MatchRoom | undefined;
+    const seconds = Number((req.body as { seconds?: unknown } | undefined)?.seconds);
+    if (!room) return void res.status(404).json({ error: "no such room" });
+    if (!(seconds > 0 && seconds <= 60)) return void res.status(400).json({ error: "seconds must be in (0, 60]" });
+    room.reconnectSeconds = seconds;
+    res.json({ ok: true });
+  });
+
+  /**
    * POST /__e2e/rooms/:code/shutdown — what a host's SIGTERM does to each room
    * (matchMaker.gracefullyShutdown → room.onBeforeShutdown: the restart notice,
    * then the close with SERVER_SHUTDOWN), for one room, so a browser test can

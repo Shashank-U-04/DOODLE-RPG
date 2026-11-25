@@ -706,9 +706,14 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   const hpFrac = Math.max(0, hud.hp / hud.maxHp);
   const me = players.find((p) => p.isMe);
   const iWon = winner?.isMe ?? false;
+  // won because everyone else left (the server's walkover), not on the score
+  const walkover = session.winBy === "walkover";
   // The match server hands the room to a guest when the host leaves for good,
-  // and only the current host's rematch counts.
+  // and only the current host's rematch counts. Alone, a rematch keeps the
+  // room open: friends can still join a running match with its code.
   const canRematch = Boolean(me?.isHost);
+  // players whose connection dropped: the server holds their seat for a while
+  const waitingOn = players.filter((p) => !p.isMe && !p.online);
 
   return (
     <div className={`dd-root ${live ? "dd-live" : ""}`}>
@@ -799,6 +804,12 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
 
         {tip && live && <div className="dd-tip" dangerouslySetInnerHTML={{ __html: tip }} />}
 
+        {waitingOn.length > 0 && !winner && !lost && (
+          <div className="dd-tip dd-waiting">
+            {waitingOn.map((p) => p.name).join(", ")} lost connection · waiting for them to come back…
+          </div>
+        )}
+
         <div className="dd-hud-bl">
           <div className="health">
             <span>HP</span>
@@ -884,7 +895,11 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
           <div className="panel">
             <h1>{iWon ? "YOU WIN" : "MATCH OVER"}</h1>
             <h2>
-              {winner.name} took it · {winner.kills} kills
+              {walkover
+                ? iWon
+                  ? "your opponent left the match · last doodle standing"
+                  : `${winner.name} was the last one left`
+                : `${winner.name} took it · ${winner.kills} kills`}
             </h2>
             <div className="dd-score" style={{ textAlign: "center", margin: "0 auto" }}>
               {players.map((p) => (
@@ -899,7 +914,12 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             <div className="mainbtns">
               {canRematch ? (
                 <button type="button" className="start" onClick={() => session.rematch()}>
-                  REMATCH<i>everyone back to a fresh corner</i>
+                  REMATCH
+                  <i>
+                    {players.length < 2
+                      ? `keep the room open · friends join with code ${session.code}`
+                      : "everyone back to a fresh corner"}
+                  </i>
                 </button>
               ) : (
                 <div className="dd-netstatus">waiting for the host to start a rematch…</div>

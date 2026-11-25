@@ -543,14 +543,15 @@ describe("server-authoritative combat", () => {
         if (k < KILLS_TO_WIN - 1) await eventually(() => body(b).alive, "respawned");
       }
       assert.strictEqual(server.state.winnerId, a.id);
+      assert.strictEqual(server.state.winBy, "score");
       fire(a, "RIFLE", chestOf(B));
       await eventually(() => refused(server, "match-over") === 1, "frozen");
       b.room.send("rematch");
       a.room.send("rematch");
       await eventually(() => server.state.round === 1, "host's rematch");
       assert.deepStrictEqual(
-        [server.state.winnerId, body(a).kills, body(b).deaths, body(b).alive, body(b).hp],
-        ["", 0, 0, true, HEALTH.max],
+        [server.state.winnerId, server.state.winBy, body(a).kills, body(b).deaths, body(b).alive, body(b).hp],
+        ["", "", 0, 0, true, HEALTH.max],
       );
     });
 

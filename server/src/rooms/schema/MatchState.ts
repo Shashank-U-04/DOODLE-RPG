@@ -53,6 +53,11 @@ export const MatchState = schema({
   hostId: t.string().default(""),
   /** set when someone reaches the winning score; combat stops until a rematch */
   winnerId: t.string().default(""),
+  /**
+   * how the winner won: "score" (reached the winning kills) or "walkover"
+   * (everyone else left for good); "" while undecided
+   */
+  winBy: t.string().default(""),
   /** bumped by each host rematch; clients restart the round when it changes */
   round: t.uint16().default(0),
   players: t.map(Player),

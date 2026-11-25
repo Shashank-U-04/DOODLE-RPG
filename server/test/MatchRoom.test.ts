@@ -42,6 +42,9 @@ type MatchJSON = {
   grapple?: boolean;
   maxPlayers: number;
   hostId: string;
+  winnerId: string;
+  winBy: string;
+  round: number;
   players: Record<string, BodyRow>;
 };
 
@@ -406,6 +409,98 @@ describe("match room", () => {
       assert.strictEqual(snapshot(g).hostId, hostId);
       await eventually(() => snapshot(g).hostId === g.sessionId, "guest promoted", 3000);
       assert.strictEqual(snapshot(g).players[g.sessionId].isHost, true);
+    });
+  });
+
+  describe("leaving a running match", () => {
+    /** a started match: the host plus `names.length` ready guests */
+    async function playing(...names: string[]) {
+      const h = await host();
+      const gs = [];
+      for (const n of names) {
+        const g = await guest(h, n);
+        g.send("ready", { ready: true });
+        await eventually(() => snapshot(h).players[g.sessionId].ready, `${n} ready`);
+        gs.push(g);
+      }
+      assert.deepStrictEqual(await requestStart(h), { ok: true });
+      for (const g of gs) await eventually(() => snapshot(g).phase === "playing", "started");
+      return { h, gs };
+    }
+
+    it("1v1: the player left behind wins by walkover when the other leaves", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      await g.leave();
+      await eventually(() => snapshot(h).winnerId === h.sessionId, "host declared the winner");
+      assert.strictEqual(snapshot(h).winBy, "walkover");
+    });
+
+    it("1v1: the guest wins when the host leaves, and can rematch to keep the room going", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      await h.leave();
+      await eventually(() => snapshot(g).winnerId === g.sessionId, "guest declared the winner");
+      assert.strictEqual(snapshot(g).winBy, "walkover");
+      assert.strictEqual(snapshot(g).hostId, g.sessionId);
+      // the room stays open for late joiners: a rematch clears the walkover
+      g.send("rematch");
+      await eventually(() => snapshot(g).round === 1 && snapshot(g).winnerId === "", "rematch");
+      assert.strictEqual(snapshot(g).winBy, "");
+    });
+
+    it("1v1: a dropped opponent keeps the match open until their seat expires", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      serverRoom(h.roomId).reconnectSeconds = 0.4;
+      const { sessionId } = g;
+      await drop(g);
+      await eventually(() => snapshot(h).players[sessionId]?.connected === false, "seat held");
+      assert.strictEqual(snapshot(h).winnerId, "", "no result while they may come back");
+      await eventually(() => snapshot(h).winnerId === h.sessionId, "walkover once the hold expires", 3000);
+      assert.strictEqual(snapshot(h).winBy, "walkover");
+    });
+
+    it("three players: play goes on after one leaves; the last one standing wins", async () => {
+      const {
+        h,
+        gs: [g1, g2],
+      } = await playing("Grace", "Linus");
+      await g1.leave();
+      await eventually(() => !snapshot(h).players[g1.sessionId], "first leaver gone");
+      assert.strictEqual(snapshot(h).winnerId, "");
+      await h.leave();
+      await eventually(() => snapshot(g2).winnerId === g2.sessionId, "last player wins");
+      assert.strictEqual(snapshot(g2).winBy, "walkover");
+    });
+
+    it("never awards anything for a leave in the lobby", async () => {
+      const h = await host();
+      const g = await guest(h);
+      await g.leave();
+      await eventually(() => !snapshot(h).players[g.sessionId], "guest gone");
+      assert.strictEqual(snapshot(h).winnerId, "");
+      assert.strictEqual(snapshot(h).phase, "lobby");
+    });
+
+    it("keeps a score win when the loser leaves afterwards", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      const room = serverRoom(h.roomId);
+      room.state.winnerId = g.sessionId;
+      room.state.winBy = "score";
+      await h.leave();
+      await eventually(() => !snapshot(g).players[h.sessionId], "host gone");
+      assert.strictEqual(snapshot(g).winnerId, g.sessionId);
+      assert.strictEqual(snapshot(g).winBy, "score");
     });
   });
 
