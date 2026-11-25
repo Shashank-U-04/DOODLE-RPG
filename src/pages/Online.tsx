@@ -5,11 +5,10 @@
 // every other player on. Solo play is a different page and a different code
 // path, so nothing here can change how the survival run behaves.
 //
-// Match rules: the map and the grappling-hook rule are chosen on /setup and
-// carried in as the match configuration. The host owns them (config packets
-// broadcast any change), and the start packet repeats them so a late joiner
-// still builds the same level. The engine is constructed from that
-// configuration, which is what makes the toggle more than decoration.
+// Match rules: the map is chosen on /setup and carried in as the match
+// configuration. The host owns it (config packets broadcast any change), and
+// the start packet repeats it so a late joiner still builds the same level.
+// The engine is constructed from that configuration.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -52,10 +51,7 @@ export default function Online() {
   const [phase, setPhase] = useState<"lobby" | "playing">("lobby");
   const [copied, setCopied] = useState(false);
   const [match, setMatch] = useState<MatchConfig>(() =>
-    normalizeMatchConfig({
-      map: normalizeMapId(params.get("map") ?? setup.map),
-      grapple: params.get("grapple") === null ? setup.grapple : params.get("grapple") === "1",
-    }),
+    normalizeMatchConfig({ map: normalizeMapId(params.get("map") ?? setup.map) }),
   );
   const ref = useRef<MatchSession | null>(null);
 
@@ -224,6 +220,7 @@ export default function Online() {
         setParams(
           (p) => {
             p.delete(ROOM_PARAM);
+            p.delete("grapple"); // links from before the grappling hook was removed
             return p;
           },
           { replace: true },
@@ -252,14 +249,6 @@ export default function Online() {
   /** Host only: change the map and tell the room. */
   const chooseMap = (id: MapId) => {
     const next = { ...match, map: id };
-    setMatch(next);
-    writeSetup(next);
-    session?.setConfig(next);
-  };
-
-  /** Host only: change the grapple rule and tell the room. */
-  const chooseGrapple = (on: boolean) => {
-    const next = { ...match, grapple: on };
     setMatch(next);
     writeSetup(next);
     session?.setConfig(next);
@@ -311,18 +300,6 @@ export default function Online() {
                   </button>
                 ))}
               </div>
-              <div className="settings">
-                <label>
-                  <input type="checkbox" checked={match.grapple} onChange={(e) => chooseGrapple(e.target.checked)} />
-                  grappling hook enabled <span className="k">(this match only · Q / E)</span>
-                </label>
-                <div className="controls-note">
-                  {match.grapple
-                    ? "the hook is part of this match"
-                    : "off for this match — nobody can equip or fire it"}
-                </div>
-              </div>
-
               <div className="mainbtns">
                 <button type="button" className="start" onClick={create}>
                   CREATE MATCH<i>you get a code to share · {info.name.toLowerCase()}</i>
@@ -400,9 +377,7 @@ export default function Online() {
           {session && (mode === "host" || mode === "join") && (
             <>
               <h1>{hosting ? "MATCH CODE" : `CODE ${session.code}`}</h1>
-              <h2>
-                {info.name.toLowerCase()} · grappling hook {match.grapple ? "on" : "off"}
-              </h2>
+              <h2>{info.name.toLowerCase()}</h2>
               {hosting && (
                 <>
                   <div className="dd-netcode">{session.code}</div>
@@ -423,38 +398,26 @@ export default function Online() {
               )}
               {!hosting && <h2>{session.joined ? "you're in the room" : "connecting to the match server…"}</h2>}
 
-              {/* the host sets the battlefield and the rule; guests read them */}
+              {/* the host sets the battlefield; guests read it */}
               {hosting ? (
-                <>
-                  <div className="mapgrid small">
-                    {MAPS.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`mapbtn small ${m.id === match.map ? "on" : ""}`}
-                        aria-pressed={m.id === match.map}
-                        onClick={() => chooseMap(m.id)}
-                      >
-                        <span className="mapthumb">
-                          <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
-                        </span>
-                        {m.name}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="settings">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={match.grapple}
-                        onChange={(e) => chooseGrapple(e.target.checked)}
-                      />
-                      grappling hook enabled <span className="k">(everyone plays by this)</span>
-                    </label>
-                  </div>
-                </>
+                <div className="mapgrid small">
+                  {MAPS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={`mapbtn small ${m.id === match.map ? "on" : ""}`}
+                      aria-pressed={m.id === match.map}
+                      onClick={() => chooseMap(m.id)}
+                    >
+                      <span className="mapthumb">
+                        <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
+                      </span>
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
               ) : (
-                <div className="controls-note">the host controls the map and the rules</div>
+                <div className="controls-note">the host controls the map</div>
               )}
 
               <div className="dd-roster">
@@ -569,7 +532,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   // Only the Colyseus session reports this; the arena stops and says why.
   const [lost, setLost] = useState<string | null>(null);
   // The host's rules, straight off the session: the map is fixed for the whole
-  // match and the grapple rule is the one every client received.
+  // match.
   const config = session.getConfig();
 
   const pushFeed = useCallback((text: string, hot: boolean) => {
@@ -656,7 +619,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
       },
       // The match is built from the host's rules, not from whatever this
       // browser last had selected.
-      { map: config.map, grapple: config.grapple },
+      { map: config.map },
     );
     gameRef.current = handle;
 

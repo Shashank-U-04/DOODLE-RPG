@@ -134,7 +134,7 @@ export function roomStats(): { rooms: number; players: number } {
 }
 
 /**
- * One Doodle Shooter match.
+ * One Doodle RPG match.
  *
  * The server owns the roster, the player limit, the ready flags, the match
  * rules and the decision to start. While playing it also holds every body's
@@ -198,15 +198,14 @@ export class MatchRoom extends Room<{ state: MatchState }> {
       if (!player || player.isHost || this.state.phase !== "lobby") return;
       player.ready = message.ready;
     }),
-    /** host → server: change the map or grapple rule while in the lobby */
-    config: validate(
-      z.object({ map: z.enum(MAP_IDS).optional(), grapple: z.boolean().optional() }),
-      (client, message) => {
-        if (client.sessionId !== this.state.hostId || this.state.phase !== "lobby") return;
-        if (message.map !== undefined) this.state.map = message.map;
-        if (message.grapple !== undefined) this.state.grapple = message.grapple;
-      },
-    ),
+    /**
+     * host → server: change the map while in the lobby. Unknown keys (the old
+     * `grapple` rule from clients built before it was removed) are stripped.
+     */
+    config: validate(z.object({ map: z.enum(MAP_IDS).optional() }), (client, message) => {
+      if (client.sessionId !== this.state.hostId || this.state.phase !== "lobby") return;
+      if (message.map !== undefined) this.state.map = message.map;
+    }),
     /**
      * host → server: begin the match. Answered (use `room.request("start")`)
      * so the lobby can say why a start was refused.
@@ -300,7 +299,6 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     this.state.code = this.roomId;
     this.state.serverInstance = INSTANCE_ID;
     this.state.map = opts.map;
-    this.state.grapple = opts.grapple;
     this.state.maxPlayers = opts.maxPlayers;
     this.setPatchRate(PATCH_INTERVAL_MS);
     // regen, grenade fuses and late respawns, timed for the metrics line

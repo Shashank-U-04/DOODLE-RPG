@@ -130,12 +130,9 @@ export class AudioFX {
     this.noise(0.12, 0.28, "highpass", 1800);
     this.tone(400, 1600, 0.15, 0.13, "sawtooth");
   }
-  grappleFire() {
+  dash() {
     this.noise(0.08, 0.18, "highpass", 2000);
     this.tone(500, 1500, 0.12, 0.11, "sawtooth");
-  }
-  grappleHit() {
-    this.tone(300, 200, 0.08, 0.15, "square");
   }
   uiClick() {
     this.tone(700, 500, 0.05, 0.08, "square");

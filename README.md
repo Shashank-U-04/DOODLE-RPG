@@ -1,4 +1,6 @@
-# Doodle Shooter
+# Doodle RPG
+
+Play it at **[doodlerpg.vercel.app](https://doodlerpg.vercel.app)**.
 
 A hand-drawn survival shooter: a custom Three.js engine that renders everything as
 ink on paper, waves of sketched enemies, real-world guns, two maps, and online
@@ -20,7 +22,6 @@ fighter your friends see. Best score, settings and your fighter are saved in the
 | **Katana**        | A three-cut combo; landed slashes fill the Focus meter, and a full meter makes `F` a dash-and-strike.               |
 | **Grenades**      | `G` throws an M67. Finite per run; ammo packs carry more.                                                           |
 | **Movement**      | `WASD`, `Space` (double jump), `Shift` sprint, `C`/`Ctrl` crouch, `X` dash.                                         |
-| **Grapple**       | `Q`/`E`: tap to throw, hold to reel in, tap again or `Space` to let go.                                             |
 | **Look**          | Pointer lock with adjustable sensitivity and optional inverted Y (title screen).                                    |
 
 ### Maps
@@ -147,7 +148,6 @@ Vite inlines `VITE_*` values at build time: after changing one in Vercel, redepl
 | `Shift`       | Sprint                                         |
 | `C` / `Ctrl`  | Crouch                                         |
 | `X`           | Dash                                           |
-| `Q` / `E`     | Grapple                                        |
 | `F`           | Katana slash                                   |
 | `R`           | Reload                                         |
 | `G`           | Grenade                                        |

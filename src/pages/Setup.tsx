@@ -1,10 +1,10 @@
 // The setup screen: the game mode's map and match rules, in the original
 // title-screen paper-panel style. It is the only screen that decides which
-// battlefield a match loads and whether the grappling hook is part of it.
+// battlefield a match loads.
 //
-// Solo: pick a map, set the rule, START MATCH.
-// Friends: pick a map, set the rule, then create a room or type a code — the
-// choice is carried into the lobby as the match configuration.
+// Solo: pick a map, START MATCH.
+// Friends: pick a map, then create a room or type a code — the choice is
+// carried into the lobby as the match configuration.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -22,8 +22,6 @@ export default function Setup() {
   const mode: GameMode =
     params.get("mode") === "friends" ? "friends" : params.get("mode") === "solo" ? "solo" : initial.mode;
   const map = normalizeMapId(params.get("map") ?? initial.map);
-  const grappleParam = params.get("grapple");
-  const grapple = grappleParam === "0" ? false : grappleParam === "1" ? true : initial.grapple;
 
   const [name, setName] = useState(() => initial.name || localStorage.getItem("dd_name") || "");
   const [code, setCode] = useState("");
@@ -33,14 +31,14 @@ export default function Setup() {
   // Mirror every visible choice into the session match store, so Back or a
   // refresh keeps it. The URL carries the same values for a shareable link.
   useEffect(() => {
-    writeSetup({ mode, map, grapple, name });
+    writeSetup({ mode, map, name });
     const next = new URLSearchParams(params);
     next.set("mode", mode);
     next.set("map", map);
-    next.set("grapple", grapple ? "1" : "0");
+    next.delete("grapple"); // links from before the grappling hook was removed
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, map, grapple]);
+  }, [mode, map]);
 
   // Play with friends (from the title, or switched to here): wake a sleeping
   // match server before the player reaches the lobby (src/game/wake.ts).
@@ -59,16 +57,6 @@ export default function Setup() {
     [params, setParams],
   );
 
-  const setGrapple = useCallback(
-    (on: boolean) => {
-      writeSetup({ grapple: on });
-      const next = new URLSearchParams(params);
-      next.set("grapple", on ? "1" : "0");
-      setParams(next, { replace: true });
-    },
-    [params, setParams],
-  );
-
   const setMode = useCallback(
     (nextMode: GameMode) => {
       writeSetup({ mode: nextMode });
@@ -82,8 +70,8 @@ export default function Setup() {
   const cleanName = name.trim().slice(0, MAX_NAME);
 
   const startSolo = () => {
-    writeSetup({ mode: "solo", map, grapple });
-    navigate(gameHref({ map, grapple }));
+    writeSetup({ mode: "solo", map });
+    navigate(gameHref({ map }));
   };
 
   const createRoom = () => {
@@ -92,8 +80,8 @@ export default function Setup() {
       return;
     }
     localStorage.setItem("dd_name", cleanName);
-    writeSetup({ mode: "friends", map, grapple, name: cleanName });
-    navigate(`/online?create=1&map=${map}&grapple=${grapple ? 1 : 0}`);
+    writeSetup({ mode: "friends", map, name: cleanName });
+    navigate(`/online?create=1&map=${map}`);
   };
 
   const joinRoom = () => {
@@ -107,8 +95,8 @@ export default function Setup() {
       return;
     }
     localStorage.setItem("dd_name", cleanName);
-    writeSetup({ mode: "friends", map, grapple, name: cleanName });
-    navigate(`/online?${ROOM_PARAM}=${room}&map=${map}&grapple=${grapple ? 1 : 0}`);
+    writeSetup({ mode: "friends", map, name: cleanName });
+    navigate(`/online?${ROOM_PARAM}=${room}&map=${map}`);
   };
 
   return (
@@ -117,9 +105,7 @@ export default function Setup() {
       <div className="dd-screen">
         <div className="panel">
           <h1>{mode === "solo" ? "CHOOSE A BATTLEFIELD" : "SET UP THE ROOM"}</h1>
-          <h2>
-            {mode === "solo" ? "play vs computer · pick a map, set the rules" : "play with friends · map + rules first"}
-          </h2>
+          <h2>{mode === "solo" ? "play vs computer · pick a map" : "play with friends · pick the map first"}</h2>
 
           <div className="mapgrid">
             {MAPS.map((m) => (
@@ -141,26 +127,11 @@ export default function Setup() {
 
           <div className="controls-note">{info.description}</div>
 
-          <div className="settings">
-            <label>
-              <input type="checkbox" checked={grapple} onChange={(e) => setGrapple(e.target.checked)} />
-              grappling hook enabled <span className="k">(this match only · Q / E)</span>
-            </label>
-            <div className="controls-note">
-              {grapple
-                ? "a 34 m ink hook: tap to swing, hold to reel in, jump to launch off"
-                : "off for this match: nothing can equip or fire the hook"}
-            </div>
-          </div>
-
           {mode === "solo" ? (
             <div className="mainbtns">
               <button type="button" className="start" onClick={startSolo}>
                 START MATCH
-                <i>
-                  {info.name.toLowerCase()}
-                  {grapple ? " · grapple on" : " · grapple off"}
-                </i>
+                <i>{info.name.toLowerCase()}</i>
               </button>
             </div>
           ) : (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { createGame } from "@/game/engine";
-import { grappleFromQuery, mapFromQuery } from "@/game/maps";
+import { mapFromQuery } from "@/game/maps";
 import type { GameHandle } from "@/game/types";
 import type { GameOverStats, HudState } from "@/game/types";
 import { weaponLabel } from "@/game/arsenal";
@@ -51,12 +51,9 @@ export default function Game() {
   const invert = useRef(localStorage.getItem("dd_invert") === "1");
   const sound = useRef(localStorage.getItem("dd_music") !== "0");
   const [best, setBest] = useState(() => Number(localStorage.getItem("dd_best") || 0));
-  // The map and the match's grapple rule arrive in the URL from the setup
-  // screen, so a reload of /game?map=pyramid lands in the same match.
-  const [match] = useState(() => ({
-    map: mapFromQuery(window.location.search),
-    grapple: grappleFromQuery(window.location.search),
-  }));
+  // The map arrives in the URL from the setup screen, so a reload of
+  // /game?map=pyramid lands in the same match.
+  const [match] = useState(() => ({ map: mapFromQuery(window.location.search) }));
   // live play only: the OS arrow is hidden while a run is on (the game draws its
   // own crosshair) and comes straight back for any menu / pause / game-over panel
   const playing = hud.wave > 0 && overlay.kind === "menu";
@@ -106,7 +103,7 @@ export default function Game() {
         onResume: () => setOverlay({ kind: "menu" }),
         onAim: (a) => setAds(a),
       },
-      { map: match.map, grapple: match.grapple },
+      { map: match.map },
     );
 
     if (disposed) {

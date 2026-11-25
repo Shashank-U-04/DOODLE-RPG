@@ -52,17 +52,14 @@ export function normalizeMapId(value: string | null | undefined): MapId {
 /** Per-match gameplay configuration. Separate from permanent user settings. */
 export type MatchConfig = {
   map: MapId;
-  /** the grappling hook exists in the engine; this decides whether a match has it */
-  grapple: boolean;
 };
 
-export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP, grapple: true };
+export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP };
 
 export function normalizeMatchConfig(value: unknown): MatchConfig {
   const v = value && typeof value === "object" ? (value as Partial<MatchConfig>) : {};
   return {
     map: isMapId(v.map) ? v.map : DEFAULT_MAP,
-    grapple: typeof v.grapple === "boolean" ? v.grapple : true,
   };
 }
 
@@ -122,16 +119,7 @@ export function mapFromQuery(search: string): MapId {
   return readSetup().map;
 }
 
-/** Grapple flag from a URL: absent means "the match default". */
-export function grappleFromQuery(search: string): boolean {
-  const q = new URLSearchParams(search);
-  const value = q.get("grapple");
-  if (value === "0" || value === "off") return false;
-  if (value === "1" || value === "on") return true;
-  return readSetup().grapple;
-}
-
 /** The query string that carries a solo match into /game. */
 export function gameHref(config: MatchConfig): string {
-  return `/game?map=${config.map}&grapple=${config.grapple ? 1 : 0}`;
+  return `/game?map=${config.map}`;
 }

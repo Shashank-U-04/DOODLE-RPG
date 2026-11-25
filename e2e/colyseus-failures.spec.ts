@@ -15,7 +15,7 @@ test("a slow (waking) match server is explained, and the room still opens", asyn
     await new Promise((r) => setTimeout(r, 8000));
     await route.continue();
   });
-  await host.goto("/online?create=1&map=district&grapple=1");
+  await host.goto("/online?create=1&map=district");
   await expect(host.locator(".dd-netstatus").first()).toHaveText("OPENING YOUR ROOM…");
   await expect(host.getByText(/WAKING THE MATCH SERVER/)).toBeVisible({ timeout: 7000 });
   await expect(host.locator(".dd-netcode")).toHaveText(/^[A-Z0-9]{4}$/, { timeout: 20_000 });

@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "doodle-shooter-server",
+  "name": "doodle-rpg-server",
   "version": "0.1.0",
-  "description": "Doodle Shooter multiplayer server (Colyseus)",
+  "description": "Doodle RPG multiplayer server (Colyseus)",
   "type": "module",
   "main": "build/index.js",
   "engines": {

@@ -56,10 +56,10 @@ describe("rules", () => {
   });
 
   it("normalizes room options", () => {
-    assert.deepStrictEqual(normalizeMatchOptions(undefined), { map: "district", grapple: true, maxPlayers: 4 });
+    assert.deepStrictEqual(normalizeMatchOptions(undefined), { map: "district", maxPlayers: 4 });
+    // `grapple` came from clients built before the hook was removed: dropped
     assert.deepStrictEqual(normalizeMatchOptions({ map: "pyramid", grapple: false, maxPlayers: 3 }), {
       map: "pyramid",
-      grapple: false,
       maxPlayers: 3,
     });
     assert.strictEqual(normalizeMatchOptions({ maxPlayers: 1 }).maxPlayers, 2);

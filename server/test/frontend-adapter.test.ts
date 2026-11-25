@@ -64,13 +64,7 @@ function open(
   storage = new TabStorage(),
   extra: ColyseusSessionDeps = {},
 ): Tab {
-  const session = new ColyseusSession(
-    code,
-    name,
-    isHost,
-    { map: "district", grapple: true },
-    { url: URL, storage, ...extra },
-  );
+  const session = new ColyseusSession(code, name, isHost, { map: "district" }, { url: URL, storage, ...extra });
   const tab: Tab = { session, storage, errors: [], starts: 0, configs: [] };
   session.setHandlers({
     onError: (t) => tab.errors.push(t),
@@ -170,12 +164,14 @@ describe("frontend Colyseus lobby adapter", () => {
 
     h.session.setConfig({ map: "pyramid" });
     await eventually(() => g.session.getConfig().map === "pyramid", "guest adopts host map");
-    // a guest's own change is ignored: only the host's next one arrives
+    // a guest's own change is ignored; the ready flag sent after it is a
+    // barrier (one client's messages are handled in order)
     const seen = g.configs.length;
     g.session.setConfig({ map: "district" });
-    h.session.setConfig({ map: "pyramid", grapple: false });
-    await eventually(() => g.session.getConfig().grapple === false, "guest adopts host rule");
+    g.session.setReady(false);
+    await eventually(() => h.session.getPlayers().some((p) => !p.isHost && !p.ready), "barrier reached the host");
     assert.strictEqual(g.session.getConfig().map, "pyramid");
+    assert.strictEqual(h.session.getConfig().map, "pyramid");
     assert.ok(!g.configs.slice(seen).includes("district"));
   });
 
@@ -585,7 +581,7 @@ describe("frontend Colyseus lobby adapter", () => {
       "",
       "Ada",
       true,
-      { map: "district", grapple: true },
+      { map: "district" },
       { url: `http://127.0.0.1:${port}`, storage: new TabStorage() },
     );
     session.setHandlers({ onStatus: (t) => statuses.push(t) });
@@ -611,7 +607,7 @@ describe("frontend Colyseus lobby adapter", () => {
       "ABCD",
       "Ada",
       false,
-      { map: "district", grapple: true },
+      { map: "district" },
       {
         url: `http://127.0.0.1:${port}`,
         storage: new TabStorage(),
@@ -650,13 +646,7 @@ describe("frontend Colyseus lobby adapter", () => {
   });
 
   it("says so when the build has no server URL", async () => {
-    const session = new ColyseusSession(
-      "",
-      "Ada",
-      true,
-      { map: "district", grapple: true },
-      { url: null, storage: null },
-    );
+    const session = new ColyseusSession("", "Ada", true, { map: "district" }, { url: null, storage: null });
     const errors: string[] = [];
     session.setHandlers({ onError: (t) => errors.push(t) });
     session.connect();

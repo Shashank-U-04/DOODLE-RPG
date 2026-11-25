@@ -1,8 +1,8 @@
-# Doodle Shooter match server (Colyseus) — one long-lived Node.js process
+# Doodle RPG match server (Colyseus) — one long-lived Node.js process
 # holding WebSocket connections. Build from this directory:
 #
-#   docker build -t doodle-shooter-server server/
-#   docker run --rm -p 2567:2567 -e ALLOWED_ORIGINS=https://<your-frontend-origin> doodle-shooter-server
+#   docker build -t doodle-rpg-server server/
+#   docker run --rm -p 2567:2567 -e ALLOWED_ORIGINS=https://<your-frontend-origin> doodle-rpg-server
 #
 # See README.md "Deploying" for the environment variables.
 

@@ -39,7 +39,7 @@ type MatchJSON = {
   code: string;
   phase: string;
   map: string;
-  grapple: boolean;
+  grapple?: boolean;
   maxPlayers: number;
   hostId: string;
   players: Record<string, BodyRow>;
@@ -99,7 +99,7 @@ describe("match room", () => {
   }
 
   it("creates a room with a lobby-style code, owned by the host", async () => {
-    const h = await host({ map: "pyramid", grapple: false });
+    const h = await host({ map: "pyramid" });
     const s = snapshot(h);
     assert.strictEqual(s.code.length, CODE_LENGTH);
     assert.ok(
@@ -109,7 +109,7 @@ describe("match room", () => {
     assert.strictEqual(h.roomId, s.code);
     assert.strictEqual(s.phase, "lobby");
     assert.strictEqual(s.map, "pyramid");
-    assert.strictEqual(s.grapple, false);
+    assert.strictEqual(s.grapple, undefined, "the grappling-hook rule is gone from the state");
     assert.strictEqual(s.maxPlayers, 4);
     assert.strictEqual(s.hostId, h.sessionId);
     assert.deepStrictEqual(roster(s.players[h.sessionId]), {
@@ -126,7 +126,6 @@ describe("match room", () => {
     const h = await host({ map: "moon", grapple: "yes", maxPlayers: 99, name: "  \u0007Ada-the-very-long-name  " });
     const s = snapshot(h);
     assert.strictEqual(s.map, "district");
-    assert.strictEqual(s.grapple, true);
     assert.strictEqual(s.maxPlayers, 4);
     assert.strictEqual(s.players[h.sessionId].name, "Ada-the-very-lon");
   });
@@ -190,10 +189,12 @@ describe("match room", () => {
     const g = await colyseus.sdk.joinById(h.roomId, { name: "Grace" });
     await eventually(() => Object.keys(snapshot(g).players).length === 2, "guest joined");
 
-    g.send("config", { map: "district", grapple: true });
-    h.send("config", { map: "pyramid", grapple: false });
+    g.send("config", { map: "district" });
+    // an old client's extra `grapple` key is stripped, not a protocol error
+    const oldClientConfig: { map: "pyramid" } = Object.assign({ map: "pyramid" as const }, { grapple: false });
+    h.send("config", oldClientConfig);
     await eventually(() => snapshot(g).map === "pyramid", "host config reaches guest");
-    assert.strictEqual(snapshot(g).grapple, false);
+    assert.strictEqual(snapshot(g).grapple, undefined);
   });
 
   it("disconnects a client that sends a malformed payload", async () => {

@@ -32,7 +32,7 @@ export {
   type MapId,
 } from "./shared/rules.js";
 
-export type MatchConfig = { map: MapId; grapple: boolean };
+export type MatchConfig = { map: MapId };
 
 export type MatchOptions = MatchConfig & { maxPlayers: number };
 
@@ -74,7 +74,6 @@ export function normalizeMatchOptions(value: unknown): MatchOptions {
     : MAX_PLAYERS;
   return {
     map: isMapId(v.map) ? v.map : DEFAULT_MAP,
-    grapple: typeof v.grapple === "boolean" ? v.grapple : true,
     maxPlayers,
   };
 }

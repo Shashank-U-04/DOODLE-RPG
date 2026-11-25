@@ -49,7 +49,6 @@ export const MatchState = schema({
   /** "lobby" until the host starts, then "playing" */
   phase: t.string().default("lobby"),
   map: t.string(),
-  grapple: t.boolean().default(true),
   maxPlayers: t.uint8(),
   hostId: t.string().default(""),
   /** set when someone reaches the winning score; combat stops until a rematch */
