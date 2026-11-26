@@ -72,6 +72,29 @@ export const INK_HEX: Record<InkId, string> = {
   [INK.GREY]: "#8c8f99",
 };
 
+/**
+ * One ink per seat in an online match (a player's `ink` index picks theirs):
+ * as many as the server's INK_COUNT, the first six being the original ones.
+ */
+export const PVP_INKS: InkId[] = [
+  INK.BLUE,
+  INK.RED,
+  INK.BLACK,
+  INK.ORANGE,
+  INK.GREEN,
+  INK.PINK,
+  INK.PURPLE,
+  INK.TURQ,
+  INK.GOLD,
+  INK.DENIM,
+];
+
+/** The CSS colour of seat `ink` (the roster dots and the scoreboard). */
+export function pvpInkHex(ink: number): string {
+  const n = PVP_INKS.length;
+  return INK_HEX[PVP_INKS[((ink % n) + n) % n]];
+}
+
 /** Every ink, in index order — what the post pass' `uInks` array is filled from. */
 export const INK_LIST: InkId[] = [
   INK.BLUE,

@@ -4,8 +4,12 @@ import {
   DEFAULT_MAP,
   drawRoomCode,
   freeInk,
+  INK_COUNT,
   isMapId,
+  KILL_TARGETS,
   MAP_IDS,
+  MAX_PLAYERS,
+  normalizeKillTarget,
   normalizeMatchOptions,
   sanitizeLook,
   sanitizeName,
@@ -56,20 +60,32 @@ describe("rules", () => {
   });
 
   it("normalizes room options", () => {
-    assert.deepStrictEqual(normalizeMatchOptions(undefined), { map: "district", maxPlayers: 4 });
+    assert.deepStrictEqual(normalizeMatchOptions(undefined), { map: "district", killsToWin: 15, maxPlayers: 10 });
     // `grapple` came from clients built before the hook was removed: dropped
-    assert.deepStrictEqual(normalizeMatchOptions({ map: "pyramid", grapple: false, maxPlayers: 3 }), {
+    assert.deepStrictEqual(normalizeMatchOptions({ map: "pyramid", grapple: false, maxPlayers: 3, killsToWin: 5 }), {
       map: "pyramid",
+      killsToWin: 5,
       maxPlayers: 3,
     });
     assert.strictEqual(normalizeMatchOptions({ maxPlayers: 1 }).maxPlayers, 2);
-    assert.strictEqual(normalizeMatchOptions({ maxPlayers: 2.5 }).maxPlayers, 4);
+    assert.strictEqual(normalizeMatchOptions({ maxPlayers: 2.5 }).maxPlayers, 10);
+    assert.strictEqual(normalizeMatchOptions({ maxPlayers: 11 }).maxPlayers, 10);
     assert.strictEqual(normalizeMatchOptions({ map: "__proto__" }).map, "district");
   });
 
   it("hands out the lowest free ink", () => {
     assert.strictEqual(freeInk([]), 0);
     assert.strictEqual(freeInk([0, 2]), 1);
-    assert.strictEqual(freeInk([0, 1, 2, 3, 4, 5]), 0);
+    assert.strictEqual(freeInk([0, 1, 2, 3, 4, 5]), 6);
+    // one ink per seat: a full room of ten never shares a colour
+    assert.strictEqual(INK_COUNT, MAX_PLAYERS);
+    assert.strictEqual(freeInk([0, 1, 2, 3, 4, 5, 6, 7, 8]), 9);
+  });
+
+  it("accepts only the listed kill targets", () => {
+    for (const n of KILL_TARGETS) assert.strictEqual(normalizeKillTarget(n), n);
+    assert.strictEqual(normalizeKillTarget("10"), 10, "a URL value");
+    for (const bad of [0, 1, 7, 9999, -5, 2.5, "x", null, undefined, {}])
+      assert.strictEqual(normalizeKillTarget(bad), 15);
   });
 });

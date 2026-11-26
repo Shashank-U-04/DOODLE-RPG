@@ -5,35 +5,25 @@
 // every other player on. Solo play is a different page and a different code
 // path, so nothing here can change how the survival run behaves.
 //
-// Match rules: the map is chosen on /setup and carried in as the match
-// configuration. The host owns it (config packets broadcast any change), and
-// the start packet repeats it so a late joiner still builds the same level.
-// The engine is constructed from that configuration.
+// Match rules: the map and the kill target are chosen on /setup (page two)
+// and carried in as the match configuration; this page (page three) is only
+// matchmaking and never picks a map. The host's choice is the room's, and the
+// start packet repeats it so a late joiner still builds the same level. The
+// engine is constructed from that configuration.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { createGame } from "@/game/engine";
 import { EMPTY_HUD, type GameHandle, type HudState, type NetPlayerState } from "@/game/types";
-import { INK_HEX } from "@/game/world";
-import {
-  MAPS,
-  mapInfo,
-  normalizeMapId,
-  normalizeMatchConfig,
-  readSetup,
-  writeSetup,
-  type MapId,
-  type MatchConfig,
-} from "@/game/maps";
+import { pvpInkHex } from "@/game/world";
+import { mapInfo, normalizeMatchConfig, readSetup, type MatchConfig } from "@/game/maps";
 import { ColyseusSession, resumableSeat, warmColyseus } from "@/game/colyseus";
 import { matchWinner, type MatchSession, type NetPlayer, type SignalState } from "@/game/transport";
-import { KILLS_TO_WIN, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
+import { MAX_PLAYERS, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
 import { isValidRoomCode, LEGACY_ROOM_PARAM, normalizeRoomCode, ROOM_PARAM } from "@/game/room";
 import { weaponLabel } from "@/game/arsenal";
 import DotField from "@/components/DotField";
 import { lookLabel, savedLookCode } from "@/game/look";
-
-const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
 
 export default function Online() {
   const navigate = useNavigate();
@@ -51,7 +41,10 @@ export default function Online() {
   const [phase, setPhase] = useState<"lobby" | "playing">("lobby");
   const [copied, setCopied] = useState(false);
   const [match, setMatch] = useState<MatchConfig>(() =>
-    normalizeMatchConfig({ map: normalizeMapId(params.get("map") ?? setup.map) }),
+    normalizeMatchConfig({
+      map: params.get("map") ?? setup.map,
+      killsToWin: params.get("kills") ?? setup.killsToWin,
+    }),
   );
   const ref = useRef<MatchSession | null>(null);
 
@@ -246,14 +239,6 @@ export default function Online() {
     });
   }, [session, phase]);
 
-  /** Host only: change the map and tell the room. */
-  const chooseMap = (id: MapId) => {
-    const next = { ...match, map: id };
-    setMatch(next);
-    writeSetup(next);
-    session?.setConfig(next);
-  };
-
   if (phase === "playing" && session) {
     return <PvpMatch session={session} onLeave={leave} />;
   }
@@ -283,22 +268,8 @@ export default function Online() {
                 </label>
               </div>
 
-              <div className="mapgrid">
-                {MAPS.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={`mapbtn ${m.id === match.map ? "on" : ""}`}
-                    aria-pressed={m.id === match.map}
-                    onClick={() => chooseMap(m.id)}
-                  >
-                    <span className="mapthumb">
-                      <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
-                    </span>
-                    {m.name}
-                    <i>{m.tagline}</i>
-                  </button>
-                ))}
+              <div className="controls-note">
+                {info.name.toLowerCase()} · first to {match.killsToWin} kills
               </div>
               <div className="mainbtns">
                 <button type="button" className="start" onClick={create}>
@@ -306,6 +277,9 @@ export default function Online() {
                 </button>
                 <button type="button" onClick={() => setMode("join")}>
                   JOIN A MATCH<i>enter a friend's code</i>
+                </button>
+                <button type="button" onClick={() => navigate("/setup?mode=friends")}>
+                  CHANGE MAP · KILLS<i>back to the setup screen</i>
                 </button>
               </div>
 
@@ -319,7 +293,7 @@ export default function Online() {
                     <b>2</b> the other types it in and joins the room
                   </div>
                   <div>
-                    <b>3</b> everyone readies up, the host starts it — free for all, first to <b>{KILLS_TO_WIN}</b>{" "}
+                    <b>3</b> everyone readies up, the host starts it — free for all, first to <b>{match.killsToWin}</b>{" "}
                     kills
                   </div>
                   <div>
@@ -398,37 +372,23 @@ export default function Online() {
               )}
               {!hosting && <h2>{session.joined ? "you're in the room" : "connecting to the match server…"}</h2>}
 
-              {/* the host sets the battlefield; guests read it */}
-              {hosting ? (
-                <div className="mapgrid small">
-                  {MAPS.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`mapbtn small ${m.id === match.map ? "on" : ""}`}
-                      aria-pressed={m.id === match.map}
-                      onClick={() => chooseMap(m.id)}
-                    >
-                      <span className="mapthumb">
-                        <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
-                      </span>
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="controls-note">the host controls the map</div>
-              )}
+              {/* the rules were set on /setup; the lobby only shows them */}
+              <div className="controls-note">
+                free for all · first to <b>{match.killsToWin}</b> kills wins
+                {hosting ? "" : " · the host picked the map and the kills"}
+              </div>
 
               <div className="dd-roster">
                 <div className="row head">
                   <span className="dot" style={{ color: "#2e3342" }} />
-                  <span>IN THE ROOM ({players.length})</span>
+                  <span>
+                    IN THE ROOM ({players.length}) · up to {MAX_PLAYERS}
+                  </span>
                 </div>
                 {players.length === 0 && <div className="row">nobody yet…</div>}
                 {players.map((p) => (
                   <div className="row" key={p.id}>
-                    <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                    <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                     <span className="nm">
                       {p.name}
                       {p.isMe ? " (you)" : ""}
@@ -691,9 +651,9 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, pushFeed, resetRound]);
 
-  // First to fifteen takes it: the match server declares the winner. The
-  // effect only freezes our own view behind it.
-  const winner = matchWinner(players, session.winnerId, KILLS_TO_WIN);
+  // First to the host's kill target takes it: the match server declares the
+  // winner. The effect only freezes our own view behind it.
+  const winner = matchWinner(players, session.winnerId, config.killsToWin);
   // a fresh object every render; the effect only cares whether the match is decided
   const decided = winner !== null;
   useEffect(() => {
@@ -753,7 +713,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
 
         <div className="dd-hud-tl">
           <div className="score">
-            KILLS <b>{me?.kills ?? 0}</b> / {KILLS_TO_WIN}
+            KILLS <b>{me?.kills ?? 0}</b> / {config.killsToWin}
           </div>
           <div className="combo">{me ? me.name : ""}</div>
         </div>
@@ -770,7 +730,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             </div>
             {players.map((p) => (
               <div className={`row ${p.isMe ? "me" : ""} ${p.online ? "" : "off"}`} key={p.id}>
-                <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                 <span className="nm">{p.name}</span>
                 <span className="kb">{p.kills}</span>
                 <span className="kb">{p.deaths}</span>
@@ -904,7 +864,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             <div className="dd-score" style={{ textAlign: "center", margin: "0 auto" }}>
               {players.map((p) => (
                 <div className={`row ${p.isMe ? "me" : ""}`} key={p.id} style={{ justifyContent: "center" }}>
-                  <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                  <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                   <span className="nm">{p.name}</span>
                   <span className="kb">{p.kills}</span>
                   <span className="kb">{p.deaths}</span>

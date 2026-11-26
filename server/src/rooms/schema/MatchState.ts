@@ -7,7 +7,7 @@ export const Player = schema({
   name: t.string(),
   /** character-look code from the Locker (cosmetic; "" draws the default) */
   look: t.string().default(""),
-  /** ink palette index (0-5), unique within the room */
+  /** ink palette index (0 to INK_COUNT-1), unique within the room */
   ink: t.uint8(),
   isHost: t.boolean().default(false),
   /** lobby ready flag; the host is always ready */
@@ -50,8 +50,10 @@ export const MatchState = schema({
   phase: t.string().default("lobby"),
   map: t.string(),
   maxPlayers: t.uint8(),
+  /** first to this many kills wins; the host picks it (shared/rules.ts KILL_TARGETS) */
+  killsToWin: t.uint8().default(15),
   hostId: t.string().default(""),
-  /** set when someone reaches the winning score; combat stops until a rematch */
+  /** set when someone reaches killsToWin; combat stops until a rematch */
   winnerId: t.string().default(""),
   /**
    * how the winner won: "score" (reached the winning kills) or "walkover"

@@ -73,8 +73,8 @@ describe("server-authoritative combat", () => {
   };
 
   /** A started match with players placed where asked; clock stopped at `t`. */
-  async function match(spots: V[], map = "district") {
-    const host = await colyseus.sdk.create("match", { name: "P0", map });
+  async function match(spots: V[], map = "district", options: Record<string, unknown> = {}) {
+    const host = await colyseus.sdk.create("match", { name: "P0", map, ...options });
     const rooms: ClientRoom[] = [host];
     for (let i = 1; i < spots.length; i++) rooms.push(await colyseus.sdk.joinById(host.roomId, { name: `P${i}` }));
     const server = colyseus.getRoomById<MatchRoom>(host.roomId);
@@ -553,6 +553,28 @@ describe("server-authoritative combat", () => {
         [server.state.winnerId, server.state.winBy, body(a).kills, body(b).deaths, body(b).alive, body(b).hp],
         ["", "", 0, 0, true, HEALTH.max],
       );
+    });
+
+    it("crowns the first to the host's own kill target", async () => {
+      const {
+        server,
+        clock,
+        players: [a, b],
+        body,
+      } = await match([A, B], "district", { killsToWin: 5 });
+      assert.strictEqual(server.state.killsToWin, 5);
+      for (let k = 0; k < 5; k++) {
+        assert.strictEqual(server.state.winnerId, "", `undecided after ${k} kills`);
+        fire(a, "SNIPER", headOf(B));
+        await eventually(() => body(a).kills === k + 1, `kill ${k + 1}`);
+        const reloads = server.combat.stats.reloads;
+        a.room.send("reload", { weapon: "SNIPER" });
+        await eventually(() => server.combat.stats.reloads === reloads + 1, "reloading");
+        clock.t += RESPAWN_MS + 2100;
+        if (k < 4) await eventually(() => body(b).alive, "respawned");
+      }
+      assert.strictEqual(server.state.winnerId, a.id);
+      assert.strictEqual(server.state.winBy, "score");
     });
 
     it("counts erasing yourself as a death but no kill", async () => {
