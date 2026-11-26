@@ -337,12 +337,10 @@ export function createGame(
   const mouseButtons = new Set<number>();
   let mouseFire = false;
   let mouseAim = false;
-  // AWM, when the player turns it on in settings (setHoldToScope): the left
-  // button held scopes in, and letting go takes the shot, but
+  // AWM: the left button held scopes in, and letting go takes the shot, but
   // only once the scope has been up SCOPE_MIN and the bolt has cycled: let go
   // sooner and the scope stays up until then (scopeFire), so there is no
   // instant tap-shot and no shot faster than the bolt
-  let holdToScope = false;
   let scopeHold = false;
   let scopeFire = false;
   let scopeT = 0;
@@ -1239,8 +1237,8 @@ export function createGame(
     const def = s.def;
     // The gun's own rate, for every way of pulling the trigger: a click used
     // to fire at once whatever the cooldown, so a bolt-action fired as fast as
-    // it was clicked. A button held through the cooldown (mouseFire) fires
-    // the moment the gun is ready; a quick tap inside it is ignored.
+    // it was clicked. A click inside the cooldown stays held (mouseFire) and
+    // goes the moment the gun is ready.
     if (reloadT > 0 || switchT > 0 || fireCd > 0) return;
     if (def.katana) {
       katanaSlash();
@@ -4740,7 +4738,7 @@ export function createGame(
     if (state !== "playing") return;
     if (pvp.active && !player.alive) return;
     if (e.button === 0) {
-      if (holdToScope && slots[curSlot].def.kind === "sniper") {
+      if (slots[curSlot].def.kind === "sniper") {
         // hold to look down the scope; the shot goes on release
         scopeHold = true;
         scopeFire = false;
@@ -5188,9 +5186,6 @@ export function createGame(
     },
     setInvert(on: boolean) {
       invertY = on;
-    },
-    setHoldToScope(on: boolean) {
-      holdToScope = on;
     },
     setMusic(on: boolean) {
       fx.musicOn = on;
