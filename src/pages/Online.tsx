@@ -213,7 +213,6 @@ export default function Online() {
         setParams(
           (p) => {
             p.delete(ROOM_PARAM);
-            p.delete("grapple"); // links from before the grappling hook was removed
             return p;
           },
           { replace: true },

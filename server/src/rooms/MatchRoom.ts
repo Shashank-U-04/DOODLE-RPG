@@ -201,8 +201,7 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     }),
     /**
      * host → server: change the map or the kill target while in the lobby.
-     * Unknown keys (the old `grapple` rule from clients built before it was
-     * removed) are stripped; a target that is not on the list is ignored.
+     * Unknown keys are stripped; a target that is not on the list is ignored.
      */
     config: validate(
       z.object({ map: z.enum(MAP_IDS).optional(), killsToWin: z.number().optional() }),

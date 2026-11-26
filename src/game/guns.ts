@@ -1245,3 +1245,21 @@ export function rigGunPieces(kind: string): GunPiece[] {
   }
   return base.map((p) => ({ geo: p.geo.clone(), ink: p.ink, fill: p.fill }));
 }
+
+/**
+ * The same gun's hand and barrel points, in the rig frame rigGunPieces uses
+ * (metres, trigger at the origin, muzzle down +z): where the shooting hand
+ * grips, where the support hand holds, and where the barrel ends.
+ */
+export function rigGunPoints(kind: string): { grip: THREE.Vector3; support: THREE.Vector3; muzzle: THREE.Vector3 } {
+  const spec = (BUILD[kind as GunKind] ?? ak47)(true);
+  const m = new THREE.Matrix4()
+    .makeRotationY(Math.PI)
+    .multiply(new THREE.Matrix4().makeScale(0.001 / spec.unit, 0.001 / spec.unit, 0.001 / spec.unit));
+  for (const part of spec.parts.values()) for (const p of part.pieces) p.geo.dispose();
+  return {
+    grip: spec.grip.clone().applyMatrix4(m),
+    support: spec.support.clone().applyMatrix4(m),
+    muzzle: spec.muzzle.clone().applyMatrix4(m),
+  };
+}

@@ -39,7 +39,6 @@ type MatchJSON = {
   code: string;
   phase: string;
   map: string;
-  grapple?: boolean;
   maxPlayers: number;
   killsToWin: number;
   hostId: string;
@@ -113,7 +112,6 @@ describe("match room", () => {
     assert.strictEqual(h.roomId, s.code);
     assert.strictEqual(s.phase, "lobby");
     assert.strictEqual(s.map, "pyramid");
-    assert.strictEqual(s.grapple, undefined, "the grappling-hook rule is gone from the state");
     assert.strictEqual(s.maxPlayers, 10);
     assert.strictEqual(s.killsToWin, 15);
     assert.strictEqual(s.hostId, h.sessionId);
@@ -130,7 +128,7 @@ describe("match room", () => {
   it("falls back to defaults for malformed options and clamps the player limit", async () => {
     const h = await host({
       map: "moon",
-      grapple: "yes",
+      extra: "yes",
       maxPlayers: 99,
       killsToWin: 7,
       name: "  \u0007Ada-the-very-long-name  ",
@@ -202,11 +200,11 @@ describe("match room", () => {
     await eventually(() => Object.keys(snapshot(g).players).length === 2, "guest joined");
 
     g.send("config", { map: "district" });
-    // an old client's extra `grapple` key is stripped, not a protocol error
-    const oldClientConfig: { map: "pyramid" } = Object.assign({ map: "pyramid" as const }, { grapple: false });
-    h.send("config", oldClientConfig);
+    // a key the server does not know is stripped, not a protocol error
+    const withExtra: { map: "pyramid" } = Object.assign({ map: "pyramid" as const }, { extra: false });
+    h.send("config", withExtra);
     await eventually(() => snapshot(g).map === "pyramid", "host config reaches guest");
-    assert.strictEqual(snapshot(g).grapple, undefined);
+    assert.strictEqual((snapshot(g) as { extra?: unknown }).extra, undefined);
   });
 
   it("takes the host's kill target at create and in the lobby, and nothing off the list", async () => {
