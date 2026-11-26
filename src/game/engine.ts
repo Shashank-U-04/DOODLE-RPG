@@ -636,7 +636,10 @@ export function createGame(
     return new THREE.ShaderMaterial({
       uniforms: {
         ...base.uniforms,
+        // own copies of everything wearArms changes: the spread shares the
+        // cached ink material's uniform objects with the rest of the world
         uInk: { value: ink },
+        uFill: { value: 0 },
         uShadeScale: { value: 0.85 },
         uShadeBias: { value: GUN_SHADE[ink] ?? -0.1 },
       },
@@ -660,6 +663,10 @@ export function createGame(
   const wearArms = (inks: ArmInks) => {
     const dress = (m: THREE.ShaderMaterial, ink: InkId) => {
       m.uniforms.uInk.value = ink;
+      // Solid, lit ink, the way the character's own body is drawn (soft fill).
+      // Left as hatching, a dark sleeve or a skin tone prints as a few thin
+      // lines on the paper and every fighter's arms read as the same pale tube.
+      m.uniforms.uFill.value = 2;
       // dark cloth shades darker still (as the gun inks do); light cloth and skin barely
       m.uniforms.uShadeBias.value = -0.1 - 0.16 * Math.min(1, Math.max(0, (0.6 - lum(ink)) / 0.4));
     };
