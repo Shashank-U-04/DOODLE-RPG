@@ -64,7 +64,7 @@ export const WEAPONS: WeaponDef[] = [
   {
     name: "SNIPER",
     kind: "sniper",
-    hint: "scoped bolt action · one shot, one erasure",
+    hint: "hold LMB to scope · let go to fire",
     magSize: 5,
     reserve: 25,
     maxReserve: 50,
@@ -74,7 +74,7 @@ export const WEAPONS: WeaponDef[] = [
     pellets: 1,
     spread: 0.075,
     adsSpread: 0.0004,
-    reloadTime: 2.1,
+    reloadTime: 2.6,
     auto: false,
     zoom: 20,
   },

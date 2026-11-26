@@ -336,6 +336,8 @@ export function createGame(
   const mouseButtons = new Set<number>();
   let mouseFire = false;
   let mouseAim = false;
+  // AWM: the left button held scopes in, and letting go takes the shot
+  let scopeHold = false;
   // Pointer capture is a nicety, never a requirement. Mouse look runs on plain
   // mouse movement (see onMouseMove), so a frame that refuses the capture costs
   // the player nothing, and the one rule that matters is that a menu, pause or
@@ -1326,6 +1328,11 @@ export function createGame(
 
   function switchSlot(i: number) {
     if (i === curSlot || i < 0 || i >= slots.length) return;
+    if (scopeHold) {
+      // a held scope does not carry over to the next gun (and never fires it)
+      scopeHold = false;
+      mouseAim = mouseButtons.has(2);
+    }
     curSlot = i;
     switchT = 0.28;
     reloadT = 0;
@@ -1562,6 +1569,7 @@ export function createGame(
         // everyone else's game keep going while we sit out the respawn timer.
         mouseFire = false;
         mouseAim = false;
+        scopeHold = false;
         cb.onNetDeath?.(killerId);
       } else {
         gameOver();
@@ -1577,6 +1585,7 @@ export function createGame(
     player.alive = false;
     mouseFire = false;
     mouseAim = false;
+    scopeHold = false;
     cb.onNetDeath?.(killerId);
   }
 
@@ -4687,6 +4696,12 @@ export function createGame(
     if (state !== "playing") return;
     if (pvp.active && !player.alive) return;
     if (e.button === 0) {
+      if (slots[curSlot].def.kind === "sniper") {
+        // hold to look down the scope; the shot goes on release
+        scopeHold = true;
+        mouseAim = true;
+        return;
+      }
       mouseFire = true;
       if (!slots[curSlot].def.auto) fireWeapon();
     }
@@ -4694,8 +4709,17 @@ export function createGame(
   };
   const onMouseUp = (e: MouseEvent) => {
     mouseButtons.delete(e.button);
-    if (e.button === 0) mouseFire = false;
-    if (e.button === 2) mouseAim = false;
+    if (e.button === 0) {
+      mouseFire = false;
+      if (scopeHold) {
+        scopeHold = false;
+        const live = state === "playing" && !(pvp.active && !player.alive);
+        if (live && slots[curSlot].def.kind === "sniper") fireWeapon();
+        // still scoped while the right button is down
+        mouseAim = mouseButtons.has(2);
+      }
+    }
+    if (e.button === 2) mouseAim = scopeHold;
   };
   const onMouseMove = (e: MouseEvent) => {
     pointerInside = true;
@@ -4925,6 +4949,7 @@ export function createGame(
     mouseButtons.clear();
     mouseFire = false;
     mouseAim = false;
+    scopeHold = false;
   };
 
   window.addEventListener("keydown", onKeyDown);
@@ -4965,6 +4990,7 @@ export function createGame(
       keys.clear();
       mouseFire = false;
       mouseAim = false;
+      scopeHold = false;
       // Tell React first: a pointer-lock quirk must never leave the player on a
       // frozen game with no overlay and an invisible cursor.
       cb.onPause({ wave, score });
@@ -5062,6 +5088,7 @@ export function createGame(
       blocking = false;
       mouseFire = false;
       mouseAim = false;
+      scopeHold = false;
       keys.clear();
       // The camera follows the body a frame later, so snap it now: otherwise the
       // first frame after a respawn is drawn from inside the wall we left.
