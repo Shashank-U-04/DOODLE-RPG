@@ -11,6 +11,7 @@ import type appConfig from "../src/app.config.js";
 import { testServer } from "./harness.js";
 import type { MatchRoom } from "../src/rooms/MatchRoom.js";
 import { ARRIVALS } from "../src/movement.js";
+import { MAX_PLAYERS } from "../src/rules.js";
 import { createServer, type Server } from "http";
 import {
   ColyseusSession,
@@ -194,13 +195,14 @@ describe("frontend Colyseus lobby adapter", () => {
     assert.match(lost.errors[0], /No match with code ZZZZ/);
 
     const { h } = await hostAndGuest();
-    for (const name of ["Linus", "Ken"]) {
-      const t = tab(h.session.code, name, false);
-      await eventually(() => t.session.joined, `${name} joined`);
+    // host + guest + eight more fill the ten seats
+    for (let i = 3; i <= MAX_PLAYERS; i++) {
+      const t = tab(h.session.code, `P${i}`, false);
+      await eventually(() => t.session.joined, `P${i} joined`);
     }
-    const fifth = tab(h.session.code, "Dennis", false);
-    await eventually(() => fifth.errors.length === 1, "full room reported");
-    assert.match(fifth.errors[0], /full/i);
+    const extra = tab(h.session.code, "Dennis", false);
+    await eventually(() => extra.errors.length === 1, "full room reported");
+    assert.match(extra.errors[0], /full/i);
   });
 
   it("resumes the same seat after a reload, with no duplicate", async () => {

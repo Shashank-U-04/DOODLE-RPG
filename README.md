@@ -33,9 +33,11 @@ fighter your friends see. Best score, settings and your fighter are saved in the
 
 ### Online (free for all)
 
-One player creates a room and gets a 4-letter code; up to three friends join with
-it, everyone readies up and the host starts. First to 15 kills takes it; the host
-can call a rematch. Online play runs on the **Colyseus match server** in
+Three screens: the title, the setup screen (pick the map and the kills to win:
+5, 10, 15, 20, 25 or 30), then the room. The host creates a room and gets a 4-letter
+code; up to nine friends join with it, everyone readies up and the host starts.
+The first player to reach the kill target takes it; if everyone else leaves, the
+last one standing wins. The host can call a rematch. Online play runs on the **Colyseus match server** in
 [`server/`](server/README.md): it owns the room, roster, rules and start, validates
 every movement, and referees every shot (hits, damage, health, deaths, respawns
 and the score). A dropped player's seat is held for 30 seconds, so a reload

@@ -123,6 +123,8 @@ type RoomJSON = {
   phase?: string;
   map?: string;
   maxPlayers?: number;
+  /** absent from servers older than the host's kill target */
+  killsToWin?: number;
   hostId?: string;
   winnerId?: string;
   winBy?: string;
@@ -526,6 +528,7 @@ export class ColyseusSession implements MatchSession {
           name: this.name,
           look: this.look,
           map: this.config.map,
+          killsToWin: this.config.killsToWin,
         });
       }
       return await client.joinById(this.code, { name: this.name, look: this.look });
@@ -781,8 +784,8 @@ export class ColyseusSession implements MatchSession {
     const s = (room.state as { toJSON(): RoomJSON }).toJSON();
     if (s.serverInstance) this.serverInstance = s.serverInstance;
 
-    const config = normalizeMatchConfig({ map: s.map });
-    if (config.map !== this.config.map) {
+    const config = normalizeMatchConfig({ map: s.map, killsToWin: s.killsToWin });
+    if (config.map !== this.config.map || config.killsToWin !== this.config.killsToWin) {
       this.config = config;
       this.handlers.onConfig?.(config);
     }
@@ -895,7 +898,7 @@ export class ColyseusSession implements MatchSession {
   setConfig(patch: Partial<MatchConfig>) {
     if (!this.room || !this.isHostNow()) return;
     const next = normalizeMatchConfig({ ...this.config, ...patch });
-    this.room.send("config", { map: next.map });
+    this.room.send("config", { map: next.map, killsToWin: next.killsToWin });
   }
 
   setReady(ready: boolean) {
