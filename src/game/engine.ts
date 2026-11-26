@@ -11,6 +11,7 @@ import { PAPER_FRAG } from "./shaders";
 import {
   INK,
   INK_PALETTE,
+  inkForColor,
   LIGHT_DIR_WORLD,
   PAPER,
   PAPER_RGB,
@@ -1607,14 +1608,29 @@ export function createGame(
   };
 
   /**
-   * The waves' soldiers are battle characters (characters.ts), one per class so
-   * each still reads at a glance: they walk, run and strafe on real clips,
+   * The waves' soldiers are battle characters (characters.ts), one body shape
+   * per class, each painted head to toe in its class colour so it still reads
+   * at a glance: they walk, run and strafe on real clips,
    * carry their gun in both hands where they aim, and fall on a death clip.
    * Monsters (wasps, blobs, bombers, mummies, bosses) stay drawn. Until a
    * model has loaded, the drawn soldier stands in. Hit boxes are the same
    * either way (they never read the body).
    */
   const FIGHTER: Partial<Record<EnemyKind, number>> = { grunt: 4, rusher: 5, sniper: 3, heavy: 1, shield: 0 };
+  /**
+   * Each class's paint: a vivid toy colour that is clearly not a skin tone,
+   * and light grey (never black) for what was dark, so no enemy reads as a
+   * dark figure. Mid-tone inks (the palette's blue, denim) came out
+   * near-black at a distance once shaded and outlined, so these are lighter.
+   */
+  const FIGHTER_PAINT: Partial<Record<EnemyKind, InkId>> = {
+    grunt: inkForColor(0.36, 0.62, 1.0), // sky blue
+    rusher: inkForColor(1.0, 0.36, 0.36), // bright red
+    sniper: inkForColor(0.36, 0.84, 0.42), // bright green
+    heavy: inkForColor(1.0, 0.66, 0.2), // orange
+    shield: inkForColor(0.7, 0.52, 1.0), // violet
+  };
+  const FIGHTER_TRIM = inkForColor(0.8, 0.81, 0.85); // light grey
   let fightersAsked = false;
   const loadFighters = () => {
     if (fightersAsked) return;
@@ -1661,7 +1677,12 @@ export function createGame(
     const fighter = kind !== undefined ? FIGHTER[kind] : undefined;
     let anim: CharacterAnim | null = null;
     if (fighter !== undefined && characterReady(fighter)) {
-      const body = makeCharacterRig(fighter, def.weapon, { offHand: rigB.parts.shield });
+      // painted in the class colour, like the drawn soldiers were: an enemy is
+      // read by its class, never by a skin tone
+      const body = makeCharacterRig(fighter, def.weapon, {
+        offHand: rigB.parts.shield,
+        paint: { body: FIGHTER_PAINT[kind!] ?? def.ink, trim: FIGHTER_TRIM },
+      });
       if (body) {
         // keep the hit height the drawn soldier had; drop its geometry (the shield moved over)
         const headWorldY = rigB.headWorldY;

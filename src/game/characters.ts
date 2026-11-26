@@ -15,7 +15,7 @@ import { buildGun, type Rig } from "./rig";
 import { rigGunPoints } from "./guns";
 import { paintMesh } from "./paint";
 import { autorig, type Donor } from "./autorig";
-import type { InkId } from "./world";
+import { inkRgb, makeSoftInkMaterial, type InkId } from "./world";
 
 export type CharacterDef = {
   id: string;
@@ -494,6 +494,27 @@ export function reach(
   aimBone(lower, hand.getWorldPosition(new THREE.Vector3()), target);
 }
 
+/**
+ * One colour for the whole body, dark parts (boots, belts, gear) in the trim
+ * colour: every material the model had, skin included, becomes one of the two.
+ * Only this clone's meshes change; the template keeps its own colours.
+ */
+function paintBody(model: THREE.Object3D, body: InkId, trim: InkId) {
+  const lum = (ink: number) => {
+    const [r, g, b] = inkRgb(ink as InkId);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const repaint = (m: THREE.Material) => {
+    const ink = (m as THREE.ShaderMaterial).uniforms?.uInk?.value as number | undefined;
+    return makeSoftInkMaterial(ink !== undefined && lum(ink) < 0.22 ? trim : body);
+  };
+  model.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(repaint) : repaint(mesh.material);
+  });
+}
+
 /** point a hand's fingers along `dir` (world), when it has fingers to point */
 function pointHand(hand: THREE.Object3D, dir: THREE.Vector3) {
   const finger = hand.children.find((c) => (c as THREE.Bone).isBone);
@@ -539,11 +560,15 @@ function curlFingers(hand: THREE.Object3D, barAt: THREE.Vector3, barDir: THREE.V
  *
  * `offHand` (a riot shield) is carried in the left hand instead, in front of
  * the left half of the chest, and the gun is held in the right hand alone.
+ *
+ * `paint` repaints the whole body in one colour with dark trim, like a toy
+ * soldier: skin, hair and clothes alike. The waves' soldiers use it, so an
+ * enemy is told by its class colour and never by anyone's skin tone.
  */
 export function makeCharacterRig(
   index: number,
   weapon: string,
-  opts: { offHand?: THREE.Object3D | null } = {},
+  opts: { offHand?: THREE.Object3D | null; paint?: { body: InkId; trim: InkId } } = {},
 ): (Rig & { anim: CharacterAnim }) | null {
   const def = CHARACTER_LIST[index] ?? CHARACTER_LIST[FALLBACK_CHARACTER];
   const t = def && templates.get(def.id);
@@ -555,6 +580,7 @@ export function makeCharacterRig(
   root.add(model);
   // these share the template's geometry: never dispose it with the player
   root.userData.sharedGeometry = true;
+  if (opts.paint) paintBody(model, opts.paint.body, opts.paint.trim);
 
   const bone = (n: string) => model.getObjectByName(boneName(n)) ?? null;
   const endOf = (b: THREE.Object3D | null) => b?.children.find((c) => (c as THREE.Bone).isBone) ?? null;
