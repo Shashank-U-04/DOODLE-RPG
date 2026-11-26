@@ -75,6 +75,8 @@ type Enemy = {
   kind: EnemyKind;
   def: EnemyDef;
   root: THREE.Group;
+  /** a battle character's body (walk / run clips, gun in both hands); null for a drawn rig */
+  anim: CharacterAnim | null;
   head: THREE.Object3D;
   torso: THREE.Object3D;
   legL: THREE.Object3D;
@@ -1496,6 +1498,10 @@ export function createGame(
   function killEnemy(e: Enemy, source: string, crit: boolean) {
     e.alive = false;
     e.dying = 0.6;
+    if (e.anim) {
+      e.anim.die();
+      e.dying = 1.8;
+    }
     const credit = source !== "enemy" && source !== "self";
     if (credit) kills++;
     enemiesLeft = Math.max(0, enemiesLeft - 1);
@@ -1600,7 +1606,23 @@ export function createGame(
     deadGeos.clear();
   };
 
-  function makeLocalRig(def: EnemyDef) {
+  /**
+   * The waves' soldiers are battle characters (characters.ts), one per class so
+   * each still reads at a glance: they walk, run and strafe on real clips,
+   * carry their gun in both hands where they aim, and fall on a death clip.
+   * Monsters (wasps, blobs, bombers, mummies, bosses) stay drawn. Until a
+   * model has loaded, the drawn soldier stands in. Hit boxes are the same
+   * either way (they never read the body).
+   */
+  const FIGHTER: Partial<Record<EnemyKind, number>> = { grunt: 4, rusher: 5, sniper: 3, heavy: 1, shield: 0 };
+  let fightersAsked = false;
+  const loadFighters = () => {
+    if (fightersAsked) return;
+    fightersAsked = true;
+    for (const i of new Set(Object.values(FIGHTER))) void loadCharacter(i);
+  };
+
+  function makeLocalRig(def: EnemyDef, kind?: EnemyKind) {
     let rigB: Rig;
     if (def.model === "flyer") rigB = makeWaspRig({ ink: def.ink, bodyW: 1, headS: 1, limbR: 0.03, scale: def.scale });
     else if (def.model === "mummy")
@@ -1635,8 +1657,25 @@ export function createGame(
         bulky: def.bulky,
         backpack: def.backpack,
       });
+    // the soldier classes, once their fighter has loaded
+    const fighter = kind !== undefined ? FIGHTER[kind] : undefined;
+    let anim: CharacterAnim | null = null;
+    if (fighter !== undefined && characterReady(fighter)) {
+      const body = makeCharacterRig(fighter, def.weapon, { offHand: rigB.parts.shield });
+      if (body) {
+        // keep the hit height the drawn soldier had; drop its geometry (the shield moved over)
+        const headWorldY = rigB.headWorldY;
+        rigB.root.traverse((o) => {
+          const g = (o as THREE.Mesh).geometry;
+          if (g) g.dispose();
+        });
+        rigB = { ...body, headWorldY };
+        anim = body.anim;
+      }
+    }
     const P = rigB.parts;
     return {
+      anim,
       root: rigB.root,
       head: P.head,
       torso: P.torso,
@@ -1656,7 +1695,7 @@ export function createGame(
   }
   function spawnEnemy(kind: EnemyKind): Enemy {
     const def = ED[kind];
-    const built = makeLocalRig(def);
+    const built = makeLocalRig(def, kind);
     let pos: THREE.Vector3;
     if (def.flying) {
       const a = rand(0, Math.PI * 2);
@@ -1686,6 +1725,7 @@ export function createGame(
     const e: Enemy = {
       kind,
       def,
+      anim: built.anim,
       root: built.root,
       head: built.head,
       torso: built.torso,
@@ -2570,6 +2610,7 @@ export function createGame(
       scene.add(e.laser);
     }
     const from = e.pos.clone().add(new THREE.Vector3(0, 1.55 * e.def.scale, 0));
+    e.anim?.muzzle(from);
     const dir = aim.clone().sub(from);
     const len = dir.length();
     if (len < 2) {
@@ -2594,6 +2635,11 @@ export function createGame(
 
   function enemyFire(e: Enemy, aim: THREE.Vector3, spread: number, speed: number, dmg: number, ink: InkId) {
     const from = e.pos.clone().add(new THREE.Vector3(0, 1.55 * e.def.scale, 0));
+    // a fighter's round leaves its barrel, with a flash and a kick through the arms
+    if (e.anim?.muzzle(from)) {
+      e.anim.kick();
+      spawnMuzzleFlash(from, aim.clone().sub(from).normalize());
+    }
     const dir = aim.clone().sub(from).normalize();
     dir.x += rand(-spread, spread);
     dir.y += rand(-spread, spread);
@@ -3139,6 +3185,15 @@ export function createGame(
 
   function updateEnemy(e: Enemy, dt: number) {
     e.t += dt;
+    if (!e.alive && e.anim) {
+      // a fighter falls on its own death clip, lies there, then sinks away
+      e.dying -= dt;
+      e.anim.update(dt, { moving: false, firing: false, weapon: e.def.weapon });
+      if (e.dying < 0.5) e.root.position.y -= dt * 1.4;
+      hideLaser(e);
+      if (e.dying <= 0) scene.remove(e.root);
+      return;
+    }
     if (!e.alive) {
       e.dying -= dt;
       e.torso.rotation.x = Math.min(1.5, e.torso.rotation.x + dt * 6);
@@ -3293,6 +3348,22 @@ export function createGame(
   // backwards and elbows forward, and the weapon arm rises to aim. Weight shift
   // comes from a small hip roll and a torso counter-rotation.
   function animateRig(e: Enemy, dt: number, dist: number, dy: number) {
+    if (e.anim) {
+      // a fighter: its legs walk / run / back-pedal / strafe by how it is
+      // actually moving, and its gun aims at the player's eye
+      const fx = Math.sin(e.yaw);
+      const fz = Math.cos(e.yaw);
+      const s = e.def.scale;
+      e.anim.update(dt, {
+        moving: Math.hypot(e.vel.x, e.vel.z) > 0.3,
+        firing: e.burstLeft > 0 || e.aimT > 0 || e.attackT > 0,
+        weapon: e.def.weapon,
+        pitch: Math.atan2(dy + 1.6 - 1.45 * s, Math.max(1, dist)),
+        forward: (e.vel.x * fx + e.vel.z * fz) / s,
+        side: (e.vel.x * -fz + e.vel.z * fx) / s,
+      });
+      return;
+    }
     // The phase used to be lifetime × pace, so twenty seconds into a life a
     // 0.1 m/s wobble in speed threw the legs a whole radian: limbs twitched
     // every frame. Accumulate it instead, from an eased speed.
@@ -3400,6 +3471,7 @@ export function createGame(
   let intermissionT = 0;
 
   function startWave(n: number) {
+    if (!pvp.active) loadFighters();
     wave = n;
     queue = [];
     spawnT = 2;
