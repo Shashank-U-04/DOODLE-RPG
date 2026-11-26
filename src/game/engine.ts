@@ -337,8 +337,13 @@ export function createGame(
   const mouseButtons = new Set<number>();
   let mouseFire = false;
   let mouseAim = false;
-  // AWM: the left button held scopes in, and letting go takes the shot
+  // AWM: the left button held scopes in, and letting go takes the shot, but
+  // only once the scope has been up SCOPE_MIN: let go sooner and the scope
+  // stays up until then (scopeFire), so there is no instant tap-shot
   let scopeHold = false;
+  let scopeFire = false;
+  let scopeT = 0;
+  const SCOPE_MIN = 0.5;
   // Pointer capture is a nicety, never a requirement. Mouse look runs on plain
   // mouse movement (see onMouseMove), so a frame that refuses the capture costs
   // the player nothing, and the one rule that matters is that a menu, pause or
@@ -1329,9 +1334,10 @@ export function createGame(
 
   function switchSlot(i: number) {
     if (i === curSlot || i < 0 || i >= slots.length) return;
-    if (scopeHold) {
+    if (scopeHold || scopeFire) {
       // a held scope does not carry over to the next gun (and never fires it)
       scopeHold = false;
+      scopeFire = false;
       mouseAim = mouseButtons.has(2);
     }
     curSlot = i;
@@ -1571,6 +1577,7 @@ export function createGame(
         mouseFire = false;
         mouseAim = false;
         scopeHold = false;
+        scopeFire = false;
         cb.onNetDeath?.(killerId);
       } else {
         gameOver();
@@ -1587,6 +1594,7 @@ export function createGame(
     mouseFire = false;
     mouseAim = false;
     scopeHold = false;
+    scopeFire = false;
     cb.onNetDeath?.(killerId);
   }
 
@@ -3651,6 +3659,13 @@ export function createGame(
   function updatePlayer(dt: number) {
     const p = player;
     netFireT = Math.max(0, netFireT - dt);
+    // the AWM's held scope: a shot let go too early goes once the scope is up
+    if (scopeHold || scopeFire) scopeT += dt;
+    if (scopeFire && scopeT >= SCOPE_MIN) {
+      scopeFire = false;
+      if (p.alive && slots[curSlot].def.kind === "sniper") fireWeapon();
+      mouseAim = mouseButtons.has(2);
+    }
     // Online, down and waiting for the respawn: hold the death pose and take no
     // input at all until the net layer calls netRespawn(). Solo never gets here
     // (a death ends the run and step() stops calling this).
@@ -4720,6 +4735,8 @@ export function createGame(
       if (slots[curSlot].def.kind === "sniper") {
         // hold to look down the scope; the shot goes on release
         scopeHold = true;
+        scopeFire = false;
+        scopeT = 0;
         mouseAim = true;
         return;
       }
@@ -4734,13 +4751,18 @@ export function createGame(
       mouseFire = false;
       if (scopeHold) {
         scopeHold = false;
-        const live = state === "playing" && !(pvp.active && !player.alive);
-        if (live && slots[curSlot].def.kind === "sniper") fireWeapon();
-        // still scoped while the right button is down
-        mouseAim = mouseButtons.has(2);
+        scopeFire = false;
+        // too soon: the shot waits for the scope (updatePlayer takes it)
+        if (scopeT < SCOPE_MIN) scopeFire = true;
+        else {
+          const live = state === "playing" && !(pvp.active && !player.alive);
+          if (live && slots[curSlot].def.kind === "sniper") fireWeapon();
+          // still scoped while the right button is down
+          mouseAim = mouseButtons.has(2);
+        }
       }
     }
-    if (e.button === 2) mouseAim = scopeHold;
+    if (e.button === 2) mouseAim = scopeHold || scopeFire;
   };
   const onMouseMove = (e: MouseEvent) => {
     pointerInside = true;
@@ -4971,6 +4993,7 @@ export function createGame(
     mouseFire = false;
     mouseAim = false;
     scopeHold = false;
+    scopeFire = false;
   };
 
   window.addEventListener("keydown", onKeyDown);
@@ -5012,6 +5035,7 @@ export function createGame(
       mouseFire = false;
       mouseAim = false;
       scopeHold = false;
+      scopeFire = false;
       // Tell React first: a pointer-lock quirk must never leave the player on a
       // frozen game with no overlay and an invisible cursor.
       cb.onPause({ wave, score });
@@ -5110,6 +5134,7 @@ export function createGame(
       mouseFire = false;
       mouseAim = false;
       scopeHold = false;
+      scopeFire = false;
       keys.clear();
       // The camera follows the body a frame later, so snap it now: otherwise the
       // first frame after a respawn is drawn from inside the wall we left.

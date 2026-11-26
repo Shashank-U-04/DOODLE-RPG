@@ -109,13 +109,14 @@ describe("combat rules", () => {
   });
 
   it("budgets shots by time: one ready plus 150 ms worth", () => {
-    assert.ok(near(capacityOf("SNIPER"), 1 + 150 / 900));
+    const bolt = GUNS.SNIPER.interval * 1000;
+    assert.ok(near(capacityOf("SNIPER"), 1 + 150 / bolt));
     assert.ok(near(capacityOf("RIFLE"), 1 + 150 / (1000 / 11)));
     const a = newArms(0);
     a.ready.SNIPER -= 1;
-    refill(a, 450);
+    refill(a, bolt / 2);
     assert.ok(a.ready.SNIPER < 1, "half an interval is not enough");
-    refill(a, 900);
+    refill(a, bolt);
     assert.ok(a.ready.SNIPER >= 1);
     refill(a, 60_000);
     assert.ok(near(a.ready.SNIPER, capacityOf("SNIPER")), "a pause banks no extra sniper shot");
