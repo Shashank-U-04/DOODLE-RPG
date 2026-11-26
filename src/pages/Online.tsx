@@ -598,6 +598,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
     handle.setPvp(true);
     handle.setSensitivity(Number(localStorage.getItem("dd_sens") || 100));
     handle.setInvert(localStorage.getItem("dd_invert") === "1");
+    handle.setHoldToScope(localStorage.getItem("dd_holdscope") === "1");
     handle.setMusic(localStorage.getItem("dd_music") !== "0");
     handle.start();
     // our ink doubles as our spawn pad, so nobody starts on top of anyone

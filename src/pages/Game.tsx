@@ -50,6 +50,7 @@ export default function Game() {
   // once at mount and they cannot change mid-play, so refs suffice.
   const sens = useRef(Number(localStorage.getItem("dd_sens") || 100));
   const invert = useRef(localStorage.getItem("dd_invert") === "1");
+  const holdScope = useRef(localStorage.getItem("dd_holdscope") === "1");
   const sound = useRef(localStorage.getItem("dd_music") !== "0");
   const [best, setBest] = useState(() => Number(localStorage.getItem("dd_best") || 0));
   // The map arrives in the URL from the setup screen, so a reload of
@@ -114,6 +115,7 @@ export default function Game() {
     gameRef.current = handle;
     handle.setSensitivity(sens.current);
     handle.setInvert(invert.current);
+    handle.setHoldToScope(holdScope.current);
     handle.setMusic(sound.current);
     // arriving from the title screen's START: begin the run straight away
     handle.start();

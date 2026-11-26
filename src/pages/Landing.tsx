@@ -14,7 +14,7 @@ const KEYBOARD: [string, string][] = [
   ["C / Ctrl", "crouch &nbsp; · &nbsp; <b>X</b> dash"],
   ["F", "katana slash &nbsp; · &nbsp; <b>R</b> reload &nbsp; · &nbsp; <b>G</b> grenade"],
   ["1-5 / wheel", "AK-47 · M1887 · AWM · katana · Desert Eagle"],
-  ["AWM", "hold <b>LMB</b> to scope in &nbsp; · &nbsp; let go to fire"],
+  ["AWM", "<b>RMB</b> scope &nbsp; · &nbsp; or hold <b>LMB</b> to scope, let go to fire (settings)"],
   ["M", "music &nbsp; · &nbsp; <b>P / Esc</b> pause"],
 ];
 
@@ -22,6 +22,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const [sens, setSens] = useState(() => Number(localStorage.getItem("dd_sens") || 100));
   const [invert, setInvert] = useState(() => localStorage.getItem("dd_invert") === "1");
+  const [holdScope, setHoldScope] = useState(() => localStorage.getItem("dd_holdscope") === "1");
   const [music, setMusic] = useState(() => localStorage.getItem("dd_music") !== "0");
   const [best] = useState(() => Number(localStorage.getItem("dd_best") || 0));
   const [note] = useState<string | null>(null);
@@ -102,6 +103,17 @@ export default function Landing() {
                 }}
               />
               invert vertical look
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={holdScope}
+                onChange={(e) => {
+                  setHoldScope(e.target.checked);
+                  localStorage.setItem("dd_holdscope", e.target.checked ? "1" : "0");
+                }}
+              />
+              AWM: hold left click to scope, let go to fire
             </label>
             <label>
               <input
