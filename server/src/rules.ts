@@ -13,6 +13,7 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   NAME_MAX,
+  normalizeKillTarget,
   type MapId,
 } from "./shared/rules.js";
 
@@ -23,16 +24,18 @@ export {
   drawRoomCode,
   INK_COUNT,
   isMapId,
+  KILL_TARGETS,
   LOOK_MAX,
   MAP_IDS,
   MAX_PLAYERS,
   MIN_PLAYERS,
   NAME_MAX,
+  normalizeKillTarget,
   RECONNECT_SECONDS,
   type MapId,
 } from "./shared/rules.js";
 
-export type MatchConfig = { map: MapId };
+export type MatchConfig = { map: MapId; killsToWin: number };
 
 export type MatchOptions = MatchConfig & { maxPlayers: number };
 
@@ -74,6 +77,7 @@ export function normalizeMatchOptions(value: unknown): MatchOptions {
     : MAX_PLAYERS;
   return {
     map: isMapId(v.map) ? v.map : DEFAULT_MAP,
+    killsToWin: normalizeKillTarget(v.killsToWin),
     maxPlayers,
   };
 }

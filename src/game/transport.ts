@@ -136,4 +136,6 @@ export interface MatchSession {
   reportCombat(intent: NetCombatIntent): void;
   /** the winner the server declared ("" while undecided) */
   readonly winnerId: string;
+  /** "walkover" when they won because everyone else left; "score" or "" otherwise */
+  readonly winBy: string;
 }

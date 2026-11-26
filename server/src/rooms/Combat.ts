@@ -125,6 +125,7 @@ export class Combat {
   resetMatch() {
     const now = this.now();
     this.state.winnerId = "";
+    this.state.winBy = "";
     this.grenades = [];
     this.respawnAt.clear();
     this.hurtAt.clear();
@@ -414,7 +415,10 @@ export class Combat {
     const killer = attacker !== v.id ? this.state.players.get(attacker) : undefined;
     if (killer) {
       killer.kills += 1;
-      if (killer.kills >= KILLS_TO_WIN && !this.state.winnerId) this.state.winnerId = killer.id;
+      if (killer.kills >= (this.state.killsToWin || KILLS_TO_WIN) && !this.state.winnerId) {
+        this.state.winnerId = killer.id;
+        this.state.winBy = "score";
+      }
     }
     this.fallen.push({ victim: v.id, killer: killer?.id ?? "", weapon });
   }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { createGame } from "@/game/engine";
 import { mapFromQuery } from "@/game/maps";
+import { savedLookCode } from "@/game/look";
 import type { GameHandle } from "@/game/types";
 import type { GameOverStats, HudState } from "@/game/types";
 import { weaponLabel } from "@/game/arsenal";
@@ -103,7 +104,7 @@ export default function Game() {
         onResume: () => setOverlay({ kind: "menu" }),
         onAim: (a) => setAds(a),
       },
-      { map: match.map },
+      { map: match.map, look: savedLookCode() },
     );
 
     if (disposed) {

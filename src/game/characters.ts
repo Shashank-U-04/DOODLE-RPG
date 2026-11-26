@@ -14,6 +14,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { buildGun, type Rig } from "./rig";
 import { paintMesh } from "./paint";
 import { autorig, type Donor } from "./autorig";
+import type { InkId } from "./world";
 
 export type CharacterDef = {
   id: string;
@@ -248,6 +249,89 @@ export function loadCharacter(index: number): Promise<Template | null> {
     pending.set(def.id, p);
   }
   return p;
+}
+
+/* ------------------------------------------------------------------ *
+ * the first-person arms: what a character wears on its right forearm and hand
+ * ------------------------------------------------------------------ */
+
+/** the inks of a character's right forearm (sleeve, or bare skin) and hand (glove or skin) */
+export type ArmInks = { sleeve: InkId; hand: InkId };
+
+const FOREARM_BONE = /^LowerArm\.?R$/;
+const HAND_BONE = /^(Wrist|Palm|Fist|MiddleHand|Fingers|Index\d|Middle\d|Ring\d|Pinky\d|Thumb\d)\.?R$/;
+
+const inkOf = (m: THREE.Material | undefined): InkId | null => {
+  const u = (m as THREE.ShaderMaterial | undefined)?.uniforms?.uInk;
+  return u ? (u.value as InkId) : null;
+};
+
+/**
+ * Read the arm inks off a loaded (already inked) model: every vertex votes for
+ * the ink of its triangle, filed under the bone that moves it most, so the
+ * colours are exactly the ones other players see on this body. Rigid meshes
+ * hung off an arm bone (a fist, a bracer) vote under that bone.
+ */
+export function sampleArmInks(scene: THREE.Object3D): ArmInks | null {
+  const votes = { sleeve: new Map<InkId, number>(), hand: new Map<InkId, number>() };
+  const vote = (where: "sleeve" | "hand", ink: InkId | null, n = 1) => {
+    if (ink !== null) votes[where].set(ink, (votes[where].get(ink) ?? 0) + n);
+  };
+  const part = (name: string): "sleeve" | "hand" | null =>
+    FOREARM_BONE.test(name) ? "sleeve" : HAND_BONE.test(name) ? "hand" : null;
+  scene.updateMatrixWorld(true);
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const geo = mesh.geometry;
+    const skinned = mesh as THREE.SkinnedMesh;
+    if (!skinned.isSkinnedMesh) {
+      // a rigid piece: the nearest arm bone above it decides
+      let up: THREE.Object3D | null = mesh.parent;
+      while (up && !part(up.name)) up = up.parent;
+      const where = up && part(up.name);
+      if (where) for (const m of mats) vote(where, inkOf(m), geo.getAttribute("position")?.count ?? 1);
+      return;
+    }
+    const idx = geo.getAttribute("skinIndex");
+    const wgt = geo.getAttribute("skinWeight");
+    if (!idx || !wgt) return;
+    const bones = skinned.skeleton.bones;
+    // which material draws each vertex: groups cover index (or vertex) ranges
+    const matFor = new Array<number>(idx.count).fill(0);
+    if (geo.groups.length && mats.length > 1) {
+      const index = geo.index;
+      for (const g of geo.groups) {
+        for (let i = g.start; i < g.start + g.count; i++) matFor[index ? index.getX(i) : i] = g.materialIndex ?? 0;
+      }
+    }
+    for (let v = 0; v < idx.count; v++) {
+      let best = 0;
+      for (let k = 1; k < 4; k++) if (wgt.getComponent(v, k) > wgt.getComponent(v, best)) best = k;
+      const bone = bones[idx.getComponent(v, best)];
+      const where = bone && part(bone.name);
+      if (where) vote(where, inkOf(mats[matFor[v]]));
+    }
+  });
+  const top = (m: Map<InkId, number>) => [...m].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const sleeve = top(votes.sleeve);
+  const hand = top(votes.hand);
+  if (sleeve === null && hand === null) return null;
+  return { sleeve: sleeve ?? hand!, hand: hand ?? sleeve! };
+}
+
+const armCache = new Map<string, ArmInks | null>();
+
+/** the arm inks of a roster character, once its model has loaded (null if it never does) */
+export async function characterArmInks(index: number): Promise<ArmInks | null> {
+  const def = CHARACTER_LIST[index] ?? CHARACTER_LIST[FALLBACK_CHARACTER];
+  if (!def) return null;
+  if (armCache.has(def.id)) return armCache.get(def.id)!;
+  const t = await loadCharacter(index);
+  const inks = t ? sampleArmInks(t.scene) : null;
+  armCache.set(def.id, inks);
+  return inks;
 }
 
 export function characterReady(index: number): boolean {
