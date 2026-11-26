@@ -1,7 +1,7 @@
 // The AWM's hold-to-scope, a title-screen setting (dd_holdscope): when on, the
 // left button held looks down the scope without firing, and letting go takes
 // the shot, but only once the scope has been up half a second (a quick tap
-// waits for it) and the 1.1 s bolt has cycled (a shot let go too early waits
+// waits for it) and the 0.9 s bolt has cycled (a shot let go too early waits
 // for it). Off (the default), the left button fires the AWM at once, at the
 // bolt's rate. Every other gun fires on press either way.
 // Timeouts are generous: a CI runner draws far fewer frames, and game time
@@ -72,9 +72,9 @@ test("AWM, setting on: hold to scope, let go to fire (never instantly); the AK s
 
   // the bolt: a shot let go straight after waits for it, then goes
   await page.mouse.down();
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(250);
   await page.mouse.up();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(100);
   await expect(mag).toHaveText("3"); // the bolt is still cycling
   await expect(mag).toHaveText("2", { timeout: 8000 }); // and then it goes
 
