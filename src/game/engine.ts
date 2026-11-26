@@ -1057,8 +1057,9 @@ export function createGame(
   // behind it, tapering out. Both point down +z, the bullet's tip at the front.
   const tracerGeo = new THREE.CylinderGeometry(0.017, 0.005, 1.3, 6).rotateX(Math.PI / 2).translate(0, 0, -0.68);
   const roundGeo = new THREE.ConeGeometry(0.02, 0.075, 8).rotateX(Math.PI / 2).translate(0, 0, 0.02);
-  const makeRound = () => {
-    const streak = new THREE.Mesh(tracerGeo, makeInkMaterial(INK.GOLD, false, THREE.FrontSide, true));
+  /** `glow` is the tracer's burn: gold for players, red for the waves (green: their snipers) */
+  const makeRound = (glow: InkId = INK.GOLD) => {
+    const streak = new THREE.Mesh(tracerGeo, makeInkMaterial(glow, false, THREE.FrontSide, true));
     streak.add(new THREE.Mesh(roundGeo, makeInkMaterial(INK.ORANGE, false, THREE.FrontSide, true)));
     return streak;
   };
@@ -1102,7 +1103,7 @@ export function createGame(
     cosmetic = false,
   ) => {
     const mesh =
-      look === "round" ? makeRound() : new THREE.Mesh(bulletGeo, makeInkMaterial(ink, false, THREE.FrontSide, true));
+      look === "round" ? makeRound(ink) : new THREE.Mesh(bulletGeo, makeInkMaterial(ink, false, THREE.FrontSide, true));
     mesh.position.copy(drawFrom ?? pos);
     mesh.lookAt(pos.clone().add(vel));
     scene.add(mesh);
@@ -2597,7 +2598,19 @@ export function createGame(
     dir.x += rand(-spread, spread);
     dir.y += rand(-spread, spread);
     dir.z += rand(-spread, spread);
-    spawnBullet(from, dir.normalize().multiplyScalar(speed), dmg, false, ink, "enemy");
+    // a gun's round, its tracer in the enemy's colour (same speed and damage as ever)
+    spawnBullet(
+      from,
+      dir.normalize().multiplyScalar(speed),
+      dmg,
+      false,
+      ink,
+      "enemy",
+      1,
+      undefined,
+      undefined,
+      "round",
+    );
   }
 
   function enemyAttack(e: Enemy, dt: number) {
