@@ -8,7 +8,7 @@
 // imports, so it compiles in both packages.
 
 /** Hard ceiling on a match. */
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = 10;
 /** The smallest room a host may ask for: a match needs an opponent. */
 export const MIN_PLAYERS = 2;
 /** Player names are cut to this many characters. */
@@ -18,13 +18,21 @@ export const NAME_MAX = 16;
  * The server only checks its shape; the browser decodes it.
  */
 export const LOOK_MAX = 24;
-/** Ink palette size; every player in a room gets a different index. */
-export const INK_COUNT = 6;
+/** Ink palette size; every player in a room gets a different index (one per seat). */
+export const INK_COUNT = MAX_PLAYERS;
 /** How long a dropped player (reload, lost network) keeps their seat, s. */
 export const RECONNECT_SECONDS = 30;
 
-/** First to this many kills wins the match. */
+/** First to this many kills wins the match, unless the host picks another target. */
 export const KILLS_TO_WIN = 15;
+/** The kill targets the host can pick on the setup screen. */
+export const KILL_TARGETS = [5, 10, 15, 20, 25, 30] as const;
+
+/** A kill target from an untrusted source: one of KILL_TARGETS, else the default. */
+export function normalizeKillTarget(value: unknown): number {
+  const n = Number(value);
+  return (KILL_TARGETS as readonly number[]).includes(n) ? n : KILLS_TO_WIN;
+}
 /** How long a player stays down before respawning, ms. */
 export const RESPAWN_MS = 3200;
 /** How often a client sends its body, and the room patches state (Hz). */

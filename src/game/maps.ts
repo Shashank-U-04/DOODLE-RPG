@@ -4,10 +4,18 @@
 // URL, the match configuration, the engine's `MapId` and the host's lobby
 // settings all speak these strings.
 
-import { DEFAULT_MAP, isMapId, MAP_IDS, type MapId } from "../../server/src/shared/rules.js";
+import {
+  DEFAULT_MAP,
+  isMapId,
+  KILL_TARGETS,
+  KILLS_TO_WIN,
+  MAP_IDS,
+  normalizeKillTarget,
+  type MapId,
+} from "../../server/src/shared/rules.js";
 
 // The ids themselves are the match server's (server/src/shared/rules.ts).
-export { DEFAULT_MAP, isMapId, MAP_IDS, type MapId };
+export { DEFAULT_MAP, isMapId, KILL_TARGETS, MAP_IDS, normalizeKillTarget, type MapId };
 
 export type MapInfo = {
   id: MapId;
@@ -52,14 +60,17 @@ export function normalizeMapId(value: string | null | undefined): MapId {
 /** Per-match gameplay configuration. Separate from permanent user settings. */
 export type MatchConfig = {
   map: MapId;
+  /** online only: first to this many kills wins (one of KILL_TARGETS) */
+  killsToWin: number;
 };
 
-export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP };
+export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP, killsToWin: KILLS_TO_WIN };
 
 export function normalizeMatchConfig(value: unknown): MatchConfig {
   const v = value && typeof value === "object" ? (value as Partial<MatchConfig>) : {};
   return {
     map: isMapId(v.map) ? v.map : DEFAULT_MAP,
+    killsToWin: normalizeKillTarget(v.killsToWin),
   };
 }
 
@@ -120,6 +131,6 @@ export function mapFromQuery(search: string): MapId {
 }
 
 /** The query string that carries a solo match into /game. */
-export function gameHref(config: MatchConfig): string {
+export function gameHref(config: Pick<MatchConfig, "map">): string {
   return `/game?map=${config.map}`;
 }

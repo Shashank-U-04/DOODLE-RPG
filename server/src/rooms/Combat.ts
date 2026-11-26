@@ -415,7 +415,7 @@ export class Combat {
     const killer = attacker !== v.id ? this.state.players.get(attacker) : undefined;
     if (killer) {
       killer.kills += 1;
-      if (killer.kills >= KILLS_TO_WIN && !this.state.winnerId) {
+      if (killer.kills >= (this.state.killsToWin || KILLS_TO_WIN) && !this.state.winnerId) {
         this.state.winnerId = killer.id;
         this.state.winBy = "score";
       }

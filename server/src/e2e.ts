@@ -35,7 +35,7 @@ export function mountE2eFixtures(app: Application) {
       return void res.status(409).json({ error: "not in play" });
     const victim = players.find((p) => p.id !== winner.id && p.spawned && p.alive);
     if (!victim) return void res.status(409).json({ error: "no placed, living opponent yet" });
-    winner.kills = KILLS_TO_WIN - 1;
+    winner.kills = (room.state.killsToWin || KILLS_TO_WIN) - 1;
     // The room's own damage path (private on purpose: nothing a client sends reaches it).
     const hurt = room.combat["hurt"] as (v: Player, amount: number, attacker: string, weapon: string) => boolean;
     hurt.call(room.combat, victim, 9999, winner.id, "SNIPER");

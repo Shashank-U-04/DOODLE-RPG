@@ -1203,19 +1203,6 @@
 .dd-screen .mapgrid button.on .mapthumb {
   border-color: #d02030;
 }
-/* the lobby keeps the same pair of cards, a size down so the roster stays on screen */
-.dd-screen .mapgrid.small {
-  max-width: 560px;
-  gap: 10px 10px;
-}
-.dd-screen .mapgrid button.small {
-  min-width: 0;
-  font-size: 21px;
-  padding: 7px 7px 9px;
-}
-.dd-screen .mapgrid button.small .mapthumb {
-  margin-bottom: 6px;
-}
 .dd-screen .mapgrid button:nth-child(even) {
   transform: rotate(0.7deg);
 }
@@ -1246,13 +1233,47 @@
   }
 }
 @media (max-width: 720px) {
-  .dd-screen .mapgrid,
-  .dd-screen .mapgrid.small {
+  .dd-screen .mapgrid {
     grid-template-columns: minmax(0, 1fr);
   }
   .dd-screen .mapgrid button {
     font-size: 24px;
   }
+}
+
+/* the kill target on the setup screen (play with friends): a row of number tabs */
+.dd-screen .dd-kills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 8px auto 2px;
+  font-size: clamp(16px, 2.5vh, 21px);
+}
+.dd-screen .dd-kills .lbl {
+  margin-right: 4px;
+}
+.dd-screen .dd-kills button {
+  font: inherit;
+  min-width: 52px;
+  color: #1a30c0;
+  background: transparent;
+  border: 2px solid #1a30c0;
+  border-radius: 9px 12px 8px 11px / 11px 8px 10px 9px;
+  padding: 1px 10px;
+  cursor: pointer;
+}
+.dd-screen .dd-kills button:nth-child(odd) {
+  transform: rotate(-1deg);
+}
+.dd-screen .dd-kills button:hover {
+  background: rgba(26, 48, 192, 0.08);
+}
+.dd-screen .dd-kills button.on {
+  color: #f6f3e6;
+  background: #d02030;
+  border-color: #d02030;
 }
 
 /* ---- Customize Character (src/pages/Customize.tsx): turntable left, item library right ---- */

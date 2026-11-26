@@ -4,6 +4,7 @@ import { MatchState, Player } from "./schema/MatchState.js";
 import {
   drawRoomCode,
   freeInk,
+  KILL_TARGETS,
   MAP_IDS,
   normalizeMatchOptions,
   RECONNECT_SECONDS,
@@ -199,13 +200,19 @@ export class MatchRoom extends Room<{ state: MatchState }> {
       player.ready = message.ready;
     }),
     /**
-     * host → server: change the map while in the lobby. Unknown keys (the old
-     * `grapple` rule from clients built before it was removed) are stripped.
+     * host → server: change the map or the kill target while in the lobby.
+     * Unknown keys (the old `grapple` rule from clients built before it was
+     * removed) are stripped; a target that is not on the list is ignored.
      */
-    config: validate(z.object({ map: z.enum(MAP_IDS).optional() }), (client, message) => {
-      if (client.sessionId !== this.state.hostId || this.state.phase !== "lobby") return;
-      if (message.map !== undefined) this.state.map = message.map;
-    }),
+    config: validate(
+      z.object({ map: z.enum(MAP_IDS).optional(), killsToWin: z.number().optional() }),
+      (client, message) => {
+        if (client.sessionId !== this.state.hostId || this.state.phase !== "lobby") return;
+        if (message.map !== undefined) this.state.map = message.map;
+        if (message.killsToWin !== undefined && (KILL_TARGETS as readonly number[]).includes(message.killsToWin))
+          this.state.killsToWin = message.killsToWin;
+      },
+    ),
     /**
      * host → server: begin the match. Answered (use `room.request("start")`)
      * so the lobby can say why a start was refused.
@@ -299,6 +306,7 @@ export class MatchRoom extends Room<{ state: MatchState }> {
     this.state.code = this.roomId;
     this.state.serverInstance = INSTANCE_ID;
     this.state.map = opts.map;
+    this.state.killsToWin = opts.killsToWin;
     this.state.maxPlayers = opts.maxPlayers;
     this.setPatchRate(PATCH_INTERVAL_MS);
     // regen, grenade fuses and late respawns, timed for the metrics line
