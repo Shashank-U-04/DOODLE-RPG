@@ -35,6 +35,7 @@ import { decodeLook } from "./look";
 import {
   characterArmInks,
   characterReady,
+  gunMuzzle,
   loadCharacter,
   makeCharacterRig,
   type ArmInks,
@@ -189,6 +190,8 @@ type Bullet = {
   /** drawn offset from the true path: starts at the muzzle and fades onto the shot line */
   off?: THREE.Vector3;
   travel?: number;
+  /** another player's round, drawn only: the match server already decided what it hit */
+  cosmetic?: boolean;
 };
 type Grenade = { pos: THREE.Vector3; vel: THREE.Vector3; fuse: number; mesh: THREE.Object3D };
 type Shard = { mesh: THREE.Mesh; vel: THREE.Vector3; life: number; spin: number };
@@ -1050,6 +1053,39 @@ export function createGame(
 
   /* ---------- pools ---------- */
   const bulletGeo = new THREE.BoxGeometry(0.05, 0.05, 0.6);
+  // A gun's round: a copper-jacketed bullet with a burning tracer streak
+  // behind it, tapering out. Both point down +z, the bullet's tip at the front.
+  const tracerGeo = new THREE.CylinderGeometry(0.017, 0.005, 1.3, 6).rotateX(Math.PI / 2).translate(0, 0, -0.68);
+  const roundGeo = new THREE.ConeGeometry(0.02, 0.075, 8).rotateX(Math.PI / 2).translate(0, 0, 0.02);
+  const makeRound = () => {
+    const streak = new THREE.Mesh(tracerGeo, makeInkMaterial(INK.GOLD, false, THREE.FrontSide, true));
+    streak.add(new THREE.Mesh(roundGeo, makeInkMaterial(INK.ORANGE, false, THREE.FrontSide, true)));
+    return streak;
+  };
+  // A muzzle flash on another player's gun: a forward flame and a hot core,
+  // gone in two frames.
+  const flashConeGeo = new THREE.ConeGeometry(0.075, 0.3, 7).rotateX(Math.PI / 2).translate(0, 0, 0.15);
+  const flashCoreGeo = new THREE.SphereGeometry(0.055, 8, 6);
+  const flashes: { mesh: THREE.Object3D; life: number }[] = [];
+  const spawnMuzzleFlash = (at: THREE.Vector3, dir: THREE.Vector3) => {
+    const mesh = new THREE.Mesh(flashConeGeo, makeInkMaterial(INK.GOLD, false, THREE.FrontSide, true));
+    mesh.add(new THREE.Mesh(flashCoreGeo, makeInkMaterial(INK.ORANGE, false, THREE.FrontSide, true)));
+    mesh.position.copy(at);
+    mesh.lookAt(at.clone().add(dir));
+    mesh.rotateZ(rand(0, Math.PI));
+    mesh.scale.setScalar(rand(0.8, 1.25));
+    scene.add(mesh);
+    flashes.push({ mesh, life: 0.06 });
+  };
+  const updateFlashes = (dt: number) => {
+    for (let i = flashes.length - 1; i >= 0; i--) {
+      flashes[i].life -= dt;
+      if (flashes[i].life <= 0) {
+        scene.remove(flashes[i].mesh);
+        flashes.splice(i, 1);
+      }
+    }
+  };
   /** metres over which a player's tracer slides from the muzzle onto the shot line */
   const TRACER_MERGE = 7;
   const spawnBullet = (
@@ -1062,8 +1098,11 @@ export function createGame(
     headMul = 1,
     maxDist?: number,
     drawFrom?: THREE.Vector3,
+    look: "round" | "ink" = "ink",
+    cosmetic = false,
   ) => {
-    const mesh = new THREE.Mesh(bulletGeo, makeInkMaterial(ink, false, THREE.FrontSide, true));
+    const mesh =
+      look === "round" ? makeRound() : new THREE.Mesh(bulletGeo, makeInkMaterial(ink, false, THREE.FrontSide, true));
     mesh.position.copy(drawFrom ?? pos);
     mesh.lookAt(pos.clone().add(vel));
     scene.add(mesh);
@@ -1083,6 +1122,7 @@ export function createGame(
       source,
       off: drawFrom ? drawFrom.clone().sub(pos) : undefined,
       travel: 0,
+      cosmetic,
     });
   };
 
@@ -1250,11 +1290,12 @@ export function createGame(
         dir.clone().multiplyScalar(70),
         def.damage,
         true,
-        INK.BLUE,
+        INK.GOLD,
         def.kind,
         def.headMul,
         rem ? rem.dist : undefined,
         muzzleAt,
+        "round",
       );
       if (!rem && wallT < 160) {
         spawnShards(hitPoint, INK.BLACK, 2, 2);
@@ -1774,6 +1815,11 @@ export function createGame(
     walk: number;
     /** stride size, eased between standing and running so the legs never snap */
     walkAmt: number;
+    /** where the drawn body was last frame, for its velocity */
+    prev: THREE.Vector3;
+    /** eased speed along where they face and to their right, m/s (the legs' walk / run / strafe) */
+    vF: number;
+    vS: number;
   };
 
   const pvp = {
@@ -1859,6 +1905,9 @@ export function createGame(
           swingT: 0,
           walk: 0,
           walkAmt: 0,
+          prev: new THREE.Vector3(p.state.x, p.state.y, p.state.z),
+          vF: 0,
+          vS: 0,
         };
         pvp.remotes.set(p.id, a);
       }
@@ -1927,14 +1976,29 @@ export function createGame(
       // the rigs are modelled facing +Z, the player convention faces -Z
       a.rig.root.rotation.y = a.yaw + Math.PI;
       a.rig.root.visible = s.alive;
+      // how fast the drawn body moves, along where it faces and to its right:
+      // the legs walk, run, back-pedal or strafe to match (a teleport is not a stride)
+      const face = new THREE.Vector3(Math.sin(a.yaw + Math.PI), 0, Math.cos(a.yaw + Math.PI));
+      if (dt > 0) {
+        const vx = (a.pos.x - a.prev.x) / dt;
+        const vz = (a.pos.z - a.prev.z) / dt;
+        const fast = vx * vx + vz * vz > 400;
+        a.vF = damp(a.vF, fast ? 0 : vx * face.x + vz * face.z, 10, dt);
+        a.vS = damp(a.vS, fast ? 0 : vx * -face.z + vz * face.x, 10, dt);
+      }
+      a.prev.copy(a.pos);
       if (!s.alive) continue;
 
-      // a character model runs its own clips; the limb code below then only
-      // moves its stand-in groups
-      (a.rig as { anim?: CharacterAnim }).anim?.update(dt, {
+      // a character model runs its own clips (legs) and holds its gun in both
+      // hands where it aims; the limb code below then only moves stand-ins
+      const anim = (a.rig as { anim?: CharacterAnim }).anim;
+      anim?.update(dt, {
         moving: s.moving,
         firing: s.firing,
         weapon: RIG_WEAPON[a.weapon] ?? "rifle",
+        pitch: s.pitch,
+        forward: a.vF,
+        side: a.vS,
       });
 
       const P = a.rig.parts;
@@ -1976,24 +2040,67 @@ export function createGame(
       if (!s.firing) a.fireT = 0;
       else if (a.fireT <= 0) {
         const blade = a.weapon === "KATANA";
-        a.fireT = blade ? 0.22 : 0.09;
+        const gunDef = WEAPONS.find((w) => w.name === a.weapon);
+        a.fireT = blade ? 0.22 : Math.max(0.07, gunDef?.interval ?? 0.09);
         if (blade) a.swingT = KATANA_SWING_DUR;
         const dir = new THREE.Vector3(Math.sin(a.yaw + Math.PI), 0, Math.cos(a.yaw + Math.PI));
+        if (!blade) {
+          // A gun goes off: rounds leave the barrel they are holding, along
+          // where they look, with a flash at the muzzle and a kick through the
+          // arms. Drawn only — the match server already settled the hits.
+          const aim = new THREE.Vector3(
+            -Math.sin(a.yaw) * Math.cos(s.pitch),
+            Math.sin(s.pitch),
+            -Math.cos(a.yaw) * Math.cos(s.pitch),
+          );
+          const muzzle = new THREE.Vector3();
+          if (!anim?.muzzle(muzzle)) {
+            const g = a.rig.parts.gun;
+            if (g.children.length) {
+              g.updateWorldMatrix(true, false);
+              g.localToWorld(muzzle.copy(gunMuzzle(g)));
+            } else
+              muzzle
+                .copy(a.pos)
+                .add(new THREE.Vector3(0, 1.25, 0))
+                .addScaledVector(dir, 0.5);
+          }
+          anim?.kick();
+          spawnMuzzleFlash(muzzle, aim);
+          const pellets = Math.min(5, gunDef?.pellets ?? 1);
+          for (let i = 0; i < pellets; i++) {
+            const d = aim.clone();
+            if (pellets > 1)
+              d.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(gunDef!.spread));
+            d.normalize();
+            const wallT = rayAABBall(muzzle, d, 160);
+            spawnBullet(
+              muzzle.clone(),
+              d.multiplyScalar(70),
+              0,
+              true,
+              INK.GOLD,
+              "remote",
+              1,
+              wallT < 0 ? undefined : wallT,
+              undefined,
+              "round",
+              true,
+            );
+          }
+          continue;
+        }
+        // the blade: a swept arc of ink in front of them
         const m = a.pos
           .clone()
-          .add(new THREE.Vector3(0, blade ? 1.15 : 1.25, 0))
-          .addScaledVector(dir, blade ? 0.9 : 0.5);
-        if (blade) {
-          const side = new THREE.Vector3(-dir.z, 0, dir.x);
-          for (let i = 0; i < 5; i++) {
-            const k = i / 4 - 0.5; // across the swing
-            const at = m.clone().addScaledVector(side, k * 1.15);
-            at.y += 0.3 * (1 - Math.abs(k));
-            spawnShards(at, a.ink, 2, 2.4);
-          }
-        } else {
-          spawnShards(m, a.ink, 3, 2.2);
-          spawnShards(m.clone().addScaledVector(dir, 3.5), a.ink, 1, 1.4);
+          .add(new THREE.Vector3(0, 1.15, 0))
+          .addScaledVector(dir, 0.9);
+        const side = new THREE.Vector3(-dir.z, 0, dir.x);
+        for (let i = 0; i < 5; i++) {
+          const k = i / 4 - 0.5; // across the swing
+          const at = m.clone().addScaledVector(side, k * 1.15);
+          at.y += 0.3 * (1 - Math.abs(k));
+          spawnShards(at, a.ink, 2, 2.4);
         }
       }
     }
@@ -3945,8 +4052,8 @@ export function createGame(
         }
       }
 
-      // actors
-      if (!dead) {
+      // actors (another player's round is only drawn: the server settled it)
+      if (!dead && !b.cosmetic) {
         if (b.friendly) {
           for (const e of enemies) {
             if (!e.alive) continue;
@@ -4181,6 +4288,8 @@ export function createGame(
     grenades.length = 0;
     for (const s of shards) scene.remove(s.mesh);
     shards.length = 0;
+    for (const f of flashes) scene.remove(f.mesh);
+    flashes.length = 0;
     for (const sp of splats) scene.remove(sp.mesh);
     splats.length = 0;
     for (const p of pickups) scene.remove(p.mesh);
@@ -4294,6 +4403,7 @@ export function createGame(
     updateBullets(dt);
     updateGrenades(dt);
     updateShards(dtRaw);
+    updateFlashes(dtRaw);
     updateCasings(dtRaw);
     updatePickups(dt);
 

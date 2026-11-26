@@ -21,7 +21,8 @@
     "test/hosted-leave.test.ts",
     "test/restart-detection.test.ts",
     "test/wake.test.ts",
-    "test/arms.test.ts"
+    "test/arms.test.ts",
+    "test/hold.test.ts"
   ],
   "include": ["src", "test", "scripts"]
 }
