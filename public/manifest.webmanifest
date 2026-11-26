@@ -1,7 +1,7 @@
 {
-  "name": "Doodle Shooter",
-  "short_name": "Doodle Shooter",
-  "description": "A scribbled survival shooter — solo wave survival in a hand-drawn district",
+  "name": "Doodle RPG",
+  "short_name": "Doodle RPG",
+  "description": "A hand-drawn shooter: survive the waves solo, or battle your friends online",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

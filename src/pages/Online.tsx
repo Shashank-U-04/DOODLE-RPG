@@ -5,36 +5,25 @@
 // every other player on. Solo play is a different page and a different code
 // path, so nothing here can change how the survival run behaves.
 //
-// Match rules: the map and the grappling-hook rule are chosen on /setup and
-// carried in as the match configuration. The host owns them (config packets
-// broadcast any change), and the start packet repeats them so a late joiner
-// still builds the same level. The engine is constructed from that
-// configuration, which is what makes the toggle more than decoration.
+// Match rules: the map and the kill target are chosen on /setup (page two)
+// and carried in as the match configuration; this page (page three) is only
+// matchmaking and never picks a map. The host's choice is the room's, and the
+// start packet repeats it so a late joiner still builds the same level. The
+// engine is constructed from that configuration.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { createGame } from "@/game/engine";
 import { EMPTY_HUD, type GameHandle, type HudState, type NetPlayerState } from "@/game/types";
-import { INK_HEX } from "@/game/world";
-import {
-  MAPS,
-  mapInfo,
-  normalizeMapId,
-  normalizeMatchConfig,
-  readSetup,
-  writeSetup,
-  type MapId,
-  type MatchConfig,
-} from "@/game/maps";
+import { pvpInkHex } from "@/game/world";
+import { mapInfo, normalizeMatchConfig, readSetup, type MatchConfig } from "@/game/maps";
 import { ColyseusSession, resumableSeat, warmColyseus } from "@/game/colyseus";
 import { matchWinner, type MatchSession, type NetPlayer, type SignalState } from "@/game/transport";
-import { KILLS_TO_WIN, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
+import { MAX_PLAYERS, NAME_MAX, RESPAWN_MS } from "../../server/src/shared/rules.js";
 import { isValidRoomCode, LEGACY_ROOM_PARAM, normalizeRoomCode, ROOM_PARAM } from "@/game/room";
 import { weaponLabel } from "@/game/arsenal";
 import DotField from "@/components/DotField";
 import { lookLabel, savedLookCode } from "@/game/look";
-
-const INK_LIST = Object.values(INK_HEX).filter((v): v is string => typeof v === "string");
 
 export default function Online() {
   const navigate = useNavigate();
@@ -53,8 +42,8 @@ export default function Online() {
   const [copied, setCopied] = useState(false);
   const [match, setMatch] = useState<MatchConfig>(() =>
     normalizeMatchConfig({
-      map: normalizeMapId(params.get("map") ?? setup.map),
-      grapple: params.get("grapple") === null ? setup.grapple : params.get("grapple") === "1",
+      map: params.get("map") ?? setup.map,
+      killsToWin: params.get("kills") ?? setup.killsToWin,
     }),
   );
   const ref = useRef<MatchSession | null>(null);
@@ -224,6 +213,7 @@ export default function Online() {
         setParams(
           (p) => {
             p.delete(ROOM_PARAM);
+            p.delete("grapple"); // links from before the grappling hook was removed
             return p;
           },
           { replace: true },
@@ -248,22 +238,6 @@ export default function Online() {
       onChange: () => setPlayers(session.getPlayers()),
     });
   }, [session, phase]);
-
-  /** Host only: change the map and tell the room. */
-  const chooseMap = (id: MapId) => {
-    const next = { ...match, map: id };
-    setMatch(next);
-    writeSetup(next);
-    session?.setConfig(next);
-  };
-
-  /** Host only: change the grapple rule and tell the room. */
-  const chooseGrapple = (on: boolean) => {
-    const next = { ...match, grapple: on };
-    setMatch(next);
-    writeSetup(next);
-    session?.setConfig(next);
-  };
 
   if (phase === "playing" && session) {
     return <PvpMatch session={session} onLeave={leave} />;
@@ -294,41 +268,18 @@ export default function Online() {
                 </label>
               </div>
 
-              <div className="mapgrid">
-                {MAPS.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={`mapbtn ${m.id === match.map ? "on" : ""}`}
-                    aria-pressed={m.id === match.map}
-                    onClick={() => chooseMap(m.id)}
-                  >
-                    <span className="mapthumb">
-                      <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
-                    </span>
-                    {m.name}
-                    <i>{m.tagline}</i>
-                  </button>
-                ))}
+              <div className="controls-note">
+                {info.name.toLowerCase()} · first to {match.killsToWin} kills
               </div>
-              <div className="settings">
-                <label>
-                  <input type="checkbox" checked={match.grapple} onChange={(e) => chooseGrapple(e.target.checked)} />
-                  grappling hook enabled <span className="k">(this match only · Q / E)</span>
-                </label>
-                <div className="controls-note">
-                  {match.grapple
-                    ? "the hook is part of this match"
-                    : "off for this match — nobody can equip or fire it"}
-                </div>
-              </div>
-
               <div className="mainbtns">
                 <button type="button" className="start" onClick={create}>
                   CREATE MATCH<i>you get a code to share · {info.name.toLowerCase()}</i>
                 </button>
                 <button type="button" onClick={() => setMode("join")}>
                   JOIN A MATCH<i>enter a friend's code</i>
+                </button>
+                <button type="button" onClick={() => navigate("/setup?mode=friends")}>
+                  CHANGE MAP · KILLS<i>back to the setup screen</i>
                 </button>
               </div>
 
@@ -342,7 +293,7 @@ export default function Online() {
                     <b>2</b> the other types it in and joins the room
                   </div>
                   <div>
-                    <b>3</b> everyone readies up, the host starts it — free for all, first to <b>{KILLS_TO_WIN}</b>{" "}
+                    <b>3</b> everyone readies up, the host starts it — free for all, first to <b>{match.killsToWin}</b>{" "}
                     kills
                   </div>
                   <div>
@@ -400,9 +351,7 @@ export default function Online() {
           {session && (mode === "host" || mode === "join") && (
             <>
               <h1>{hosting ? "MATCH CODE" : `CODE ${session.code}`}</h1>
-              <h2>
-                {info.name.toLowerCase()} · grappling hook {match.grapple ? "on" : "off"}
-              </h2>
+              <h2>{info.name.toLowerCase()}</h2>
               {hosting && (
                 <>
                   <div className="dd-netcode">{session.code}</div>
@@ -423,49 +372,23 @@ export default function Online() {
               )}
               {!hosting && <h2>{session.joined ? "you're in the room" : "connecting to the match server…"}</h2>}
 
-              {/* the host sets the battlefield and the rule; guests read them */}
-              {hosting ? (
-                <>
-                  <div className="mapgrid small">
-                    {MAPS.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`mapbtn small ${m.id === match.map ? "on" : ""}`}
-                        aria-pressed={m.id === match.map}
-                        onClick={() => chooseMap(m.id)}
-                      >
-                        <span className="mapthumb">
-                          <img src={m.snapshot} alt={`${m.name} in-game snapshot`} loading="lazy" />
-                        </span>
-                        {m.name}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="settings">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={match.grapple}
-                        onChange={(e) => chooseGrapple(e.target.checked)}
-                      />
-                      grappling hook enabled <span className="k">(everyone plays by this)</span>
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <div className="controls-note">the host controls the map and the rules</div>
-              )}
+              {/* the rules were set on /setup; the lobby only shows them */}
+              <div className="controls-note">
+                free for all · first to <b>{match.killsToWin}</b> kills wins
+                {hosting ? "" : " · the host picked the map and the kills"}
+              </div>
 
               <div className="dd-roster">
                 <div className="row head">
                   <span className="dot" style={{ color: "#2e3342" }} />
-                  <span>IN THE ROOM ({players.length})</span>
+                  <span>
+                    IN THE ROOM ({players.length}) · up to {MAX_PLAYERS}
+                  </span>
                 </div>
                 {players.length === 0 && <div className="row">nobody yet…</div>}
                 {players.map((p) => (
                   <div className="row" key={p.id}>
-                    <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                    <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                     <span className="nm">
                       {p.name}
                       {p.isMe ? " (you)" : ""}
@@ -569,7 +492,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   // Only the Colyseus session reports this; the arena stops and says why.
   const [lost, setLost] = useState<string | null>(null);
   // The host's rules, straight off the session: the map is fixed for the whole
-  // match and the grapple rule is the one every client received.
+  // match.
   const config = session.getConfig();
 
   const pushFeed = useCallback((text: string, hot: boolean) => {
@@ -656,7 +579,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
       },
       // The match is built from the host's rules, not from whatever this
       // browser last had selected.
-      { map: config.map, grapple: config.grapple },
+      { map: config.map, look: savedLookCode() },
     );
     gameRef.current = handle;
 
@@ -728,9 +651,9 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, pushFeed, resetRound]);
 
-  // First to fifteen takes it: the match server declares the winner. The
-  // effect only freezes our own view behind it.
-  const winner = matchWinner(players, session.winnerId, KILLS_TO_WIN);
+  // First to the host's kill target takes it: the match server declares the
+  // winner. The effect only freezes our own view behind it.
+  const winner = matchWinner(players, session.winnerId, config.killsToWin);
   // a fresh object every render; the effect only cares whether the match is decided
   const decided = winner !== null;
   useEffect(() => {
@@ -743,9 +666,14 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
   const hpFrac = Math.max(0, hud.hp / hud.maxHp);
   const me = players.find((p) => p.isMe);
   const iWon = winner?.isMe ?? false;
+  // won because everyone else left (the server's walkover), not on the score
+  const walkover = session.winBy === "walkover";
   // The match server hands the room to a guest when the host leaves for good,
-  // and only the current host's rematch counts.
+  // and only the current host's rematch counts. Alone, a rematch keeps the
+  // room open: friends can still join a running match with its code.
   const canRematch = Boolean(me?.isHost);
+  // players whose connection dropped: the server holds their seat for a while
+  const waitingOn = players.filter((p) => !p.isMe && !p.online);
 
   return (
     <div className={`dd-root ${live ? "dd-live" : ""}`}>
@@ -785,7 +713,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
 
         <div className="dd-hud-tl">
           <div className="score">
-            KILLS <b>{me?.kills ?? 0}</b> / {KILLS_TO_WIN}
+            KILLS <b>{me?.kills ?? 0}</b> / {config.killsToWin}
           </div>
           <div className="combo">{me ? me.name : ""}</div>
         </div>
@@ -802,7 +730,7 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             </div>
             {players.map((p) => (
               <div className={`row ${p.isMe ? "me" : ""} ${p.online ? "" : "off"}`} key={p.id}>
-                <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                 <span className="nm">{p.name}</span>
                 <span className="kb">{p.kills}</span>
                 <span className="kb">{p.deaths}</span>
@@ -835,6 +763,12 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
         )}
 
         {tip && live && <div className="dd-tip" dangerouslySetInnerHTML={{ __html: tip }} />}
+
+        {waitingOn.length > 0 && !winner && !lost && (
+          <div className="dd-tip dd-waiting">
+            {waitingOn.map((p) => p.name).join(", ")} lost connection · waiting for them to come back…
+          </div>
+        )}
 
         <div className="dd-hud-bl">
           <div className="health">
@@ -921,12 +855,16 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
           <div className="panel">
             <h1>{iWon ? "YOU WIN" : "MATCH OVER"}</h1>
             <h2>
-              {winner.name} took it · {winner.kills} kills
+              {walkover
+                ? iWon
+                  ? "your opponent left the match · last doodle standing"
+                  : `${winner.name} was the last one left`
+                : `${winner.name} took it · ${winner.kills} kills`}
             </h2>
             <div className="dd-score" style={{ textAlign: "center", margin: "0 auto" }}>
               {players.map((p) => (
                 <div className={`row ${p.isMe ? "me" : ""}`} key={p.id} style={{ justifyContent: "center" }}>
-                  <span className="dot" style={{ color: INK_LIST[p.ink % INK_LIST.length] }} />
+                  <span className="dot" style={{ color: pvpInkHex(p.ink) }} />
                   <span className="nm">{p.name}</span>
                   <span className="kb">{p.kills}</span>
                   <span className="kb">{p.deaths}</span>
@@ -936,7 +874,12 @@ function PvpMatch({ session, onLeave }: { session: MatchSession; onLeave: () => 
             <div className="mainbtns">
               {canRematch ? (
                 <button type="button" className="start" onClick={() => session.rematch()}>
-                  REMATCH<i>everyone back to a fresh corner</i>
+                  REMATCH
+                  <i>
+                    {players.length < 2
+                      ? `keep the room open · friends join with code ${session.code}`
+                      : "everyone back to a fresh corner"}
+                  </i>
                 </button>
               ) : (
                 <div className="dd-netstatus">waiting for the host to start a rematch…</div>

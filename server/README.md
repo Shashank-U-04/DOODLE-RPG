@@ -1,6 +1,6 @@
-# Doodle Shooter — multiplayer server
+# Doodle RPG — multiplayer server
 
-A [Colyseus](https://colyseus.io) 0.18 server for Doodle Shooter's online
+A [Colyseus](https://colyseus.io) 0.18 server for Doodle RPG's online
 matches. It owns the
 lobby: roster, player limit, ready flags, match rules, the decision to start,
 and reconnection — and, in the arena, every player's body (position, facing,
@@ -133,8 +133,8 @@ can be created and joined. It prints no tokens and exits 1 on any failure.
 SIGTERM directly):
 
 ```sh
-docker build -t doodle-shooter-server server/
-docker run --rm -p 2567:2567 -e ALLOWED_ORIGINS=https://<your-frontend-origin> doodle-shooter-server
+docker build -t doodle-rpg-server server/
+docker run --rm -p 2567:2567 -e ALLOWED_ORIGINS=https://<your-frontend-origin> doodle-rpg-server
 ```
 
 > The Dockerfile has **not** been built or run yet: Docker was not available
@@ -189,18 +189,18 @@ Create a room and join one by code with `@colyseus/sdk`:
 ```ts
 import { Client } from "@colyseus/sdk";
 const client = new Client("http://localhost:2567");
-const host = await client.create("match", { name: "Ada", map: "pyramid", grapple: true, maxPlayers: 4 });
+const host = await client.create("match", { name: "Ada", map: "pyramid", killsToWin: 10, maxPlayers: 4 });
 host.roomId; // the 4-letter room code, e.g. "K7QM"
 const guest = await client.joinById(host.roomId, { name: "Grace" });
 ```
 
 **Create options** (all optional; anything malformed falls back to the default):
 `name` (≤ 16 chars, default `HOST`), `map` (`district` | `pyramid`,
-default `district`), `grapple` (default `true`), `maxPlayers` (2–4,
-default 4).
+default `district`), `killsToWin` (5, 10, 15, 20, 25 or 30; default 15),
+`maxPlayers` (2–10, default 10).
 
 **State** (`MatchState`): `code`, `phase` (`lobby` → `playing`), `map`,
-`grapple`, `maxPlayers`, `hostId`, `players` (map of `id`, `name`, `ink`,
+`maxPlayers`, `killsToWin`, `hostId`, `players` (map of `id`, `name`, `ink`,
 `isHost`, `ready`, `connected`, and the body: `spawned`, `x`, `y`, `z`, `yaw`,
 `pitch`, `moving`, `alive`, `weapon`, `epoch`).
 
@@ -209,7 +209,7 @@ default 4).
 | Type            | Payload                                                          | Who      | Rule                                                                                 |
 | --------------- | ---------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | `ready`         | `{ ready: boolean }`                                             | guests   | lobby only; the host is always ready                                                 |
-| `config`        | `{ map?, grapple? }`                                             | host     | lobby only; unknown maps rejected                                                    |
+| `config`        | `{ map?, killsToWin? }`                                          | host     | lobby only; unknown maps and kill targets off the list ignored                       |
 | `start`         | —                                                                | host     | send with `room.request("start")`; answers `{ ok: true }` or `{ ok: false, reason }` |
 | `move`          | `{ x, y, z, yaw, pitch, moving, firing?, alive, weapon, epoch }` | everyone | playing only; see Movement (`alive` is ignored: the server decides it)               |
 | `fire`          | `{ shot, weapon, origin, dir, ads, air, lag }`                   | everyone | see Combat                                                                           |
@@ -321,8 +321,8 @@ way" — never what it hit; there is no message that claims damage or a kill.
 - **Health and death:** 100 hp, regen 11 hp/s after 4.5 s without damage. At
   0 the player is down: a death, a kill for the attacker (none for erasing
   yourself), an `eliminated` event, and a respawn once 3.2 s have passed and
-  the client re-places the body (or 2 s after that regardless). First to 15
-  kills sets `winnerId` and stops combat until the host's `rematch`.
+  the client re-places the body (or 2 s after that regardless). First to
+  `killsToWin` kills (the host's pick, default 15) sets `winnerId` and stops combat until the host's `rematch`.
 - **Order:** messages are processed one at a time in arrival order, so when
   two players fire at once the first shot processed lands and a player it
   kills can no longer fire.

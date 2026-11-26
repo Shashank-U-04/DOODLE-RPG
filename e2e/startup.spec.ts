@@ -60,7 +60,7 @@ test("the menus and the online lobby start without Convex or the editor bridge",
   const w = await watch(context);
 
   await w.page.goto("/");
-  await expect(w.page.getByRole("heading", { name: "DOODLE SHOOTER" })).toBeVisible();
+  await expect(w.page.getByRole("heading", { name: "DOODLE RPG" })).toBeVisible();
 
   await w.page.goto("/setup?mode=friends");
   await expect(w.page.locator("body")).toContainText("CREATE ROOM");
@@ -87,7 +87,7 @@ for (const map of MAPS) {
   test(`the ${map} map loads`, async ({ browser }) => {
     const context = await browser.newContext();
     const w = await watch(context);
-    await w.page.goto(`/game?map=${map}&grapple=1`);
+    await w.page.goto(`/game?map=${map}`);
     // the engine mounts its canvas, builds the map and reports the area it put us in
     await expect(w.page.locator(".dd-stage canvas")).toHaveCount(1, { timeout: 60_000 });
     await expect(w.page.locator(".dd-area")).not.toBeEmpty({ timeout: 60_000 });

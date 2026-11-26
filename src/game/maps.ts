@@ -4,10 +4,18 @@
 // URL, the match configuration, the engine's `MapId` and the host's lobby
 // settings all speak these strings.
 
-import { DEFAULT_MAP, isMapId, MAP_IDS, type MapId } from "../../server/src/shared/rules.js";
+import {
+  DEFAULT_MAP,
+  isMapId,
+  KILL_TARGETS,
+  KILLS_TO_WIN,
+  MAP_IDS,
+  normalizeKillTarget,
+  type MapId,
+} from "../../server/src/shared/rules.js";
 
 // The ids themselves are the match server's (server/src/shared/rules.ts).
-export { DEFAULT_MAP, isMapId, MAP_IDS, type MapId };
+export { DEFAULT_MAP, isMapId, KILL_TARGETS, MAP_IDS, normalizeKillTarget, type MapId };
 
 export type MapInfo = {
   id: MapId;
@@ -52,17 +60,17 @@ export function normalizeMapId(value: string | null | undefined): MapId {
 /** Per-match gameplay configuration. Separate from permanent user settings. */
 export type MatchConfig = {
   map: MapId;
-  /** the grappling hook exists in the engine; this decides whether a match has it */
-  grapple: boolean;
+  /** online only: first to this many kills wins (one of KILL_TARGETS) */
+  killsToWin: number;
 };
 
-export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP, grapple: true };
+export const DEFAULT_MATCH_CONFIG: MatchConfig = { map: DEFAULT_MAP, killsToWin: KILLS_TO_WIN };
 
 export function normalizeMatchConfig(value: unknown): MatchConfig {
   const v = value && typeof value === "object" ? (value as Partial<MatchConfig>) : {};
   return {
     map: isMapId(v.map) ? v.map : DEFAULT_MAP,
-    grapple: typeof v.grapple === "boolean" ? v.grapple : true,
+    killsToWin: normalizeKillTarget(v.killsToWin),
   };
 }
 
@@ -122,16 +130,7 @@ export function mapFromQuery(search: string): MapId {
   return readSetup().map;
 }
 
-/** Grapple flag from a URL: absent means "the match default". */
-export function grappleFromQuery(search: string): boolean {
-  const q = new URLSearchParams(search);
-  const value = q.get("grapple");
-  if (value === "0" || value === "off") return false;
-  if (value === "1" || value === "on") return true;
-  return readSetup().grapple;
-}
-
 /** The query string that carries a solo match into /game. */
-export function gameHref(config: MatchConfig): string {
-  return `/game?map=${config.map}&grapple=${config.grapple ? 1 : 0}`;
+export function gameHref(config: Pick<MatchConfig, "map">): string {
+  return `/game?map=${config.map}`;
 }

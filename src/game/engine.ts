@@ -1,7 +1,7 @@
 // Doodle District — single-player wave-survival FPS engine (faithful re-creation).
 // First-person survival inside a hand-sketched town: toon-shaded boxes on paper with
 // real-time ink outlines, wave modifiers, bosses every 5 waves, katana focus meter,
-// grapple, grenades, and pickups.
+// grenades, and pickups.
 
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -15,10 +15,12 @@ import {
   PAPER,
   PAPER_RGB,
   makeInkMaterial,
+  inkRgb,
   depenetrate,
   isStandable,
   meleeHits,
   pickSafeSpawn,
+  PVP_INKS,
   resolveMove,
   shared,
   spreadSpawns,
@@ -30,7 +32,14 @@ import { buildPyramid, type Mood, type PyramidMap } from "./pyramid";
 import type { MapId } from "./maps";
 import { makeBlobRig, makeMummyRig, makeRig, makeWaspRig, type Rig } from "./rig";
 import { decodeLook } from "./look";
-import { characterReady, loadCharacter, makeCharacterRig, type CharacterAnim } from "./characters";
+import {
+  characterArmInks,
+  characterReady,
+  loadCharacter,
+  makeCharacterRig,
+  type ArmInks,
+  type CharacterAnim,
+} from "./characters";
 import type { NetCombatIntent, NetShotLanded } from "./types";
 import { KATANA_MELEE, PVP, WEAPONS } from "./arsenal";
 import { PerfProbe, perfRequested } from "./perf";
@@ -195,12 +204,12 @@ export type { MapId } from "./maps";
 export function createGame(
   container: HTMLElement,
   cb: EngineCallbacks,
-  opts: { map?: MapId; grapple?: boolean } = {},
+  opts: {
+    map?: MapId;
+    /** this player's look code (src/game/look.ts): the first-person arms wear its colours */
+    look?: string;
+  } = {},
 ): GameHandle {
-  // One flag, checked by every input path that can fire the hook. A match that
-  // disables the grapple must not be able to activate it with a key, a mouse
-  // button or a held bind, so the toggle itself is the gate.
-  const grappleEnabled = opts.grapple !== false;
   /* ---------- renderer / scene / paper post ---------- */
   const canvas = document.createElement("canvas");
   canvas.className = "dd-canvas";
@@ -397,22 +406,6 @@ export function createGame(
     hurtFx: 0,
     flashFx: 0,
     alive: true,
-    grap: {
-      active: false,
-      state: "idle" as "idle" | "fly" | "on",
-      point: new THREE.Vector3(),
-      hook: new THREE.Vector3(),
-      from: new THREE.Vector3(),
-      flyT: 0,
-      flyDur: 0,
-      len: 0,
-      stam: 1,
-      swingT: 0,
-      blockedT: 0,
-      losT: 0,
-      cd: 0,
-      pause: 0,
-    },
   };
 
   /* ---------- weapon state ---------- */
@@ -633,11 +626,50 @@ export function createGame(
    * "fist" frame where the held bar runs along +Y, the palm sits on the +X side
    * (mirrored for the left hand) and the fingers curl round the -Z side; the
    * fist is then stood up on a pistol grip or laid along a handguard.
+   *
+   * The hand and sleeve have materials of their own (not the shared gun inks),
+   * so the player's character can recolour them once its model has loaded:
+   * a SWAT gets black gloves and grey sleeves, a tank-top fighter bare arms.
    */
-  const matHand = gunMaterial(INK.SAND, false);
-  const matArm = gunMaterial(INK.BLUE, false);
+  const armMaterial = (ink: InkId) => {
+    const base = gunMaterial(ink, false);
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        ...base.uniforms,
+        uInk: { value: ink },
+        uShadeScale: { value: 0.85 },
+        uShadeBias: { value: GUN_SHADE[ink] ?? -0.1 },
+      },
+      vertexShader: base.vertexShader,
+      fragmentShader: base.fragmentShader,
+      side: base.side,
+    });
+  };
+  const matHand = armMaterial(INK.SAND);
+  const matArm = armMaterial(INK.BLUE);
   const matBand = makeInkMaterial(INK.BLACK, true);
   const matPad = makeInkMaterial(INK.STONE, true);
+  /** the glove's knuckle pads and the cuff where glove meets sleeve: only some outfits have them */
+  const handPads: THREE.Mesh[] = [];
+  const armCuffs: THREE.Mesh[] = [];
+  const lum = (ink: InkId) => {
+    const [r, g, b] = inkRgb(ink);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  /** dress the first-person arms in a character's colours */
+  const wearArms = (inks: ArmInks) => {
+    const dress = (m: THREE.ShaderMaterial, ink: InkId) => {
+      m.uniforms.uInk.value = ink;
+      // dark cloth shades darker still (as the gun inks do); light cloth and skin barely
+      m.uniforms.uShadeBias.value = -0.1 - 0.16 * Math.min(1, Math.max(0, (0.6 - lum(ink)) / 0.4));
+    };
+    dress(matHand, inks.hand);
+    dress(matArm, inks.sleeve);
+    // a pad on a dark glove, never on a bare hand; a cuff only where a sleeve ends
+    const gloved = lum(inks.hand) < 0.3;
+    for (const p of handPads) p.visible = gloved;
+    for (const c of armCuffs) c.visible = inks.sleeve !== inks.hand;
+  };
   type HandCfg = {
     /** "grip": round a pistol grip (bar upright, raked by tilt); "bar": along a handguard or handle */
     mode: "grip" | "bar";
@@ -692,6 +724,7 @@ export function createGame(
     palm.position.set(f * (rx + 0.012), -0.004, 0.006);
     fist.add(palm);
     const pad = new THREE.Mesh(new RoundedBoxGeometry(0.01, 0.07, 0.022, 2, 0.004), matPad);
+    handPads.push(pad);
     pad.position.set(f * (rx + 0.022), 0, -rz * 0.45);
     fist.add(pad);
     const ys = [0.028, 0.0095, -0.0095, -0.028];
@@ -761,6 +794,7 @@ export function createGame(
       matArm,
     );
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.0045, 6, 18), matBand);
+    armCuffs.push(cuff);
     cuff.rotation.x = Math.PI / 2;
     cuff.scale.set(1.18, 1, 1);
     cuff.position.y = 0.045;
@@ -839,6 +873,16 @@ export function createGame(
     return vg;
   };
   for (const w of WEAPONS) buildViewModel(w.kind);
+  // The arms start in the default doodle's blue sleeves and tan gloves (what
+  // other players see on anyone without a character) and change to the chosen
+  // character's colours as soon as its model is in. Solo loads it just for this.
+  {
+    const look = decodeLook(opts.look ?? "");
+    if (look)
+      void characterArmInks(look.char).then((inks) => {
+        if (inks && !disposed) wearArms(inks);
+      });
+  }
 
   // the shell carried to the M1887's loading gate during a reload
   const carriedShell = new THREE.Group();
@@ -1051,26 +1095,6 @@ export function createGame(
       });
     }
   };
-
-  const ropeMat = makeInkMaterial(INK.BLACK, false, THREE.FrontSide, true);
-  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 1, 5), ropeMat);
-  rope.visible = false;
-  scene.add(rope);
-  // the hook: a shank and three ink claws, flying out ahead of the rope
-  const hookMesh = new THREE.Group();
-  {
-    const hm = makeInkMaterial(INK.BLACK, true);
-    const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 6), hm);
-    hookMesh.add(shank);
-    for (let i = 0; i < 3; i++) {
-      const claw = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.016, 4, 8, Math.PI * 0.9), hm);
-      claw.rotation.set(0, (i / 3) * Math.PI * 2, Math.PI / 2);
-      claw.position.y = 0.06;
-      hookMesh.add(claw);
-    }
-    hookMesh.visible = false;
-    scene.add(hookMesh);
-  }
 
   const splatGeo = new THREE.CircleGeometry(0.55, 7);
   const spawnSplat = (pos: THREE.Vector3, ink: InkId) => {
@@ -1719,7 +1743,6 @@ export function createGame(
    * players, our bullets can hit them, and their bullets can hit us. Movement,
    * weapons, physics, waves and the HUD are the code they already were.
    * ------------------------------------------------------------------ */
-  const PVP_INKS: InkId[] = [INK.BLUE, INK.RED, INK.BLACK, INK.ORANGE, INK.GREEN, INK.PINK];
 
   type RemoteActor = {
     id: string;
@@ -3349,170 +3372,6 @@ export function createGame(
     }
   }
 
-  /* ---------- grapple ---------- */
-  /*
-   * The grapple, as the reference game does it: a tap throws the hook (it flies
-   * out from the hand), it bites, and then you hang on a rope. Holding the key
-   * reels you in with a real pull; letting go of the key leaves you swinging
-   * (W pumps the swing); tapping again lets go, and jumping lets go with a
-   * launch. The rope is a constraint on velocity, not a teleport, so momentum
-   * survives the release and the body is never dragged through a wall.
-   */
-  const GRAPPLE_RANGE = 34;
-  const hookTmp = new THREE.Vector3();
-  const handTmp = new THREE.Vector3();
-  const grappleHand = (out: THREE.Vector3) => out.set(-0.2, -0.22, -0.55).applyMatrix4(camera.matrixWorld);
-  /** does the body at `pos` overlap any solid? */
-  const bodyOverlaps = (pos: THREE.Vector3) => {
-    const p = player;
-    for (const c of world.colliders) {
-      if (
-        pos.x + p.radius > c.minX &&
-        pos.x - p.radius < c.maxX &&
-        pos.z + p.radius > c.minZ &&
-        pos.z - p.radius < c.maxZ &&
-        pos.y + p.height > c.minY &&
-        pos.y + 0.05 < c.maxY
-      )
-        return true;
-    }
-    return false;
-  };
-
-  function grapplePress() {
-    if (!grappleEnabled) return;
-    const g = player.grap;
-    if (g.state !== "idle") {
-      detachGrapple(false);
-      return;
-    }
-    if (g.cd > 0) return;
-    if (g.stam < 0.15) {
-      cb.onTip("grapple needs a breather · land to recover", 1);
-      return;
-    }
-    const eye = eyePos();
-    const dir = fwdVec();
-    const t = raycastWorld(eye, dir, GRAPPLE_RANGE);
-    if (t >= GRAPPLE_RANGE) return;
-    g.point.copy(eye).addScaledVector(dir, Math.max(0.5, t - 0.12));
-    grappleHand(g.from);
-    g.hook.copy(g.from);
-    g.flyT = 0;
-    g.flyDur = clamp(t / 110, 0.04, 0.4);
-    g.state = "fly";
-    g.active = true;
-    g.stam = Math.max(0, g.stam - 0.12);
-    fx.grappleFire();
-  }
-
-  function detachGrapple(launch: boolean) {
-    const g = player.grap;
-    if (g.state === "idle") return;
-    const was = g.state;
-    g.state = "idle";
-    g.active = false;
-    g.cd = 0.12;
-    g.pause = 0.6;
-    rope.visible = false;
-    hookMesh.visible = false;
-    if (was !== "on") return;
-    const v = player.vel;
-    if (launch) {
-      v.y = Math.max(v.y, 0) + 8;
-      v.x *= 1.12;
-      v.z *= 1.12;
-      fovKick.kick(30);
-    } else {
-      v.y += 2.5;
-    }
-  }
-
-  function updateGrapple(dt: number, forward: boolean) {
-    const g = player.grap;
-    const p = player;
-    g.cd = Math.max(0, g.cd - dt);
-    if (g.state === "idle") {
-      g.pause = Math.max(0, g.pause - dt);
-      if (g.pause <= 0) g.stam = Math.min(1, g.stam + (p.onGround ? 0.5 : 0.2) * dt);
-      rope.visible = false;
-      hookMesh.visible = false;
-      return;
-    }
-    const holding = keys.has("KeyQ") || keys.has("KeyE") || mouseButtons.has(1);
-    if (g.state === "fly") {
-      g.flyT += dt;
-      const a = Math.min(1, g.flyT / g.flyDur);
-      g.hook.lerpVectors(g.from, g.point, a);
-      if (a >= 1) {
-        g.state = "on";
-        g.swingT = 0;
-        g.blockedT = 0;
-        g.losT = 0;
-        hookTmp.set(p.pos.x, p.pos.y + p.height * 0.55, p.pos.z);
-        g.len = Math.max(1.5, hookTmp.distanceTo(g.point) * 0.94);
-        fx.grappleHit();
-        if (p.onGround) {
-          p.vel.y = Math.max(p.vel.y, 5);
-          p.onGround = false;
-        }
-      }
-    } else {
-      g.hook.copy(g.point);
-      g.swingT += dt;
-      g.stam = Math.max(0, g.stam - (holding ? 0.34 : 0.14) * dt);
-      const centre = hookTmp.set(p.pos.x, p.pos.y + p.height * 0.55, p.pos.z);
-      const dir = g.point.clone().sub(centre);
-      const l = dir.length();
-      if (l > 0.01) dir.divideScalar(l);
-      const along = p.vel.dot(dir);
-      if (holding) {
-        // reel: shorten the rope and pull hard toward the anchor
-        g.len = Math.max(1.5, g.len - 14 * dt);
-        if (along < 22) p.vel.addScaledVector(dir, 42 * dt);
-      } else {
-        if (along < 6) p.vel.addScaledVector(dir, 3 * dt);
-        // W pumps the swing while you hang below the anchor
-        if (forward && centre.y < g.point.y - 1) {
-          const f = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
-          p.vel.addScaledVector(f, 10 * dt);
-        }
-      }
-      if (l > g.len) {
-        // taut: no speed away from the anchor, and ease the slack out
-        const out = p.vel.dot(dir);
-        if (out < 0) p.vel.addScaledVector(dir, -out);
-        const d = Math.min(l - g.len, 0.35) * 0.85;
-        p.pos.addScaledVector(dir, d);
-        if (bodyOverlaps(p.pos)) p.pos.addScaledVector(dir, -d);
-      }
-      if (p.onGround && holding && dir.y > 0.2) {
-        p.vel.y = Math.max(p.vel.y, 4.5);
-        p.onGround = false;
-      }
-      g.losT += dt;
-      if (g.losT > 0.15) {
-        g.losT = 0;
-        g.blockedT = losClear(eyePos(), g.point) ? 0 : g.blockedT + 0.15;
-      }
-      if (l < 1.3 || g.blockedT > 0.3 || l > 90 || g.stam <= 0 || (p.onGround && g.swingT > 0.6 && !holding)) {
-        if (g.stam <= 0) cb.onTip("out of breath · land to recover", 1.2);
-        detachGrapple(l < 1.3);
-        return;
-      }
-    }
-    // the rope from the hand to the hook, and the hook itself
-    grappleHand(handTmp);
-    const span = g.hook.clone().sub(handTmp);
-    const len = span.length();
-    rope.visible = len > 0.05;
-    rope.position.copy(handTmp).addScaledVector(span, 0.5);
-    rope.scale.set(1, Math.max(0.01, len), 1);
-    if (len > 1e-4) rope.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), span.divideScalar(len));
-    hookMesh.visible = true;
-    hookMesh.position.copy(g.hook);
-    hookMesh.quaternion.copy(rope.quaternion);
-  }
   /* ---------- grenades ---------- */
   function throwGrenade() {
     if (player.grenades <= 0 || player.nadeCd > 0) return;
@@ -3652,8 +3511,7 @@ export function createGame(
       }
     }
     // A dash ends at normal speed rather than carrying its burst across the map
-    // (there is no air friction now to bleed it off), and nothing, grapple swings
-    // included, outruns a hard ceiling the match server comfortably accepts.
+    // (there is no air friction now to bleed it off), and nothing outruns a hard ceiling the match server comfortably accepts.
     if (dashWas && p.dashT <= 0) {
       const hs = Math.hypot(p.vel.x, p.vel.z);
       if (hs > QR) {
@@ -3662,16 +3520,13 @@ export function createGame(
       }
     }
     dashWas = p.dashT > 0;
-    p.vel.y -= 22 * (p.grap.state === "on" ? 0.88 : 1) * dt;
+    p.vel.y -= 22 * dt;
     landGraceT = Math.max(0, landGraceT - dt);
     coyoteT = p.onGround ? 0.13 : Math.max(0, coyoteT - dt);
     // A jump press is remembered for a moment, so one tapped just before
     // touching down still fires, and one just after running off a ledge
     // (coyote time) still counts as a ground jump.
-    if (jumpBufT > 0 && p.grap.state === "on") {
-      jumpBufT = 0;
-      detachGrapple(true);
-    } else if (jumpBufT > 0) {
+    if (jumpBufT > 0) {
       jumpBufT = Math.max(0, jumpBufT - dt);
       if (p.onGround || coyoteT > 0) {
         p.vel.y = XN;
@@ -3687,8 +3542,7 @@ export function createGame(
       }
     }
 
-    updateGrapple(dt, iz < 0);
-    // the reference's ceiling on any speed (rope launches included), well under
+    // the reference's ceiling on any speed, well under
     // what the match server accepts
     {
       const sp = p.vel.length();
@@ -4335,9 +4189,6 @@ export function createGame(
     player.hp = player.maxHp;
     player.alive = true;
     player.grenades = 3;
-    player.grap.active = false;
-    player.grap.state = "idle";
-    player.grap.stam = 1;
     curSlot = 0;
     setViewModel(0);
     score = 0;
@@ -4587,11 +4438,6 @@ export function createGame(
       case "KeyR":
         startReload();
         break;
-      case "KeyQ":
-      case "KeyE":
-        if (!grappleEnabled) break;
-        grapplePress();
-        break;
       case "KeyF":
       case "KeyV":
         if (slots[curSlot].def.katana) tryFocusDash();
@@ -4602,10 +4448,10 @@ export function createGame(
         break;
       case "KeyX":
       case "AltLeft":
-        if (player.dashCd <= 0 && player.grap.active === false) {
+        if (player.dashCd <= 0) {
           player.dashT = 0.16;
           player.dashCd = 1.4;
-          fx.grappleFire();
+          fx.dash();
         }
         break;
       case "Digit1":
@@ -4643,10 +4489,6 @@ export function createGame(
       if (!slots[curSlot].def.auto) fireWeapon();
     }
     if (e.button === 2) mouseAim = true;
-    if (e.button === 1) {
-      e.preventDefault();
-      grapplePress();
-    }
   };
   const onMouseUp = (e: MouseEvent) => {
     mouseButtons.delete(e.button);
@@ -4976,10 +4818,8 @@ export function createGame(
      * Back into the fight, at a pad that is provably clear.
      *
      * This is a full reset of everything attached to the body, not just its
-     * position. Dying while grappling used to leave the rope anchored, so the
-     * very first frame after the respawn reeled the player back to the spot they
-     * died on — the body was moved, and then yanked home by state nobody had
-     * cleared. Dash, jumps, crouch and the aim flags went the same way.
+     * position: state nobody clears (dash, jumps, crouch, the aim flags) would
+     * carry the dead body's movement into the first frame after the respawn.
      */
     netRespawn(preferIndex?: number) {
       if (!pvp.active) return;
@@ -4998,9 +4838,6 @@ export function createGame(
       player.dashT = 0;
       player.dashCd = 0;
       player.nadeCd = 0;
-      player.grap.active = false;
-      player.grap.state = "idle";
-      player.grap.stam = 1;
       // Face the middle of the district rather than whichever wall we died
       // staring at; a spawn that keeps a player's old yaw reads as "stuck".
       player.yaw = Math.atan2(spot.x, spot.z);

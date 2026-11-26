@@ -187,7 +187,7 @@ describe("telling a server restart from a network problem", function () {
       code,
       name,
       isHost,
-      { map: "district", grapple: true },
+      { map: "district" },
       { url: path.url, storage, restartProbeMs: PROBE_MS, silentSocketMs: SILENT_MS, restartVerdictMs: VERDICT_MS },
     );
     sessions.push(session);

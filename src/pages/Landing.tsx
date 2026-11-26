@@ -1,6 +1,6 @@
 // The title screen: paper sheet, panel, PLAY VS COMPUTER / PLAY WITH FRIENDS
 // buttons, settings and the control list. Each button opens the setup screen,
-// which picks the battlefield and the match rules before anything runs.
+// which picks the battlefield before anything runs.
 
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
@@ -12,7 +12,6 @@ const KEYBOARD: [string, string][] = [
   ["LMB", "fire / slash &nbsp; · &nbsp; <b>RMB</b> aim down sights / block"],
   ["Space", "jump &nbsp; · &nbsp; again in the air for a double jump"],
   ["C / Ctrl", "crouch &nbsp; · &nbsp; <b>X</b> dash"],
-  ["Q / E", "grapple: tap to swing · hold to reel in · tap again or <b>Space</b> to let go"],
   ["F", "katana slash &nbsp; · &nbsp; <b>R</b> reload &nbsp; · &nbsp; <b>G</b> grenade"],
   ["1-5 / wheel", "AK-47 · M1887 · AWM · katana · Desert Eagle"],
   ["M", "music &nbsp; · &nbsp; <b>P / Esc</b> pause"],
@@ -26,8 +25,8 @@ export default function Landing() {
   const [best] = useState(() => Number(localStorage.getItem("dd_best") || 0));
   const [note] = useState<string | null>(null);
 
-  // Both modes open the same setup screen; it picks the map and the grapple
-  // rule first. Solo starts there, friends goes on to the room lobby.
+  // Both modes open the same setup screen; it picks the map first. Solo
+  // starts there, friends goes on to the room lobby.
   const solo = useCallback(() => {
     navigate("/setup?mode=solo");
   }, [navigate]);
@@ -52,7 +51,7 @@ export default function Landing() {
       </button>
       <div className="dd-screen">
         <div className="panel">
-          <h1>DOODLE SHOOTER</h1>
+          <h1>DOODLE RPG</h1>
           <h2>a scribbled survival shooter</h2>
 
           <div className="mainbtns">

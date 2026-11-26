@@ -63,7 +63,7 @@ test("the lobby roster names each friend's fighter", async ({ browser }) => {
   const host = await player(hostContext, HOST, offHost);
   const guest = await player(guestContext, GUEST, offHost);
 
-  await host.goto("/online?create=1&map=district&grapple=1");
+  await host.goto("/online?create=1&map=district");
   await expect(host.locator(".dd-netcode")).toHaveText(/^[A-Z0-9]{4}$/, { timeout: 20_000 });
   const code = (await host.locator(".dd-netcode").textContent())!.trim();
   await guest.goto(`/online?room=${code}`);

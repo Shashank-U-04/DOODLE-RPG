@@ -48,9 +48,9 @@ test("lobby → arena → winner → host leaves → promoted host rematches", a
   const code = await test.step("host opens a room and gets a code", () => openRoom(host));
 
   await test.step("guest joins by code; both rosters show two players", async () => {
-    await guest.goto(`/online?room=${code}&map=district&grapple=1`);
+    await guest.goto(`/online?room=${code}&map=district`);
     // read once, then off the URL (and never in `code`, the old invite-link parameter)
-    await expect(guest).toHaveURL(/\/online\?map=district&grapple=1$/);
+    await expect(guest).toHaveURL(/\/online\?map=district$/);
     for (const page of [host, guest]) {
       await expect(page.locator(".dd-roster")).toContainText("IN THE ROOM (2)", { timeout: 20_000 });
     }

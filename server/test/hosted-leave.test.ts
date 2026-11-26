@@ -124,7 +124,7 @@ function session(url: string, code: string, name: string, isHost: boolean) {
     setItem: (k: string, v: string) => void store.set(k, v),
     removeItem: (k: string) => void store.delete(k),
   };
-  const s = new ColyseusSession(code, name, isHost, { map: "district", grapple: true }, { url, storage });
+  const s = new ColyseusSession(code, name, isHost, { map: "district" }, { url, storage });
   s.connect();
   return s;
 }

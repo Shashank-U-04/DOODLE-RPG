@@ -20,7 +20,8 @@
     "test/shared-parity.test.ts",
     "test/hosted-leave.test.ts",
     "test/restart-detection.test.ts",
-    "test/wake.test.ts"
+    "test/wake.test.ts",
+    "test/arms.test.ts"
   ],
   "include": ["src", "test", "scripts"]
 }

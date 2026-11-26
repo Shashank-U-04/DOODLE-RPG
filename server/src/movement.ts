@@ -1,7 +1,7 @@
 // Movement rules for synchronized player bodies.
 //
 // The game's physics runs in the browser (src/game/engine.ts): collision,
-// grapple, dash and the map's doors all live there, and moving them here would
+// dash, jumps and the map's doors all live there, and moving them here would
 // mean a second physics engine. So a client *proposes* where its body is and
 // the server decides what everyone else sees:
 //
@@ -33,7 +33,7 @@ export const PATCH_INTERVAL_MS = 1000 / MOVE_RATE_HZ;
 
 /**
  * Fastest ordinary movement, any direction (m/s). Walking is 6.6, sprinting
- * 10.6, a dash briefly 3.4× that (36); the rest is falls and grapple swings.
+ * 10.6, a dash briefly 3.4× that (36); the rest is falls.
  */
 export const MAX_SPEED = 60;
 /** Movement allowance banked for bunched packets (m), i.e. half a second at MAX_SPEED. */
@@ -55,7 +55,7 @@ export type Box = { minX: number; maxX: number; minY: number; maxY: number; minZ
  * Playable volume per map, measured from the real map builders (checked by
  * test/geometry.test.ts): each zone's x/z bounds, from just under the point
  * where the engine rescues a falling player (floor − 6) to well above the
- * tallest collider (jumps, double jumps and grapple swings).
+ * tallest collider (jumps and double jumps).
  *
  */
 const DISTRICT: Box = { minX: -55, maxX: 55, minY: -8, maxY: 41, minZ: -55, maxZ: 55 };

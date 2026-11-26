@@ -45,7 +45,7 @@ export async function finishMatch(request: APIRequestContext, code: string, winn
 
 /** Open a room as HOST and return its code. */
 export async function openRoom(host: Page): Promise<string> {
-  await host.goto("/online?create=1&map=district&grapple=1");
+  await host.goto("/online?create=1&map=district");
   await expect(host.locator(".dd-netcode")).toHaveText(/^[A-Z0-9]{4}$/, { timeout: 20_000 });
   return (await host.locator(".dd-netcode").textContent())!.trim();
 }
