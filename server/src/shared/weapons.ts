@@ -68,7 +68,7 @@ export const WEAPONS: WeaponDef[] = [
     magSize: 5,
     reserve: 25,
     maxReserve: 50,
-    interval: 0.9,
+    interval: 1.4,
     damage: 150,
     headMul: 3,
     pellets: 1,
