@@ -338,8 +338,9 @@ export function createGame(
   let mouseFire = false;
   let mouseAim = false;
   // AWM: the left button held scopes in, and letting go takes the shot, but
-  // only once the scope has been up SCOPE_MIN: let go sooner and the scope
-  // stays up until then (scopeFire), so there is no instant tap-shot
+  // only once the scope has been up SCOPE_MIN and the bolt has cycled: let go
+  // sooner and the scope stays up until then (scopeFire), so there is no
+  // instant tap-shot and no shot faster than the bolt
   let scopeHold = false;
   let scopeFire = false;
   let scopeT = 0;
@@ -1234,7 +1235,11 @@ export function createGame(
   function fireWeapon() {
     const s = slots[curSlot];
     const def = s.def;
-    if (reloadT > 0 || switchT > 0) return;
+    // The gun's own rate, for every way of pulling the trigger: a click used
+    // to fire at once whatever the cooldown, so a bolt-action fired as fast as
+    // it was clicked. A click inside the cooldown stays held (mouseFire) and
+    // goes the moment the gun is ready.
+    if (reloadT > 0 || switchT > 0 || fireCd > 0) return;
     if (def.katana) {
       katanaSlash();
       fireCd = def.interval;
@@ -3661,9 +3666,10 @@ export function createGame(
     netFireT = Math.max(0, netFireT - dt);
     // the AWM's held scope: a shot let go too early goes once the scope is up
     if (scopeHold || scopeFire) scopeT += dt;
-    if (scopeFire && scopeT >= SCOPE_MIN) {
+    if (scopeFire && scopeT >= SCOPE_MIN && fireCd <= 0 && switchT <= 0 && reloadT <= 0) {
       scopeFire = false;
       if (p.alive && slots[curSlot].def.kind === "sniper") fireWeapon();
+      // still scoped while the right button is down
       mouseAim = mouseButtons.has(2);
     }
     // Online, down and waiting for the respawn: hold the death pose and take no
@@ -4750,16 +4756,10 @@ export function createGame(
     if (e.button === 0) {
       mouseFire = false;
       if (scopeHold) {
+        // the shot is taken by updatePlayer, once the scope has been up
+        // SCOPE_MIN and the bolt has cycled; the scope stays up until then
         scopeHold = false;
-        scopeFire = false;
-        // too soon: the shot waits for the scope (updatePlayer takes it)
-        if (scopeT < SCOPE_MIN) scopeFire = true;
-        else {
-          const live = state === "playing" && !(pvp.active && !player.alive);
-          if (live && slots[curSlot].def.kind === "sniper") fireWeapon();
-          // still scoped while the right button is down
-          mouseAim = mouseButtons.has(2);
-        }
+        scopeFire = true;
       }
     }
     if (e.button === 2) mouseAim = scopeHold || scopeFire;
