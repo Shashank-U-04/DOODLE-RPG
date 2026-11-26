@@ -6,7 +6,7 @@
 
 import * as THREE from "three";
 import { PAPER_FRAG } from "./shaders";
-import { INK, INK_PALETTE, LIGHT_DIR_WORLD, PAPER, PAPER_RGB, makeInkMaterial, shared } from "./world";
+import { INK, INK_PALETTE, LIGHT_DIR_WORLD, PAPER, PAPER_RGB, makeInkMaterial, shared, type InkId } from "./world";
 import { loadCharacter, makeCharacterRig } from "./characters";
 
 /* ------------------------------------------------------------------ *
@@ -254,7 +254,7 @@ export function createLockerPreview(container: HTMLElement, index: number, weapo
 
 export type Thumbnailer = {
   /** character `index`, whole body, front three-quarter view, as a PNG data URL (holding `weapon`, a rifle by default) */
-  shot(index: number, turn?: number, weapon?: string): Promise<string | null>;
+  shot(index: number, turn?: number, weapon?: string, paint?: { body: InkId; trim: InkId }): Promise<string | null>;
   dispose(): void;
 };
 
@@ -270,9 +270,9 @@ export function createThumbnailer(size = 240): Thumbnailer {
   camera.position.set(0, 1.25, 3.9);
   camera.lookAt(0, 0.92, 0);
   return {
-    async shot(index, turn = 0.5, weapon = "rifle") {
+    async shot(index, turn = 0.5, weapon = "rifle", paint) {
       await loadCharacter(index);
-      const body = makeCharacterRig(index, weapon);
+      const body = makeCharacterRig(index, weapon, { paint });
       if (!body) return null;
       body.root.rotation.y = turn;
       body.anim.update(0.4, { moving: false, firing: false, weapon });

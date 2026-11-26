@@ -206,8 +206,12 @@ void main() {
     float sh = stripes(gl_FragCoord.xy + wob * 5.0 * sc, vec2(0.7071, 0.7071), 6.5 * sc, 1.2 * sc);
     bodyInk = mix(bodyInk, bodyInk * 0.6, sh * smoothstep(0.42, 0.16, l) * 0.7);
     fillAmt = 0.86;
+    // a body keeps its colour at range: faded into the paper, a far figure
+    // was nothing but its dark outline, so every character read as black
+    fade = max(fade, 0.9);
   }
-  if (frontShade < -1.25) edgeInk = inkColor(inkId) * 0.38;
+  // a body's outline is a darker shade of its own colour, not near-black
+  if (frontShade < -1.25) edgeInk = inkColor(inkId) * 0.62;
   col = mix(col, bodyInk, hatch * fillAmt * fade);
   float ew = 0.75 + 0.35 * vnoise(pp * 0.35);
   col = mix(col, edgeInk, clamp(edge * ew, 0.0, 1.0) * fadeE);
