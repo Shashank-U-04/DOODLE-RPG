@@ -64,11 +64,11 @@ export const WEAPONS: WeaponDef[] = [
   {
     name: "SNIPER",
     kind: "sniper",
-    hint: "hold LMB to scope · let go to fire",
+    hint: "bolt action · RMB to scope",
     magSize: 5,
     reserve: 25,
     maxReserve: 50,
-    interval: 1.4,
+    interval: 1.1,
     damage: 150,
     headMul: 3,
     pellets: 1,

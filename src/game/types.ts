@@ -150,6 +150,8 @@ export interface GameHandle {
   toMenu(): void;
   setSensitivity(v: number): void;
   setInvert(on: boolean): void;
+  /** AWM: hold the left button to scope in and let go to fire (off: the left button fires at once) */
+  setHoldToScope(on: boolean): void;
   setMusic(on: boolean): void;
   dispose(): void;
   // ---- online play: every one of these is a no-op in a solo run ----
