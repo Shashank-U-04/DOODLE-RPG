@@ -4,6 +4,7 @@
 // Excluded from this package's `tsc`, like the adapter test: it imports the
 // frontend, which the root `tsc -b` type-checks.
 import assert from "assert";
+import { readFileSync } from "fs";
 import * as THREE from "three";
 
 import { sampleArmInks } from "../../src/game/characters.js";
@@ -83,5 +84,17 @@ describe("first-person arms from the character model", () => {
 
   it("returns null for a model with no right arm to read", () => {
     assert.strictEqual(sampleArmInks(arm([...many("SpineX", INK.RED, 3)])), null);
+  });
+
+  // Only the engine draws them, so this reads its source (like combat-parity).
+  it("draws the dressed arms as solid fill, on uniforms of their own", () => {
+    const engine = readFileSync(new URL("../../src/game/engine.ts", import.meta.url), "utf8");
+    const material = engine.slice(engine.indexOf("const armMaterial = "), engine.indexOf("const matHand = "));
+    // The spread shares the cached ink material's uniform objects: one the arms
+    // change must be their own, or every blue line in the city turns solid.
+    for (const u of ["uInk", "uFill", "uShadeBias"]) assert.ok(material.includes(`${u}: { value:`), u);
+    // hatching prints a dark sleeve or a skin tone as a few pale lines
+    const wear = engine.slice(engine.indexOf("const wearArms = "), engine.indexOf("type HandCfg"));
+    assert.match(wear, /uFill\.value = 2;/);
   });
 });
