@@ -146,7 +146,6 @@ Vite inlines `VITE_*` values at build time: after changing one in Vercel, redepl
 | `WASD`        | Move                                           |
 | Mouse         | Look                                           |
 | `LMB` / `RMB` | Fire / aim down sights (block with the katana) |
-| `LMB` (AWM)   | Hold to scope in, let go to fire               |
 | `Space`       | Jump · again in the air = double jump          |
 | `Shift`       | Sprint                                         |
 | `C` / `Ctrl`  | Crouch                                         |

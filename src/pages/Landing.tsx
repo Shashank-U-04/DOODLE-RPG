@@ -14,7 +14,6 @@ const KEYBOARD: [string, string][] = [
   ["C / Ctrl", "crouch &nbsp; · &nbsp; <b>X</b> dash"],
   ["F", "katana slash &nbsp; · &nbsp; <b>R</b> reload &nbsp; · &nbsp; <b>G</b> grenade"],
   ["1-5 / wheel", "AK-47 · M1887 · AWM · katana · Desert Eagle"],
-  ["AWM", "hold <b>LMB</b> to scope in &nbsp; · &nbsp; let go to fire"],
   ["M", "music &nbsp; · &nbsp; <b>P / Esc</b> pause"],
 ];
 
