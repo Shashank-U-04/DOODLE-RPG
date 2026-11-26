@@ -20,6 +20,7 @@ import {
   isStandable,
   meleeHits,
   pickSafeSpawn,
+  PVP_INKS,
   resolveMove,
   shared,
   spreadSpawns,
@@ -1742,7 +1743,6 @@ export function createGame(
    * players, our bullets can hit them, and their bullets can hit us. Movement,
    * weapons, physics, waves and the HUD are the code they already were.
    * ------------------------------------------------------------------ */
-  const PVP_INKS: InkId[] = [INK.BLUE, INK.RED, INK.BLACK, INK.ORANGE, INK.GREEN, INK.PINK];
 
   type RemoteActor = {
     id: string;

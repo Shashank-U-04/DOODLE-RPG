@@ -41,7 +41,11 @@ type MatchJSON = {
   map: string;
   grapple?: boolean;
   maxPlayers: number;
+  killsToWin: number;
   hostId: string;
+  winnerId: string;
+  winBy: string;
+  round: number;
   players: Record<string, BodyRow>;
 };
 
@@ -110,7 +114,8 @@ describe("match room", () => {
     assert.strictEqual(s.phase, "lobby");
     assert.strictEqual(s.map, "pyramid");
     assert.strictEqual(s.grapple, undefined, "the grappling-hook rule is gone from the state");
-    assert.strictEqual(s.maxPlayers, 4);
+    assert.strictEqual(s.maxPlayers, 10);
+    assert.strictEqual(s.killsToWin, 15);
     assert.strictEqual(s.hostId, h.sessionId);
     assert.deepStrictEqual(roster(s.players[h.sessionId]), {
       id: h.sessionId,
@@ -123,10 +128,17 @@ describe("match room", () => {
   });
 
   it("falls back to defaults for malformed options and clamps the player limit", async () => {
-    const h = await host({ map: "moon", grapple: "yes", maxPlayers: 99, name: "  \u0007Ada-the-very-long-name  " });
+    const h = await host({
+      map: "moon",
+      grapple: "yes",
+      maxPlayers: 99,
+      killsToWin: 7,
+      name: "  \u0007Ada-the-very-long-name  ",
+    });
     const s = snapshot(h);
     assert.strictEqual(s.map, "district");
-    assert.strictEqual(s.maxPlayers, 4);
+    assert.strictEqual(s.maxPlayers, 10);
+    assert.strictEqual(s.killsToWin, 15, "a target off the list falls back to the default");
     assert.strictEqual(s.players[h.sessionId].name, "Ada-the-very-lon");
   });
 
@@ -195,6 +207,30 @@ describe("match room", () => {
     h.send("config", oldClientConfig);
     await eventually(() => snapshot(g).map === "pyramid", "host config reaches guest");
     assert.strictEqual(snapshot(g).grapple, undefined);
+  });
+
+  it("takes the host's kill target at create and in the lobby, and nothing off the list", async () => {
+    const h = await host({ killsToWin: 25 });
+    const g = await colyseus.sdk.joinById(h.roomId, { name: "Grace" });
+    await eventually(() => snapshot(g).killsToWin === 25, "guest sees the host's target");
+
+    g.send("config", { killsToWin: 5 });
+    h.send("config", { killsToWin: 9999 });
+    h.send("config", { killsToWin: 10 });
+    await eventually(() => snapshot(g).killsToWin === 10, "host's change reaches guest");
+  });
+
+  it("seats ten players, each in their own ink, and turns the eleventh away", async () => {
+    const h = await host();
+    const guests: ClientRoom[] = [];
+    for (let i = 1; i < 10; i++) guests.push(await colyseus.sdk.joinById(h.roomId, { name: `P${i}` }));
+    await eventually(() => Object.keys(snapshot(h).players).length === 10, "a full room");
+    const inks = Object.values(snapshot(h).players).map((p) => (p as RosterRow).ink);
+    assert.deepStrictEqual(
+      [...inks].sort((x, y) => x - y),
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    );
+    await assert.rejects(colyseus.sdk.joinById(h.roomId, { name: "Eleven" }));
   });
 
   it("disconnects a client that sends a malformed payload", async () => {
@@ -406,6 +442,98 @@ describe("match room", () => {
       assert.strictEqual(snapshot(g).hostId, hostId);
       await eventually(() => snapshot(g).hostId === g.sessionId, "guest promoted", 3000);
       assert.strictEqual(snapshot(g).players[g.sessionId].isHost, true);
+    });
+  });
+
+  describe("leaving a running match", () => {
+    /** a started match: the host plus `names.length` ready guests */
+    async function playing(...names: string[]) {
+      const h = await host();
+      const gs = [];
+      for (const n of names) {
+        const g = await guest(h, n);
+        g.send("ready", { ready: true });
+        await eventually(() => snapshot(h).players[g.sessionId].ready, `${n} ready`);
+        gs.push(g);
+      }
+      assert.deepStrictEqual(await requestStart(h), { ok: true });
+      for (const g of gs) await eventually(() => snapshot(g).phase === "playing", "started");
+      return { h, gs };
+    }
+
+    it("1v1: the player left behind wins by walkover when the other leaves", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      await g.leave();
+      await eventually(() => snapshot(h).winnerId === h.sessionId, "host declared the winner");
+      assert.strictEqual(snapshot(h).winBy, "walkover");
+    });
+
+    it("1v1: the guest wins when the host leaves, and can rematch to keep the room going", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      await h.leave();
+      await eventually(() => snapshot(g).winnerId === g.sessionId, "guest declared the winner");
+      assert.strictEqual(snapshot(g).winBy, "walkover");
+      assert.strictEqual(snapshot(g).hostId, g.sessionId);
+      // the room stays open for late joiners: a rematch clears the walkover
+      g.send("rematch");
+      await eventually(() => snapshot(g).round === 1 && snapshot(g).winnerId === "", "rematch");
+      assert.strictEqual(snapshot(g).winBy, "");
+    });
+
+    it("1v1: a dropped opponent keeps the match open until their seat expires", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      serverRoom(h.roomId).reconnectSeconds = 0.4;
+      const { sessionId } = g;
+      await drop(g);
+      await eventually(() => snapshot(h).players[sessionId]?.connected === false, "seat held");
+      assert.strictEqual(snapshot(h).winnerId, "", "no result while they may come back");
+      await eventually(() => snapshot(h).winnerId === h.sessionId, "walkover once the hold expires", 3000);
+      assert.strictEqual(snapshot(h).winBy, "walkover");
+    });
+
+    it("three players: play goes on after one leaves; the last one standing wins", async () => {
+      const {
+        h,
+        gs: [g1, g2],
+      } = await playing("Grace", "Linus");
+      await g1.leave();
+      await eventually(() => !snapshot(h).players[g1.sessionId], "first leaver gone");
+      assert.strictEqual(snapshot(h).winnerId, "");
+      await h.leave();
+      await eventually(() => snapshot(g2).winnerId === g2.sessionId, "last player wins");
+      assert.strictEqual(snapshot(g2).winBy, "walkover");
+    });
+
+    it("never awards anything for a leave in the lobby", async () => {
+      const h = await host();
+      const g = await guest(h);
+      await g.leave();
+      await eventually(() => !snapshot(h).players[g.sessionId], "guest gone");
+      assert.strictEqual(snapshot(h).winnerId, "");
+      assert.strictEqual(snapshot(h).phase, "lobby");
+    });
+
+    it("keeps a score win when the loser leaves afterwards", async () => {
+      const {
+        h,
+        gs: [g],
+      } = await playing("Grace");
+      const room = serverRoom(h.roomId);
+      room.state.winnerId = g.sessionId;
+      room.state.winBy = "score";
+      await h.leave();
+      await eventually(() => !snapshot(g).players[h.sessionId], "host gone");
+      assert.strictEqual(snapshot(g).winnerId, g.sessionId);
+      assert.strictEqual(snapshot(g).winBy, "score");
     });
   });
 

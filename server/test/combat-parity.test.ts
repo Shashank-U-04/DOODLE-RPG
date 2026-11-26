@@ -122,7 +122,8 @@ describe("combat parity with the game", () => {
     // the lobby reads both from src/shared/rules.ts (shared-parity.test.ts bans local copies)
     assert.strictEqual(KILLS_TO_WIN, 15);
     assert.strictEqual(RESPAWN_MS, 3200);
-    contains(online, "matchWinner(players, session.winnerId, KILLS_TO_WIN)", "win");
+    // the host picks the target (shared/rules.ts KILL_TARGETS); 15 is the default
+    contains(online, "matchWinner(players, session.winnerId, config.killsToWin)", "win");
     contains(online, "}, RESPAWN_MS);", "respawn wait");
   });
 

@@ -35,7 +35,7 @@ export function mountE2eFixtures(app: Application) {
       return void res.status(409).json({ error: "not in play" });
     const victim = players.find((p) => p.id !== winner.id && p.spawned && p.alive);
     if (!victim) return void res.status(409).json({ error: "no placed, living opponent yet" });
-    winner.kills = KILLS_TO_WIN - 1;
+    winner.kills = (room.state.killsToWin || KILLS_TO_WIN) - 1;
     // The room's own damage path (private on purpose: nothing a client sends reaches it).
     const hurt = room.combat["hurt"] as (v: Player, amount: number, attacker: string, weapon: string) => boolean;
     hurt.call(room.combat, victim, 9999, winner.id, "SNIPER");
@@ -51,6 +51,20 @@ export function mountE2eFixtures(app: Application) {
     const room = matchMaker.getLocalRoomById(String(req.params.code).toUpperCase()) as MatchRoom | undefined;
     if (!room) return void res.status(404).json({ error: "no such room" });
     res.json(room.motionStats);
+  });
+
+  /**
+   * POST /__e2e/rooms/:code/hold { seconds } — shorten how long a dropped
+   * player's seat is held, so a browser test can watch the hold run out
+   * without waiting the real 30 s. Applies to drops after the call.
+   */
+  app.post("/__e2e/rooms/:code/hold", express.json(), (req, res) => {
+    const room = matchMaker.getLocalRoomById(String(req.params.code).toUpperCase()) as MatchRoom | undefined;
+    const seconds = Number((req.body as { seconds?: unknown } | undefined)?.seconds);
+    if (!room) return void res.status(404).json({ error: "no such room" });
+    if (!(seconds > 0 && seconds <= 60)) return void res.status(400).json({ error: "seconds must be in (0, 60]" });
+    room.reconnectSeconds = seconds;
+    res.json({ ok: true });
   });
 
   /**
