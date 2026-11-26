@@ -45,7 +45,7 @@ try {
     const page = await browser.newPage({ viewport: { width, height } });
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto(`${url}/game?map=${map}&grapple=1&perf=1`);
+    await page.goto(`${url}/game?map=${map}&perf=1`);
     await page.waitForFunction(() => window.__ddPerf !== undefined, null, { timeout: 60_000 });
     await page.waitForTimeout(warmup * 1000);
     await page.evaluate(() => window.__ddPerf.reset());

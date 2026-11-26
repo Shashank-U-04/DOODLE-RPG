@@ -50,7 +50,6 @@ export default function Setup() {
     next.set("map", map);
     if (mode === "friends") next.set("kills", String(kills));
     else next.delete("kills");
-    next.delete("grapple"); // links from before the grappling hook was removed
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, map, kills]);
