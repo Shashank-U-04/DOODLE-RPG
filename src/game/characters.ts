@@ -365,6 +365,8 @@ export type CharacterAnim = {
   kick(): void;
   /** where the barrel ends, in world space (false while the body has no gun) */
   muzzle(out: THREE.Vector3): boolean;
+  /** shot dead: the death clip plays once and holds; the gun falls away */
+  die(): void;
 };
 
 const CLIPS = {
@@ -378,6 +380,7 @@ const CLIPS = {
   bladeIdle: ["Idle_Sword", "Idle_Neutral", "Idle", "Female_Idle", "Man_Idle"],
   bladeRun: ["Run", "Run_Gun", "Female_Run", "Man_Run"],
   bladeHit: ["Sword_Slash", "Female_SwordSlash", "Punch_Right", "Punch", "Female_Punch"],
+  death: ["Death", "Female_Death", "Dea", "HitReact", "HitRecieve"],
 };
 
 /**
@@ -533,8 +536,15 @@ function curlFingers(hand: THREE.Object3D, barAt: THREE.Vector3, barDir: THREE.V
  * player looks) and both arms are solved onto it every frame, right hand on
  * the grip and left on the handguard, over the legs' walk / run clips. A
  * blade still rides the hand: its clips are real sword clips.
+ *
+ * `offHand` (a riot shield) is carried in the left hand instead, in front of
+ * the left half of the chest, and the gun is held in the right hand alone.
  */
-export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: CharacterAnim }) | null {
+export function makeCharacterRig(
+  index: number,
+  weapon: string,
+  opts: { offHand?: THREE.Object3D | null } = {},
+): (Rig & { anim: CharacterAnim }) | null {
   const def = CHARACTER_LIST[index] ?? CHARACTER_LIST[FALLBACK_CHARACTER];
   const t = def && templates.get(def.id);
   if (!t) return null;
@@ -574,6 +584,14 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
     }
   }
   const muzzleAt = weapon && weapon !== "blade" && gun.parent ? gunMuzzle(gun).clone() : null;
+  const offHand = carried ? (opts.offHand ?? null) : null;
+  if (offHand) {
+    offHand.removeFromParent();
+    offHand.position.set(0, 0, 0);
+    offHand.rotation.set(0, 0, 0);
+    root.add(offHand);
+  }
+  let dead = false;
 
   const mixer = new THREE.AnimationMixer(model);
   let current: THREE.AnimationAction | null = null;
@@ -630,7 +648,7 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
     // recoil shoves it back
     grip
       .copy(sR)
-      .addScaledVector(across, -place.inward - lower * 0.08)
+      .addScaledVector(across, (offHand ? 0.06 : -place.inward) - lower * 0.08)
       .addScaledVector(gy, -place.down)
       .addScaledVector(gz, place.ahead - recoil * 0.06);
     gun.matrix
@@ -658,17 +676,32 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
     const ahead = gz.clone().applyQuaternion(rootQ);
     // elbows down and out, the support elbow tucked under the gun
     reach(upR!, loR!, handR!, on(hold!.right), down.clone().addScaledVector(right, 0.7).addScaledVector(ahead, -0.3));
-    reach(upL!, loL!, handL!, on(support), down.clone().addScaledVector(right, -0.5).addScaledVector(ahead, -0.2));
+    if (offHand) {
+      // the shield square in front of the left half of the chest, the left
+      // hand on its grip behind the boss
+      offHand.position
+        .copy(sL)
+        .addScaledVector(across, 0.06)
+        .add(new THREE.Vector3(0, -0.32, 0.36));
+      offHand.updateMatrixWorld(true);
+      const handle = offHand.localToWorld(new THREE.Vector3(-0.04, 0.05, -0.08));
+      reach(upL!, loL!, handL!, handle, down.clone().addScaledVector(right, -0.8));
+    } else
+      reach(upL!, loL!, handL!, on(support), down.clone().addScaledVector(right, -0.5).addScaledVector(ahead, -0.2));
     // fingers round the grip, and along the handguard
     pointHand(handR!, ahead.clone().multiplyScalar(0.7).addScaledVector(down, 0.6));
     pointHand(handL!, ahead.clone().multiplyScalar(0.6).addScaledVector(down, -0.45).addScaledVector(right, 0.3));
     // and closed: round the grip (down and back from the trigger), round the handguard
     curlFingers(handR!, on([0, -0.06, -0.02]), down.clone().addScaledVector(ahead, -0.35).normalize());
-    curlFingers(handL!, on([0, -0.02, support.z]), ahead);
+    if (!offHand) curlFingers(handL!, on([0, -0.02, support.z]), ahead);
   };
 
   const anim: CharacterAnim = {
     update(dt, s) {
+      if (dead) {
+        mixer.update(dt);
+        return;
+      }
       const ease = (rate: number) => 1 - Math.exp(-rate * dt);
       fwd += ((s.forward ?? (s.moving ? 6 : 0)) - fwd) * ease(10);
       side += ((s.side ?? 0) - side) * ease(10);
@@ -700,10 +733,20 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
       recoil = 1;
     },
     muzzle(out) {
-      if (!muzzleAt) return false;
+      if (!muzzleAt || dead) return false;
       gun.updateWorldMatrix(true, false);
       gun.localToWorld(out.copy(muzzleAt));
       return true;
+    },
+    die() {
+      if (dead) return;
+      dead = true;
+      gun.visible = false;
+      const a = play(CLIPS.death, 0.1);
+      if (a) {
+        a.setLoop(THREE.LoopOnce, 1);
+        a.clampWhenFinished = true;
+      }
     },
   };
   // posed from the first frame: the turntable and the thumbnails draw at once
@@ -728,7 +771,7 @@ export function makeCharacterRig(index: number, weapon: string): (Rig & { anim: 
       shinL: g(),
       shinR: g(),
       gun,
-      shield: null,
+      shield: (offHand as THREE.Group | null) ?? null,
     },
     headWorldY: 1.65,
     hitHeads: [head],
