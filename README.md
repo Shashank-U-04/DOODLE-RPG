@@ -141,22 +141,21 @@ Vite inlines `VITE_*` values at build time: after changing one in Vercel, redepl
 
 ## Controls
 
-| Key           | Action                                                              |
-| ------------- | ------------------------------------------------------------------- |
-| `WASD`        | Move                                                                |
-| Mouse         | Look                                                                |
-| `LMB` / `RMB` | Fire / aim down sights (block with the katana)                      |
-| `LMB` (AWM)   | Fires; or, with the setting on, hold to scope in and let go to fire |
-| `Space`       | Jump · again in the air = double jump                               |
-| `Shift`       | Sprint                                                              |
-| `C` / `Ctrl`  | Crouch                                                              |
-| `X`           | Dash                                                                |
-| `F`           | Katana slash                                                        |
-| `R`           | Reload                                                              |
-| `G`           | Grenade                                                             |
-| `1–5` / wheel | Weapon slots                                                        |
-| `M`           | Music                                                               |
-| `P` / `Esc`   | Pause                                                               |
+| Key           | Action                                         |
+| ------------- | ---------------------------------------------- |
+| `WASD`        | Move                                           |
+| Mouse         | Look                                           |
+| `LMB` / `RMB` | Fire / aim down sights (block with the katana) |
+| `Space`       | Jump · again in the air = double jump          |
+| `Shift`       | Sprint                                         |
+| `C` / `Ctrl`  | Crouch                                         |
+| `X`           | Dash                                           |
+| `F`           | Katana slash                                   |
+| `R`           | Reload                                         |
+| `G`           | Grenade                                        |
+| `1–5` / wheel | Weapon slots                                   |
+| `M`           | Music                                          |
+| `P` / `Esc`   | Pause                                          |
 
 ## License
 
