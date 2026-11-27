@@ -6,7 +6,10 @@
 # `sync: false` value; nothing secret or deployment-specific is committed here.
 services:
   - type: web
-    name: doodle-shooter-match
+    # Must match the service's name in the dashboard: Blueprints find services
+    # by name. Renamed from doodle-shooter-match, but the URL stays
+    # https://doodle-shooter-match.onrender.com (Render never changes it).
+    name: doodlerpg-match
     runtime: node
     rootDir: server
     # --include=dev: NODE_ENV=production (below) is also set during the build,
