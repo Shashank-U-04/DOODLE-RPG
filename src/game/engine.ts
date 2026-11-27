@@ -1227,7 +1227,11 @@ export function createGame(
   function fireWeapon() {
     const s = slots[curSlot];
     const def = s.def;
-    if (reloadT > 0 || switchT > 0) return;
+    // The gun's own rate, for every way of pulling the trigger: a click used
+    // to fire at once whatever the cooldown, so a bolt-action fired as fast as
+    // it was clicked. A button held through the cooldown (mouseFire) fires
+    // the moment the gun is ready; a quick tap inside it is ignored.
+    if (reloadT > 0 || switchT > 0 || fireCd > 0) return;
     if (def.katana) {
       katanaSlash();
       fireCd = def.interval;
